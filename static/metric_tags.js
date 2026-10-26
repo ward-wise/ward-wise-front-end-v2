@@ -3,6 +3,11 @@
 //
 // The catalog's own `category` stays the primary domain for scoring and the bloom; these tags
 // only change where a metric is found. Keep keywords lowercase, space-separated, generous.
+//
+// A measure source can ship its own (byop v1.2 `keywords` / `extra_categories` in its
+// aggregation_spec.json, carried onto the metric by the API), so a newly admitted measure needs no
+// edit here. Both lookups take the metric object and merge: the hand-kept entries come first, the
+// source's add to them.
 window.WardWiseMetricTags = (function () {
   const extraCategories = {
     bean_distance_miles: ["culture"],
@@ -256,12 +261,21 @@ window.WardWiseMetricTags = (function () {
     zoned_capacity_added_sqft_per_km2: "zoning rezoning upzoning capacity square feet floor area far density housing development growth",
   };
 
-  function keywordsFor(metricId) {
-    return keywords[metricId] || "";
+  // metric_id string or metric object (the object also brings the source's own tags)
+  function asMetric(metricOrId) {
+    return typeof metricOrId === "string" ? { metric_id: metricOrId } : metricOrId || {};
   }
 
-  function extraCategoriesFor(metricId) {
-    return extraCategories[metricId] || [];
+  function keywordsFor(metricOrId) {
+    const metric = asMetric(metricOrId);
+    const own = typeof metric.keywords === "string" ? metric.keywords.toLowerCase() : "";
+    return [keywords[metric.metric_id], own].filter(Boolean).join(" ");
+  }
+
+  function extraCategoriesFor(metricOrId) {
+    const metric = asMetric(metricOrId);
+    const own = Array.isArray(metric.extra_categories) ? metric.extra_categories.filter((c) => typeof c === "string") : [];
+    return [...new Set([...(extraCategories[metric.metric_id] || []), ...own])];
   }
 
   return { keywordsFor, extraCategoriesFor, keywords, extraCategories };

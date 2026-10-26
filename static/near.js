@@ -748,6 +748,7 @@
         chartKey = chartKey === key ? null : key;
         if (chartKey && window.WardWiseExplorer && WardWiseExplorer.track) {
           WardWiseExplorer.track("near_metric_open", { metric: chartKey, radius: radiusM });
+          if (window.WardWiseAnalytics) window.WardWiseAnalytics.measureOpened(chartKey, null);
         }
         if (lastPayload) render(lastPayload);
         const chart = termsEl.querySelector(".near-chart");
@@ -781,6 +782,7 @@
         if (chooseEl) chooseEl.hidden = true;
         setPoint(payload.lat, payload.lng);
       } else {
+        if (window.WardWiseAnalytics) window.WardWiseAnalytics.track("lookup_failed", { how: "address" });
         showPicker(true, "Couldn't place that — try '2045 N Damen Ave' or 'Damen & North', or click the map.");
       }
     } catch (error) {

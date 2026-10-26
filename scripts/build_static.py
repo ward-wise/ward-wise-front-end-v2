@@ -65,13 +65,14 @@ def redirect_html(target: str) -> str:
     )
 
 
-def build(out: Path, ga_id: str | None, sha: str) -> int:
+def build(out: Path, ga_id: str | None, sha: str, posthog_key: str | None = None) -> int:
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
 
     versions = content_versions(site_mod.STATIC)
-    env = site_mod.make_environment(lambda name: versions.get(name, ""), app_base="", ga_id=ga_id, build_sha=sha)
+    env = site_mod.make_environment(lambda name: versions.get(name, ""), app_base="", ga_id=ga_id,
+                                      posthog_key=posthog_key, build_sha=sha)
 
     written = 0
     for page in site_mod.PAGES:
@@ -108,11 +109,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", default="dist")
     parser.add_argument("--ga-id", default=os.environ.get("GA_ID") or None,
                         help="Google Analytics measurement id (or GA_ID env); omitted = no analytics")
+    parser.add_argument("--posthog-key", default=os.environ.get("POSTHOG_KEY") or None,
+                        help="PostHog project key (or POSTHOG_KEY env); omitted = no PostHog")
     parser.add_argument("--sha", default=None, help="build identifier (default: GITHUB_SHA or git HEAD)")
     args = parser.parse_args(argv)
     out = Path(args.out).resolve()
     sha = args.sha or git_sha()
-    pages = build(out, args.ga_id, sha)
+    pages = build(out, args.ga_id, sha, args.posthog_key)
     print(f"built {pages} pages + {len(list((out / 'static').iterdir()))} assets → {out} (build {sha})")
     return 0
 

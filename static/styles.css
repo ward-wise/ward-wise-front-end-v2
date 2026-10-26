@@ -7444,3 +7444,11 @@ html.is-dark .rel-grade-moderate { color: #4cd964; }
 .rel-howto-body p, .rel-howto-body ul { margin: 0; }
 .rel-howto-body ul { padding-left: 18px; }
 .rel-howto-example { color: var(--ink-2); }
+
+/* /for/financing: one report split into headed sections, then the dictionary's notes on each measure. */
+.fd-report-section { font-size: 21px; font-weight: 600; letter-spacing: -0.015em; margin: 32px 0 12px; }
+.fd-appendix { margin-top: 40px; }
+.fd-appendix .fd-report-section { margin-top: 0; }
+.fd-appendix-entry { margin-top: 20px; }
+.fd-appendix-entry h3 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+.fd-appendix-entry p + p { margin-top: 4px; }

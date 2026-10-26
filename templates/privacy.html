@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy — Ward Wise{% endblock %}
+
+{% block content %}
+<main>
+  <section class="fd-section">
+    <div class="fd-wrap fd-stack" style="max-width: 760px">
+      <p class="fd-eyebrow">Privacy</p>
+      <h1 class="fd-h1">What we count, and what we never collect.</h1>
+      <p class="fd-sub">Ward Wise counts how people use this site so we can tell what helps residents act in their ward. We never collect your name, your email address or your home address through these counts.</p>
+
+      <h2 class="fd-h3">What we count</h2>
+      <ul style="margin: 0">
+        <li>Pages opened, the ward you picked if you picked one, and the ward you are looking at.</li>
+        <li>Taps on links that lead to a civic step, such as emailing your alderperson, calling their office or reporting a problem to 311.</li>
+        <li>Each step of signing up for ward alerts.</li>
+        <li>Which measures and topics you open, and whether you share or print a report.</li>
+        <li>Times an address or location search did not find a ward. We never keep what you typed.</li>
+        <li>On every page, how far you scrolled, the page you came from, and your browser, device type and screen size.</li>
+        <li>Errors, so we hear about a page that breaks.</li>
+      </ul>
+      <p>On the home page, the ward report card page and the alerts page, we also record where people tap. That saves spots on the page, never a recording of your screen or anything you type.</p>
+      <p>We use these counts to improve the site and to show funders and partners how many residents take a civic step in each ward. We report totals, never one person's activity.</p>
+
+      <h2 class="fd-h3">What we never collect through these tools</h2>
+      <ul style="margin: 0">
+        <li>Your name or email address. Alert sign-ups go to our own system, which uses your email only to send the alerts you chose.</li>
+        <li>An address you type into a search box, or the spot you pick on the Near me map. We count only the ward.</li>
+        <li>The private link in your alert emails.</li>
+        <li>Recordings of your screen.</li>
+      </ul>
+
+      <h2 class="fd-h3">The two tools we use</h2>
+      <p>We use Google Analytics and PostHog. Each one saves a small file in your browser (a cookie or local storage) so a return visit counts as the same visitor. Google's names start with <code>_ga</code>, and PostHog's start with <code>ph_</code>. The site also remembers your ward and alert choices in your browser, on your device only. Both tools see the IP address your browser connects from and use it to guess your city. Google Analytics does not keep it, and PostHog keeps it with each count.</p>
+      <p>Most browser privacy settings and ad blockers stop both tools, and the site works the same without them.</p>
+
+      <h2 class="fd-h3">Surveys</h2>
+      <p>Now and then a one-question survey may appear, such as "Did you send your message?" Answering is optional, and you can close it. Every answer is a choice from a list, with no typing.</p>
+
+      <h2 class="fd-h3">Questions</h2>
+      <p>Ward Wise is built by volunteers at Chi Hack Night. To ask about this page or have your data removed, email <a href="mailto:harry@wardwise.org">harry@wardwise.org</a>.</p>
+    </div>
+  </section>
+</main>
+{% endblock %}

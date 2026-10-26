@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% include "_analytics_head.html" %}
     <title>{% block title %}Ward Wise{% endblock %}</title>
     <meta name="penlight-build" content="{{ build_sha }}">
     {# Cascade order matters: the original sheet first, then the shared K3 shell

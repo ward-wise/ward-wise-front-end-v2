@@ -3,4 +3,5 @@
 <nav class="fd-tabs" aria-label="For organizations">
   <a href="{{ url_for('ui.planning') }}"{% if request.endpoint == 'ui.planning' %} aria-current="page"{% endif %}><span>Planners<span class="fd-tab-long"> and community groups</span></span></a>
   <a href="{{ url_for('ui.business') }}"{% if request.endpoint == 'ui.business' %} aria-current="page"{% endif %}><span><span class="fd-tab-long">Local b</span><span class="fd-tab-short">B</span>usinesses</span></a>
+  <a href="{{ url_for('ui.financing') }}"{% if request.endpoint == 'ui.financing' %} aria-current="page"{% endif %}><span>Financing</span></a>
 </nav>

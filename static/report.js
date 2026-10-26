@@ -978,11 +978,13 @@
     } else if (act === "year") {
       setYear(Number(target.dataset.year));
     } else if (act === "copy") {
+      WardWiseExplorer.track("report_shared", { how: "copy_link" });
       const url = window.location.href;
       const done = () => { target.textContent = "Link copied"; setTimeout(() => { target.textContent = "Copy link"; }, 2000); };
       if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(done, () => window.prompt("Copy this link", url));
       else window.prompt("Copy this link", url);
     } else if (act === "print") {
+      WardWiseExplorer.track("report_shared", { how: "print" });
       window.print();
     }
   }

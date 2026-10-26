@@ -45,13 +45,12 @@ window.WardWiseExplorer = {
     tooltip.style.top = `${Math.max(8, y)}px`;
   },
 
-  // Single safe entry point for Google Analytics events (GA4 is wired in base.html
-  // when GOOGLE_ANALYTICS_ID is set). Never let analytics throw into the app.
+  // Single safe entry point for analytics events. WardWiseAnalytics (static/analytics.js, loaded in
+  // every page's <head>) sends each one to Google Analytics and PostHog with the visitor's ward.
+  // Never let analytics throw into the app.
   track(action, params = {}) {
     try {
-      if (typeof window.gtag === "function") {
-        window.gtag("event", action, params);
-      }
+      if (window.WardWiseAnalytics) window.WardWiseAnalytics.track(action, params);
     } catch (_error) {
       /* analytics is best-effort */
     }

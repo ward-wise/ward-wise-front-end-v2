@@ -96,6 +96,7 @@ window.WardWiseMetricPages = (function () {
   }
 
   async function copyShareLink(button) {
+    WardWiseExplorer.track("report_shared", { how: "copy_link" });
     try {
       await navigator.clipboard.writeText(location.href);
       button.textContent = "Link copied ✓";

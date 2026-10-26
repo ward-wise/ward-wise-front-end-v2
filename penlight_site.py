@@ -31,6 +31,8 @@ VIEWS_JSON = ROOT / "views.json"
 # the private app and are reached on the same host in production; locally they link out to it.
 SITE_BASE_DEFAULT = "https://www.wardwise.org"
 PUBLIC_BASE = "https://www.wardwise.org"
+# PostHog's US cloud. The project key (POSTHOG_KEY) is public by design, like the GA id.
+POSTHOG_HOST = "https://us.i.posthog.com"
 
 # Features that are built but don't yet do everything their pages describe. Templates read these (and
 # base.html hands them to JS as <body data-*>), so the "in testing" copy flips in one place at launch.
@@ -59,6 +61,7 @@ PAGES: tuple[Page, ...] = (
     Page("residents", "/for/residents", "residents.html", "ui.residents"),
     Page("planning", "/for/planning", "planning.html", "ui.planning"),
     Page("business", "/for/business", "business.html", "ui.business"),
+    Page("financing", "/for/financing", "financing.html", "ui.financing"),
     Page("alerts", "/alerts", "alerts.html", "ui.alerts"),
     Page("k3", "/k3", "k3.html", "ui.k3"),
     Page("k3_dictionary", "/k3/dictionary", "k3_dictionary.html", "ui.k3_dictionary"),
@@ -90,6 +93,7 @@ PAGES: tuple[Page, ...] = (
     Page("suggest_metric", "/suggest-metric", "suggest_metric.html", "ui.suggest_metric"),
     Page("suggest_photo", "/suggest-photo", "suggest_photo.html", "ui.suggest_photo"),
     Page("api_docs", "/api-docs", "api_docs.html", "ui.api_docs_page"),
+    Page("privacy", "/privacy", "privacy.html", "ui.privacy_page"),
 )
 PAGES_BY_ENDPOINT = {page.endpoint: page for page in PAGES}
 PAGES_BY_KEY = {page.key: page for page in PAGES}
@@ -167,6 +171,7 @@ def make_url_for(version_for: Callable[[str], str], app_base: str = "") -> Calla
 
 
 def make_environment(version_for: Callable[[str], str], *, app_base: str = "", ga_id: str | None = None,
+                     posthog_key: str | None = None, posthog_host: str = POSTHOG_HOST,
                      build_sha: str = "dev") -> Environment:
     env = Environment(
         loader=FileSystemLoader(str(TEMPLATES)),
@@ -181,6 +186,8 @@ def make_environment(version_for: Callable[[str], str], *, app_base: str = "", g
         "nav_groups": nav_groups(views),
         "view_endpoints": frozenset(view["endpoint"] for view in views["views"]),
         "ga_id": ga_id,
+        "posthog_key": posthog_key,
+        "posthog_host": posthog_host,
         "build_sha": build_sha,
         "app_base": app_base,
         "site_flags": SITE_FLAGS,

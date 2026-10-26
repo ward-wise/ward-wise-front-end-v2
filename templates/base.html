@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% include "_analytics_head.html" %}
     {# Lets CSS hide scroll-reveal content only when a script is there to reveal it. #}
     <script>document.documentElement.classList.add("fd-js");</script>
     {# Light or dark, decided before anything paints so a dark page never flashes white.
@@ -56,16 +57,6 @@
     {# Which build of github.com/HarryBrisson/ward-wise-frontend rendered this page; the deploy's
        smoke check requires it on every public page, so a Flask shell leaking through is caught. #}
     <meta name="penlight-build" content="{{ build_sha }}">
-    {% if ga_id %}
-      <!-- Google tag (gtag.js) -->
-      <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga_id|urlencode }}"></script>
-      <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag("js", new Date());
-        gtag("config", {{ ga_id|tojson }});
-      </script>
-    {% endif %}
     {# Safari ignores SVG tab icons, so the PNG and ICO copies carry it there. #}
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg', v=2) }}">
@@ -197,6 +188,7 @@
             <ul>
               <li><a href="{{ url_for('ui.planning') }}">Planners and community groups</a></li>
               <li><a href="{{ url_for('ui.business') }}">Local businesses</a></li>
+              <li><a href="{{ url_for('ui.financing') }}">Financing</a></li>
             </ul>
           </div>
           <div>
@@ -205,6 +197,7 @@
               <li><a href="{{ url_for('ui.about_page') }}">Get involved</a></li>
               <li><a href="/data-notes">Data notes</a></li>
               <li><a href="/api-docs">API docs</a></li>
+              <li><a href="{{ url_for('ui.privacy_page') }}">Privacy</a></li>
               <li><a href="https://github.com/HarryBrisson/ward-wise-frontend" rel="noopener">Source on GitHub</a></li>
               <li><a href="https://chihacknight.org/" rel="noopener">Chi Hack Night</a></li>
             </ul>

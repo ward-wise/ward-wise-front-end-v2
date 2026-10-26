@@ -323,7 +323,7 @@ window.WardWiseReportChanges = (function () {
       const id = row.metric.metric_id;
       const open = state.open.has(id);
       const flags = row.flags.map((f) => `<span class="ww-flag" title="${esc(f.title)}">${esc(f.label)}</span>`).join("");
-      const icon = window.WardWiseIcons?.svg ? `<span class="ww-change-icon" aria-hidden="true">${WardWiseIcons.svg(id)}</span>` : "";
+      const icon = window.WardWiseIcons?.svg ? `<span class="ww-change-icon" aria-hidden="true">${WardWiseIcons.svg(row.metric)}</span>` : "";
       const spark = WardWiseCharts.sparkline(row.points, { tone });
       const detailId = `chg-${id}`;
       return `

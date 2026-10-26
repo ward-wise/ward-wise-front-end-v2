@@ -1017,7 +1017,12 @@ function isHighWeight(weight) {
 // One place for everything a weight change touches: the tray ("Your list"), the formula chips,
 // the domain counters, the selection log, and the scores.
 function setMetricWeight(metricId, weight, { refresh = true } = {}) {
+  const added = !Number(explorerState.weights[metricId]) && Number(weight) > 0;
   explorerState.weights[metricId] = weight;
+  if (added && window.WardWiseAnalytics) {
+    const metric = explorerState.metrics.find((m) => m.metric_id === metricId);
+    window.WardWiseAnalytics.measureOpened(metricId, metric ? domainLabel(metric.category) : null);
+  }
   markCustom();
   renderPresetTray();
   syncMetricControl(metricId);
@@ -1259,9 +1264,9 @@ function renderMetricControls() {
 
 // "N active" in every domain head: how many of that domain's measures currently count. Counts the
 // available set, not the search matches, so the number holds still while the reader types.
-// Every domain a metric lives in: its catalog category plus the editorial extras in metric_tags.js.
+// Every domain a metric lives in: its catalog category plus the extras in metric_tags.js (hand-kept + the source's own).
 function metricCategories(metric) {
-  const extras = window.WardWiseMetricTags?.extraCategoriesFor(metric.metric_id) || [];
+  const extras = window.WardWiseMetricTags?.extraCategoriesFor(metric) || [];
   return [metric.category || "other", ...extras.filter((c) => c !== metric.category)];
 }
 
@@ -1277,7 +1282,7 @@ function metricSearchText(metric) {
     ...metricCategories(metric).map((c) => domainLabel(c)),
     metric.source,
     metric.metric_id.replace(/_/g, " "),
-    window.WardWiseMetricTags?.keywordsFor(metric.metric_id),
+    window.WardWiseMetricTags?.keywordsFor(metric),
   ];
   const text = parts.filter(Boolean).join(" ").toLowerCase();
   explorerState._searchText.set(metric.metric_id, text);

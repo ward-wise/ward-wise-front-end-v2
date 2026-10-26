@@ -163,7 +163,33 @@
         "violent_crime_rate_per_10000",
       ],
     },
+    // Same layout as the snapshot, with rows split into sections ([data-fd-rows="<key>"]).
+    // Its metrics are the sections' metrics, in order.
+    financing: {
+      areaType: "community_area",
+      framing: "neutral",
+      sections: {
+        demographics: [
+          "median_household_income",
+          "poverty_pct",
+          "observed_asking_rent_usd",
+          "public_transit_pct",
+        ],
+        business: [
+          "total_establishments_per_10000_residents",
+          "bank_branches_per_10000_residents",
+          "sbif_grants_count",
+          "sbif_grant_dollars",
+          "zoned_business_commercial_pct",
+          "vacant_building_complaints_per_10000_residents",
+          "property_crime_rate_per_10000",
+        ],
+      },
+    },
   };
+  Object.values(SETS).forEach((set) => {
+    if (set.sections && !set.metrics) set.metrics = Object.values(set.sections).flat();
+  });
 
   // Plain names for the rows. The API labels carry their source in parentheses, which the
   // source line under each name already covers.
@@ -187,6 +213,14 @@
     active_transportation_pct: "Walk or bike to work",
     modeled_fear_walking_pct: "Walking at night (est.)",
     chain_restaurant_share_pct: "Chain restaurants",
+    poverty_pct: "Poverty rate",
+    total_establishments_per_10000_residents: "Employer businesses",
+    bank_branches_per_10000_residents: "Bank branches",
+    sbif_grants_count: "Small business grants",
+    sbif_grant_dollars: "Small business grant dollars",
+    zoned_business_commercial_pct: "Land zoned for business",
+    vacant_building_complaints_per_10000_residents: "Vacant building complaints",
+    property_crime_rate_per_10000: "Property crime",
   };
 
   const UNIT_SUFFIX = {
@@ -232,6 +266,7 @@
       ? present.filter((entry) => entry.value < mine.value).length
       : present.filter((entry) => entry.value > mine.value).length;
     const below = present.filter((entry) => entry.value < mine.value).length;
+    const tied = present.filter((entry) => entry.value === mine.value).length - 1;
     const rank = better + 1;
     return {
       value: mine.value,
@@ -239,11 +274,17 @@
       of: present.length,
       position: present.length > 1 ? (rank - 1) / (present.length - 1) : 0.5,
       share: present.length > 1 ? below / (present.length - 1) : 0.5,
+      tied,
+      above: present.length - 1 - below - tied,
       median: median(present.map((entry) => entry.value)),
     };
   }
 
   function higherThan(spot) {
+    // Many areas can share a floor value (no grants this year), so a tie isn't "the lowest".
+    const top = spot.tied && spot.above === 0;
+    if (spot.share <= 0 && spot.tied) return top ? "Same as all" : "Tied for lowest";
+    if (top) return "Tied for highest";
     if (spot.share >= 1) return "The highest";
     if (spot.share <= 0) return "The lowest";
     return `Higher than ${Math.round(spot.share * 100)}%`;
@@ -297,6 +338,21 @@
       </div>`;
   }
 
+  // The dictionary's own words for each measure, for pages that print an appendix.
+  function appendixEntry(metric) {
+    const name = SHORT_LABELS[metric.metric_id] || metric.label;
+    const source = metric.source_url
+      ? `<a href="${esc(metric.source_url)}" target="_blank" rel="noopener">${esc(metric.source)}</a>`
+      : esc(metric.source || "");
+    return `
+      <div class="fd-appendix-entry">
+        <h3><a href="/dictionary#metric-entry-${esc(metric.metric_id)}">${esc(name)}</a></h3>
+        ${metric.methodology ? `<p class="fd-small"><strong>How to read it:</strong> ${esc(metric.methodology)}</p>` : ""}
+        ${metric.calculation && metric.calculation !== metric.methodology ? `<p class="fd-small"><strong>How it is calculated:</strong> ${esc(metric.calculation)}</p>` : ""}
+        ${source ? `<p class="fd-small"><strong>Source:</strong> ${source}</p>` : ""}
+      </div>`;
+  }
+
   function readHash(key) {
     return new URLSearchParams(window.location.hash.slice(1)).get(key);
   }
@@ -323,6 +379,10 @@
     const my = window.WardWiseMyWard;
     const picker = root.querySelector("[data-fd-picker]");
     const rowsEl = root.querySelector("[data-fd-rows]");
+    // A sectioned set fills each [data-fd-rows="<key>"] with its own metrics.
+    const slots = [...root.querySelectorAll("[data-fd-rows]")];
+    const idsFor = (slot) => set.sections?.[slot.dataset.fdRows] || set.metrics;
+    const appendixEl = root.querySelector("[data-fd-appendix]");
     const titleEl = root.querySelector("[data-fd-title]");
     const eyebrowEl = root.querySelector("[data-fd-eyebrow]");
     const metaEl = root.querySelector("[data-fd-meta]");
@@ -341,7 +401,7 @@
     if (isWard && !early) {
       showEmpty(true);
     } else {
-      rowsEl.innerHTML = skelRows(set.metrics.length);
+      slots.forEach((slot) => { slot.innerHTML = skelRows(idsFor(slot).length || 1); });
       if (mapSlot) mapSlot.innerHTML = `<div class="fd-skel fd-map-skel" aria-hidden="true"></div>`;
       if (titleEl && early) titleEl.textContent = `Ward ${Number(early)}`;
       if (summaryEl && set.framing === "ranked") {
@@ -362,7 +422,7 @@
       data = await api.fetchComparison(set.metrics, set.areaType);
     } catch (error) {
       rowsEl.innerHTML = failNotice(error);
-      [mapSlot, summaryEl, metaEl].forEach((node) => { if (node) node.innerHTML = ""; });
+      [...slots.slice(1), appendixEl, mapSlot, summaryEl, metaEl].forEach((node) => { if (node) node.innerHTML = ""; });
       // The contact card and City Clerk feeds have their own sources, so they can still show.
       if (early) document.dispatchEvent(new CustomEvent("fd:area", { detail: { areaType: set.areaType, areaId: early } }));
       return;
@@ -370,6 +430,7 @@
     const metrics = set.metrics
       .map((id) => data.metrics.find((metric) => metric.metric_id === id))
       .filter(Boolean);
+    if (appendixEl) appendixEl.innerHTML = metrics.map(appendixEntry).join("");
     const areas = [...data.rows].sort((a, b) => (isWard
       ? Number(a.area_id) - Number(b.area_id)
       : a.display_name.localeCompare(b.display_name)));
@@ -400,8 +461,14 @@
       document.dispatchEvent(new CustomEvent("fd:area", { detail: { areaType: set.areaType, areaId } }));
       const area = areas.find((row) => row.area_id === areaId);
       const spots = metrics.map((metric) => standing(data.rows, metric, areaId));
-      rowsEl.innerHTML = metrics.map((metric, i) => metricRow(metric, spots[i], set.framing, areaNoun)).join("");
-      settleDots(rowsEl);
+      slots.forEach((slot) => {
+        const ids = idsFor(slot);
+        const rows = metrics
+          .map((metric, i) => (ids.includes(metric.metric_id) ? metricRow(metric, spots[i], set.framing, areaNoun) : ""))
+          .join("");
+        slot.innerHTML = rows || `<p class="fd-small">No measures in this section yet.</p>`;
+        settleDots(slot);
+      });
       if (titleEl) titleEl.textContent = area ? area.display_name : "";
       root.querySelectorAll("[data-fd-link]").forEach((link) => {
         link.href = link.dataset.fdLink.replace("{id}", areaId);
@@ -464,7 +531,7 @@
 
     if (isWard) {
       viewingEl?.addEventListener("click", (event) => {
-        if (event.target.closest("[data-fd-adopt]")) my.set(current);
+        if (event.target.closest("[data-fd-adopt]")) my.set(current, "adopt");
         if (event.target.closest("[data-fd-mine]")) render(my.get());
       });
       document.addEventListener("fd:myward", (event) => {
@@ -477,7 +544,10 @@
         }
       });
     }
-    root.querySelector("[data-fd-print]")?.addEventListener("click", () => window.print());
+    root.querySelector("[data-fd-print]")?.addEventListener("click", () => {
+      api.track("report_shared", { how: "print" });
+      window.print();
+    });
     if (initial) render(initial);
 
     if (mapSlot && window.WardWiseCivicMap) {
@@ -731,6 +801,7 @@
     chips.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-id]");
       if (!button) return;
+      if (button.dataset.id !== state.metricId && window.WardWiseAnalytics) window.WardWiseAnalytics.measureOpened(button.dataset.id, null);
       state.metricId = button.dataset.id;
       chips.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
       paint();
@@ -744,7 +815,7 @@
       if (pick) selectArea(pick.dataset.select);
       if (event.target.closest("[data-clear]")) selectArea(state.selected);
       const adopt = event.target.closest("[data-fd-adopt-ward]");
-      if (adopt) window.WardWiseMyWard.set(adopt.dataset.fdAdoptWard);
+      if (adopt) window.WardWiseMyWard.set(adopt.dataset.fdAdoptWard, "adopt");
     });
     document.addEventListener("fd:myward", (event) => {
       if (!map || state.areaType !== "ward") return;
@@ -1839,6 +1910,14 @@
 
   // --- The page ---
 
+  function storedManageToken() {
+    try {
+      return sessionStorage.getItem("wardwise:alerts-manage");
+    } catch (_error) {
+      return null;
+    }
+  }
+
   function initAlertBuilder() {
     const root = document.getElementById("fd-alert-builder");
     if (!root) return;
@@ -2066,9 +2145,11 @@
     });
 
     // Sign-up and manage. A new address gets a confirmation email first (double opt-in); links in
-    // that email and in every alert come back here with ?m=<token> to change or stop alerts.
+    // that email and in every alert come back here with ?m=<token> to change or stop alerts. The
+    // head script (templates/_analytics_head.html) lifts the token out of the address bar before
+    // analytics loads and keeps it for this tab, so it is read from there.
     const params = new URLSearchParams(window.location.search);
-    const manageToken = params.get("m");
+    let manageToken = params.get("m") || window.WardWiseManageToken || storedManageToken();
     const submitButton = root.querySelector("[data-fd-ab-submit]");
     const emailLabel = root.querySelector("[data-fd-ab-email-label]");
     const privacy = root.querySelector("[data-fd-ab-privacy]");
@@ -2086,6 +2167,30 @@
     };
     const say = (text, ok) => { note.textContent = text; note.classList.toggle("fd-ab-note-ok", Boolean(ok)); };
     if (FLASH[params.get("alerts")]) say(FLASH[params.get("alerts")], params.get("alerts") === "confirmed");
+    // The sign-up steps, each counted with the ward the alerts are for.
+    const step = (action, extra = {}) => api.track(action, { ward: view.ward || undefined, ...extra });
+    // Counted once: the flag comes off the address so a reload or bookmark doesn't count it again.
+    // With a manage link too, wait for the settings so the count carries the alerts' ward.
+    const confirmed = params.get("alerts") === "confirmed";
+    if (confirmed) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("alerts");
+      history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+      if (!manageToken) step("alert_signup_confirmed");
+    }
+    // Sign-up only (a bad manage link falls back to sign-up later), each once per visit.
+    let started = false;
+    let chosen = false;
+    form.addEventListener("focusin", () => {
+      if (manageToken || started) return;
+      started = true;
+      step("alert_signup_started");
+    });
+    topicList.addEventListener("change", () => {
+      if (manageToken || chosen) return;
+      chosen = true;
+      step("alert_topics_chosen", { topics: view.on.size });
+    });
 
     function whenFirst() {
       return view.freq === "monthly" ? "on the first Monday of next month" : "next Monday";
@@ -2132,8 +2237,17 @@
 
     if (manageToken) {
       alertsApi(`/api/alerts/preferences?m=${encodeURIComponent(manageToken)}`)
-        .then(enterManageMode)
-        .catch((error) => say(error.message));
+        .then((prefs) => {
+          enterManageMode(prefs);
+          if (confirmed) step("alert_signup_confirmed");
+        })
+        .catch((error) => {
+          // A bad or expired link: forget it, so "Sign up again below" signs up.
+          try { sessionStorage.removeItem("wardwise:alerts-manage"); } catch (_error) { /* nothing stored */ }
+          manageToken = null;
+          if (confirmed) step("alert_signup_confirmed");
+          say(error.message);
+        });
     }
 
     unsubscribeButton.addEventListener("click", async () => {
@@ -2141,6 +2255,7 @@
         const prefs = await alertsApi(`/api/alerts/preferences?m=${encodeURIComponent(manageToken)}`, { unsubscribe: true });
         enterManageMode(prefs);
         say(FLASH.unsubscribed);
+        step("alert_managed", { change: "unsubscribed" });
       } catch (error) {
         say(error.message);
       }
@@ -2167,10 +2282,12 @@
         if (manageToken) {
           const saved = await alertsApi(`/api/alerts/preferences?m=${encodeURIComponent(manageToken)}`, prefs);
           enterManageMode(saved);
+          step("alert_managed", { change: "saved", topics: view.on.size });
           say(sending ? `Saved. Your next email goes out ${whenFirst()}.`
             : "Saved. Alerts are still in testing, so nothing is sent yet; your first alert goes out when they launch.", true);
         } else {
           await alertsApi("/api/alerts/subscribe", { ...prefs, email: emailInput.value.trim(), website: form.elements.website.value });
+          step("alert_signup_submitted", { topics: view.on.size, frequency: view.freq });
           say(sending ? `Check ${emailInput.value.trim()} for a confirmation email. Click its link and your first alert goes out ${whenFirst()}.`
             : `Check ${emailInput.value.trim()} for a confirmation email. Click its link to join the early list. Alerts are still in testing, so your first alert goes out when they launch.`, true);
         }

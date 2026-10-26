@@ -1,0 +1,86 @@
+{# Analytics, included first in <head> by base.html and base_k3.html. Order matters:
+   1. Alert emails link to /alerts?m=<token>. The token unlocks someone's alert settings, so it
+      comes out of the address bar before any analytics script reads the URL. frontdoor.js reads
+      it back from sessionStorage. Only a reload of that same page keeps it: any other visit to
+      /alerts forgets it, so the next person at a shared computer gets the sign-up form.
+   2. Google Analytics and PostHog, each only when its id is set at build time. Every count goes
+      to both through WardWiseAnalytics.track() (static/analytics.js). #}
+<script>
+  (function () {
+    if (!/^\/+alerts(\/index\.html)?\/*$/i.test(location.pathname)) return;
+    var KEY = "wardwise:alerts-manage";
+    var url = new URL(location.href);
+    var token = url.searchParams.get("m");
+    if (!token) {
+      var nav = performance.getEntriesByType ? performance.getEntriesByType("navigation")[0] : null;
+      if (!nav || nav.type !== "reload") {
+        try { sessionStorage.removeItem(KEY); } catch (e) { /* nothing stored */ }
+      }
+      return;
+    }
+    window.WardWiseManageToken = token;
+    try { sessionStorage.setItem(KEY, token); } catch (e) { /* private mode: this page load only */ }
+    url.searchParams.delete("m");
+    try { history.replaceState(history.state, "", url.pathname + url.search + url.hash); } catch (e) { /* before_send still scrubs PostHog */ }
+  })();
+</script>
+{% if ga_id %}
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga_id|urlencode }}"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    (function () {
+      var ward = null;
+      try { ward = localStorage.getItem("wardwise:ward"); } catch (e) { /* no saved ward */ }
+      gtag("config", {{ ga_id|tojson }}, ward ? { ward: ward } : {});
+    })();
+  </script>
+{% endif %}
+{% if posthog_key %}
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}p||((p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",p.onerror=function(){p=null},(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r));var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],Object.defineProperty(u,"toString",{configurable:!0,enumerable:!0,writable:!0,value:function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e}}),Object.defineProperty(u.people,"toString",{configurable:!0,enumerable:!0,writable:!0,value:function(){return u.toString(1)+".people (stub)"}}),o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    (function () {
+      if (!window.posthog || typeof window.posthog.init !== "function") return;  // a blocker removed it
+      // Heat maps (taps and scroll depth, never page text) on these pages only.
+      var HEATMAP_PAGES = ["home", "residents", "alerts"];
+      var ward = null;
+      try { ward = localStorage.getItem("wardwise:ward"); } catch (e) { /* no saved ward */ }
+      // Backstop, run on every string anywhere in an event (page URLs, referrers, heat maps, error
+      // reports): an alert-settings token (m= on any alerts URL) and the spot picked on the Near me
+      // map (/near#lat=..&lng=..) never leave this browser.
+      function scrub(value) {
+        if (typeof value !== "string") return value;
+        if (/alerts/i.test(value)) value = value.replace(/([?&#])(m|%6d)=[^&#\s"']*/gi, "$1$2=");
+        if (value.indexOf("/near") !== -1) value = value.replace(/(\/near[^#\s"']*)#[^\s"']*/g, "$1");
+        return value;
+      }
+      function scrubAll(node, depth) {
+        if (!node || typeof node !== "object" || depth > 8) return;
+        Object.keys(node).forEach(function (key) {
+          if (typeof node[key] === "string") node[key] = scrub(node[key]);
+          else scrubAll(node[key], depth + 1);
+          // Heat map data is keyed by page URL.
+          var clean = scrub(key);
+          if (clean !== key && !Array.isArray(node)) { node[clean] = node[key]; delete node[key]; }
+        });
+      }
+      posthog.init({{ posthog_key|tojson }}, {
+        api_host: {{ posthog_host|tojson }},
+        defaults: "2026-05-30",
+        autocapture: false,
+        capture_dead_clicks: false,
+        disable_session_recording: true,
+        capture_heatmaps: HEATMAP_PAGES.indexOf({{ page_key|tojson }}) !== -1,
+        capture_exceptions: true,
+        before_send: function (event) {
+          scrubAll(event, 0);
+          return event;
+        },
+      });
+      posthog.register({ page: {{ page_key|tojson }}, ward: ward || null });
+    })();
+  </script>
+{% endif %}
+<script src="{{ url_for('static', filename='analytics.js', v=asset_version) }}"></script>

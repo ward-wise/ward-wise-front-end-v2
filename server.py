@@ -50,7 +50,7 @@ def _mtime_version(filename: str) -> str:
 
 
 ENV = _site.make_environment(_mtime_version, app_base=SITE_BASE, ga_id=os.environ.get("GA_ID") or None,
-                             build_sha="dev")
+                             posthog_key=os.environ.get("POSTHOG_KEY") or None, build_sha="dev")
 
 
 # --- Pages -------------------------------------------------------------------

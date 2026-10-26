@@ -45,6 +45,7 @@ jobs:
       - name: Build the stable site (main)
         env:
           GA_ID: ${{ vars.GA_ID }}
+          POSTHOG_KEY: ${{ vars.POSTHOG_KEY }}
         run: (cd main && python scripts/build_static.py --out ../dist && python scripts/check_build.py ../dist)
       - name: Build the preview channel (dev)
         # no analytics on the preview channel: it is for the people building it

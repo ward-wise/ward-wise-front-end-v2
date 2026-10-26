@@ -18,8 +18,10 @@
     }
   }
 
-  function set(ward) {
+  // how: "picker", "location" or "adopt" (taking the ward a link showed), for the ward_selected count.
+  function set(ward, how) {
     const next = ward && WARDS.includes(ward) ? ward : null;
+    if (next && next !== get() && window.WardWiseAnalytics) window.WardWiseAnalytics.track("ward_selected", { ward: next, how: how || "other" });
     try {
       if (next) localStorage.setItem(KEY, next);
       else localStorage.removeItem(KEY);
@@ -81,10 +83,11 @@
       try {
         const ward = await wardAt(position.coords.longitude, position.coords.latitude);
         if (!ward) {
+          if (window.WardWiseAnalytics) window.WardWiseAnalytics.track("lookup_failed", { how: "location" });
           statusNode.textContent = "That location is outside Chicago's 50 wards.";
           return;
         }
-        set(ward);
+        set(ward, "location");
         close();
       } catch (error) {
         statusNode.textContent = error.message;
@@ -114,7 +117,7 @@
     root.addEventListener("click", (event) => {
       const pick = event.target.closest("[data-mw-ward]");
       if (pick) {
-        set(pick.dataset.mwWard);
+        set(pick.dataset.mwWard, "picker");
         if (onPick) onPick(pick.dataset.mwWard);
         return;
       }

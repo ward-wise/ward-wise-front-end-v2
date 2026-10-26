@@ -4,7 +4,23 @@
 window.WardWiseIcons = (function () {
   "use strict";
 
+  // A measure source's own glyph (byop v1.2 `icon_svg`, served by /api/metrics and the explorer
+  // manifest). The API already ran it through a shapes-only allowlist; this re-check is the last line
+  // before innerHTML. Hand-drawn glyphs below always win over it.
+  const SPEC_ICON_TAGS = new Set(["g", "path", "circle", "ellipse", "line", "polyline", "polygon", "rect"]);
+  function specIcon(metric) {
+    const markup = typeof metric.icon_svg === "string" ? metric.icon_svg.trim() : "";
+    if (!markup || markup.length > 2048) return "";
+    if (/href|javascript:|url\(|expression\(|<[!?]|&|[\s"'/]on[a-z]+\s*=/i.test(markup)) return "";
+    for (const match of markup.matchAll(/<\s*\/?\s*([a-zA-Z][\w:-]*)/g)) {
+      if (!SPEC_ICON_TAGS.has(match[1])) return "";
+    }
+    return markup;
+  }
+
   function metricIcon(metric) {
+    if (typeof metric === "string") metric = { metric_id: metric };
+    metric = metric || {};
     const id = metric.metric_id;
     const beanIcon = `
       <g transform="translate(0 4.58) scale(0.01245) translate(-220 -142.667)">
@@ -227,9 +243,11 @@ window.WardWiseIcons = (function () {
       mobility: `<circle cx="5" cy="14" r="3" fill="none"/><circle cx="15" cy="14" r="3" fill="none"/><polyline points="5,14 9,7 15,7"/>`,
       education: `<polygon points="10,6 18,10 10,14 2,10"/>`,
       environment: `<ellipse cx="10" cy="8" rx="5.5" ry="5"/><rect x="9" y="13" width="2" height="5"/>`,
+      culture: `<path d="M10 3 C5.6 3 2.5 6.2 2.5 10 C2.5 13.9 5.6 17 9.3 17 C10.5 17 11.2 16.3 11.2 15.3 C11.2 14.3 10.4 13.8 10.4 12.9 C10.4 12 11.1 11.4 12.1 11.4 L14.2 11.4 C16.1 11.4 17.5 10 17.5 8.2 C17.5 5.2 14.2 3 10 3 Z" fill="none"/><circle cx="6.4" cy="9.4" r="1" fill="currentColor"/><circle cx="8.6" cy="6.3" r="1" fill="currentColor"/><circle cx="12.3" cy="6.3" r="1" fill="currentColor"/>`,
     };
     const svgContent =
       icons[id] ||
+      specIcon(metric) ||
       (function () {
         const cat = String(metric.category || "").toLowerCase();
         for (const [key, svg] of Object.entries(fallbackByCategory)) {
