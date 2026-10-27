@@ -56,7 +56,8 @@
       `/api/metrics/score-matrix?area_type=${encodeURIComponent(state.cfg.api)}&year=${encodeURIComponent(yearKey)}`,
       "Unable to load scores.",
     );
-    bucket[yearKey] = (data.matrix || {})[yearKey] || {};
+    // the reader's contested-direction choices (dir=) are fixed for the page, so flip once on arrival
+    bucket[yearKey] = S.orientSlice((data.matrix || {})[yearKey] || {}, S.directions.flipped(state.manifest.metrics));
     return bucket[yearKey];
   }
 
@@ -84,6 +85,7 @@
 
   function readUrl() {
     const params = new URLSearchParams(window.location.search);
+    state.dir = S.directions.apply(state.manifest.metrics, params.get("dir")); // contested readings, see scoring.js
     state.cfg = G.peerByApi(params.get("area_type") || "ward");
     const known = new Set((state.manifest.metrics || []).map((m) => m.metric_id));
     const parsed = G.parseMix(params.get("m"));
@@ -109,6 +111,7 @@
     if (mix) params.set("m", mix);
     if (state.presetId) params.set("p", state.presetId);
     if (state.year !== "latest") params.set("y", String(state.year));
+    if (state.dir) params.set("dir", state.dir);
     window.history.replaceState(null, "", `/compare?${params.toString()}`);
   }
 
@@ -227,7 +230,7 @@
       .concat(years.map((y) => `<option value="${y}"${state.year === y ? " selected" : ""}>${y}</option>`)).join("");
     return `
       <div class="report-controls">
-        <a class="ww-linkbtn" href="${esc(G.landingUrl(state.cfg.api, state.a, { weights: state.weights, presetId: state.presetId, year: state.year }))}">← Map view</a>
+        <a class="ww-linkbtn" href="${esc(G.landingUrl(state.cfg.api, state.a, { weights: state.weights, presetId: state.presetId, year: state.year, directions: state.dir }))}">← Map view</a>
         <label class="report-select"><span>Geography</span><select id="cp-geo">${geoOptions}</select></label>
         <label class="report-select"><span>Year</span><select id="cp-year">${yearOptions}</select></label>
       </div>
@@ -280,13 +283,13 @@
             <span class="side-tag">A</span>
             <h2 class="ww-areaname">${esc(nameA)}</h2>
             <p class="compare-ord num${S.medalClass(ra?.rank, " m-")}">${ord(ra)}</p>
-            <a class="ww-linkbtn" href="${esc(G.reportUrl(state.cfg.api, state.a, { weights: state.weights, presetId: state.presetId, year: state.year }))}">Full report →</a>
+            <a class="ww-linkbtn" href="${esc(G.reportUrl(state.cfg.api, state.a, { weights: state.weights, presetId: state.presetId, year: state.year, directions: state.dir }))}">Full report →</a>
           </div>
           <div class="side b">
             <span class="side-tag">B</span>
             <h2 class="ww-areaname">${esc(nameB)}</h2>
             <p class="compare-ord num${S.medalClass(rb?.rank, " m-")}">${ord(rb)}</p>
-            <a class="ww-linkbtn" href="${esc(G.reportUrl(state.cfg.api, state.b, { weights: state.weights, presetId: state.presetId, year: state.year }))}">Full report →</a>
+            <a class="ww-linkbtn" href="${esc(G.reportUrl(state.cfg.api, state.b, { weights: state.weights, presetId: state.presetId, year: state.year, directions: state.dir }))}">Full report →</a>
           </div>
         </div>
         <p class="ww-lede">${line} ${tally}</p>
@@ -308,7 +311,7 @@
     return `
       <section class="report-card report-mix">
         <div class="preset-mixhead">Comparing on <b>${esc(active ? active.name : "Your list")}</b><span>${ids.length} measures</span></div>
-        <p class="preset-note">${esc(active ? active.tagline : "the measures you picked")} · <a class="ww-linkbtn" href="${esc(G.reportUrl(state.cfg.api, state.a, { weights: state.weights, presetId: state.presetId, year: state.year }))}">edit the list on A's report</a></p>
+        <p class="preset-note">${esc(active ? active.tagline : "the measures you picked")} · <a class="ww-linkbtn" href="${esc(G.reportUrl(state.cfg.api, state.a, { weights: state.weights, presetId: state.presetId, year: state.year, directions: state.dir }))}">edit the list on A's report</a></p>
         <div class="preset-chips">${chips}</div>
       </section>`;
   }

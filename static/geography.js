@@ -176,6 +176,7 @@ window.WardWiseGeography = (function () {
     if (mix) params.set("m", mix);
     if (options?.presetId) params.set("p", options.presetId);
     if (options?.year && options.year !== "latest") params.set("y", String(options.year));
+    if (options?.directions) params.set("dir", options.directions); // contested-direction choices, see scoring.js
     for (const [key, value] of Object.entries(options?.extra || {})) {
       if (value != null && value !== "") params.set(key, String(value));
     }
