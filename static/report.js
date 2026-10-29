@@ -87,7 +87,8 @@
       `/api/metrics/score-matrix?area_type=${encodeURIComponent(areaType)}&year=${encodeURIComponent(yearKey)}`,
       "Unable to load scores.",
     );
-    bucket[yearKey] = (data.matrix || {})[yearKey] || {};
+    // the reader's contested-direction choices (dir=) are fixed for the page, so flip once on arrival
+    bucket[yearKey] = S.orientSlice((data.matrix || {})[yearKey] || {}, S.directions.flipped(state.manifest.metrics));
     return bucket[yearKey];
   }
 
@@ -112,6 +113,7 @@
 
   function readUrl() {
     const params = new URLSearchParams(window.location.search);
+    state.dir = S.directions.apply(state.manifest.metrics, params.get("dir")); // contested readings, see scoring.js
     const known = new Set((state.manifest.metrics || []).map((m) => m.metric_id));
     const presetId = params.get("p");
     const parsed = G.parseMix(params.get("m"));
@@ -138,6 +140,7 @@
     if (mix) params.set("m", mix);
     if (state.presetId) params.set("p", state.presetId);
     if (state.year !== "latest") params.set("y", String(state.year));
+    if (state.dir) params.set("dir", state.dir);
     if (state.changesWindow?.from) params.set("from", String(state.changesWindow.from));
     if (state.changesWindow?.to) params.set("to", String(state.changesWindow.to));
     if (state.changesWindow?.cats?.length) params.set("cat", state.changesWindow.cats.join(","));
@@ -217,7 +220,7 @@
     const yearOptions = [`<option value="latest"${state.year === "latest" ? " selected" : ""}>Latest</option>`]
       .concat(years.map((y) => `<option value="${y}"${state.year === y ? " selected" : ""}>${y}</option>`))
       .join("");
-    const back = G.landingUrl(state.cfg.api, state.areaId, { weights: state.weights, presetId: state.presetId, year: state.year });
+    const back = G.landingUrl(state.cfg.api, state.areaId, { weights: state.weights, presetId: state.presetId, year: state.year, directions: state.dir });
     return `
       <div class="report-controls">
         <a class="ww-linkbtn" href="${esc(back)}">← Map view</a>
@@ -243,7 +246,7 @@
         .filter((w) => (w.community_area_pct ?? 0) >= 1)
         .sort((a, b) => (b.community_area_pct ?? 0) - (a.community_area_pct ?? 0))
         .slice(0, 4)
-        .map((w) => `<a class="wardreport-area" href="${esc(G.reportUrl("ward", w.ward_id, { weights: state.weights, presetId: state.presetId, year: state.year }))}" title="${esc(`${Math.round(w.community_area_pct ?? 0)}% of this neighborhood is in ${w.display_name}`)}">${esc(w.display_name)}<em>${Math.round(w.community_area_pct ?? 0)}%</em></a>`)
+        .map((w) => `<a class="wardreport-area" href="${esc(G.reportUrl("ward", w.ward_id, { weights: state.weights, presetId: state.presetId, year: state.year, directions: state.dir }))}" title="${esc(`${Math.round(w.community_area_pct ?? 0)}% of this neighborhood is in ${w.display_name}`)}">${esc(w.display_name)}<em>${Math.round(w.community_area_pct ?? 0)}%</em></a>`)
         .join("");
       sub = wards ? `<div class="wardreport-areas">${wards}</div>` : "";
     } else {
@@ -451,14 +454,14 @@
   }
 
   function renderCtas() {
-    const landing = G.landingUrl(state.cfg.api, state.areaId, { weights: state.weights, presetId: state.presetId, year: state.year });
+    const landing = G.landingUrl(state.cfg.api, state.areaId, { weights: state.weights, presetId: state.presetId, year: state.year, directions: state.dir });
     const compare = true
-      ? `<a class="ww-cta ghost" href="${esc(G.compareUrl(state.cfg.api, state.areaId, null, { weights: state.weights, year: state.year }))}">Compare with another ${esc(state.cfg.noun)}</a>`
+      ? `<a class="ww-cta ghost" href="${esc(G.compareUrl(state.cfg.api, state.areaId, null, { weights: state.weights, year: state.year, directions: state.dir }))}">Compare with another ${esc(state.cfg.noun)}</a>`
       : "";
-    const index = `<a class="ww-cta ghost" href="${esc(G.indexUrl(state.cfg.api, { weights: state.weights, presetId: state.presetId, year: state.year }))}">See the whole index</a>`;
+    const index = `<a class="ww-cta ghost" href="${esc(G.indexUrl(state.cfg.api, { weights: state.weights, presetId: state.presetId, year: state.year, directions: state.dir }))}">See the whole index</a>`;
     // A ward opens onto its precincts: the map page's single-ward lens (explorer-only geography).
     const precincts = state.cfg.api === "ward"
-      ? `<a class="ww-cta ghost" href="${esc(G.landingUrl("precinct", null, { weights: state.weights, presetId: state.presetId, year: state.year, extra: { ward: state.areaId } }))}">See its precincts on the map</a>`
+      ? `<a class="ww-cta ghost" href="${esc(G.landingUrl("precinct", null, { weights: state.weights, presetId: state.presetId, year: state.year, directions: state.dir, extra: { ward: state.areaId } }))}">See its precincts on the map</a>`
       : "";
     return `<div class="ww-ctas report-ctas"><a class="ww-cta" href="${esc(landing)}">See every ${esc(state.cfg.noun)} on the map</a>${precincts}${compare}${index}</div>`;
   }

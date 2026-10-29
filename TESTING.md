@@ -31,6 +31,10 @@ CI runs both groups on every PR (`.github/workflows/test.yml`).
 - no uncaught script error (`pageerror`). Failed API calls, such as the signed-out `/api/me` 401,
   are not script errors and don't fail the test.
 
+**Scoring math** (`tests/test_scoring_browser.py`, marker `browser`, no API) loads `static/scoring.js`
+in Chromium and checks that flipping a contested metric (`flipScore`, `orientSlice`, the `dir=` URL
+choices) gives exactly the score the pipeline would have stored for the other direction.
+
 ## Known bugs are marked, strictly
 
 A page that is broken on `dev` today is listed in `KNOWN_OVERFLOW` or `KNOWN_BAD_TITLE` and runs

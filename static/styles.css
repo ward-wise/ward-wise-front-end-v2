@@ -1014,6 +1014,12 @@ select {
 .metric-weight-choice.is-active { background: var(--hue-bright); color: var(--on-accent); }
 .metric-weight-choice.is-priority.is-active { background: var(--gold-ink); }
 .metric-weight-choice:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
+/* Contested direction (byop v1.4): which way is better is the reader's call. */
+.metric-direction-control { align-items: center; display: inline-flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.2rem; }
+.metric-direction-note { color: var(--muted-text); font-size: 0.68rem; font-weight: 700; }
+.metric-direction-choice { background: var(--surface-muted); border: 1px solid var(--border); border-radius: 999px; color: var(--muted-text); cursor: pointer; font: inherit; font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.5rem; }
+.metric-direction-choice.is-active { background: var(--hue-soft); border-color: var(--hue); color: var(--hue); }
+.metric-direction-choice:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
 .metric-search { margin-top: 0.5rem; }
 .metric-search-empty { color: var(--muted-text); font-size: 0.85rem; margin: 0.5rem 0; }
 #metric-weights.is-searching .metric-domain-row:not(.is-expanded) .metric-domain-tiles { grid-auto-rows: auto; overflow: visible; row-gap: 0.25rem; }
@@ -1355,6 +1361,9 @@ select {
 .eq-chip-x:hover, .eq-chip-x:focus-visible { opacity: 1; }
 .eq-chip-w:focus-visible, .eq-chip-x:focus-visible { outline: 2px solid var(--hue-bright); outline-offset: 1px; }
 .eq-chip-label { white-space: nowrap; }
+.eq-chip-dir { background: transparent; border: 1px dashed currentColor; border-radius: 999px; color: inherit; cursor: pointer; font: inherit; font-size: 0.66rem; font-weight: 700; opacity: 0.85; padding: 0 0.4rem; white-space: nowrap; }
+.eq-chip-dir:hover, .eq-chip-dir:focus-visible { opacity: 1; }
+.eq-chip-dir:focus-visible { outline: 2px solid var(--hue-bright); outline-offset: 1px; }
 
 .methodology-equation { border-bottom: 1px solid color-mix(in srgb, var(--shadow-ink) 10%, transparent); padding-bottom: 0.6rem; margin-bottom: 0.6rem; }
 /* per-measure notes in the "?" panel: the short how, the source, and the years behind the number */
