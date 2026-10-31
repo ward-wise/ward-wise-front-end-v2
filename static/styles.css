@@ -7448,7 +7448,45 @@ html.is-dark .rel-grade-moderate { color: #4cd964; }
 /* /for/financing: one report split into headed sections, then the dictionary's notes on each measure. */
 .fd-report-section { font-size: 21px; font-weight: 600; letter-spacing: -0.015em; margin: 32px 0 12px; }
 .fd-appendix { margin-top: 40px; }
-.fd-appendix .fd-report-section { margin-top: 0; }
-.fd-appendix-entry { margin-top: 20px; }
-.fd-appendix-entry h3 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
-.fd-appendix-entry p + p { margin-top: 4px; }
+/* The notes' title outranks the Residents / Business climate headings inside it. */
+.fd-appendix .fd-report-section { font-size: 28px; font-weight: 700; letter-spacing: -0.025em; margin: 0 0 24px; }
+/* Each section in its own card, so the two tables don't run together (on phones the table head is hidden). */
+.fd-report-card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 24px 4px; }
+.fd-report-card + .fd-report-card { margin-top: 16px; }
+.fd-report-card-head { align-items: baseline; display: flex; gap: 16px; justify-content: space-between; margin-bottom: 10px; }
+.fd-report-card .fd-row { padding: 14px 0; }
+.fd-report-card-head .fd-report-section { margin: 0; }
+.fd-report-card-count { color: var(--ink-3); font-size: 13px; white-space: nowrap; }
+.fd-report-card .fd-row:last-child { border-bottom: 0; }
+@media (max-width: 640px) {
+  .fd-report-card { padding: 14px 16px 2px; }
+}
+.fd-printed { margin-top: 20px; }
+@media print {
+  .fd-report-card { border-color: #ccc; break-inside: auto; }
+  .fd-report-card-head { break-after: avoid; }
+  /* Sources get cut off with an ellipsis in the rows, and paper can't hover; the notes on the next page carry them in full. */
+  #fd-financing .fd-row-name small { display: none; }
+}
+/* The notes read like a glossary: a heading per table, then name | explanation rows. */
+.fd-appendix { border-top: 1px solid var(--line); padding-top: 32px; }
+.fd-appendix-group + .fd-appendix-group { margin-top: 48px; }
+/* Group headings sit a size up from the measure names, on a darker rule than the entries'. */
+.fd-appendix-group h3 { border-bottom: 1px solid var(--ink-3); font-size: 17px; font-weight: 700; letter-spacing: -0.01em; padding-bottom: 8px; }
+.fd-appendix-group h3 + .fd-appendix-entry { border-top: 0; }
+.fd-appendix-entry { border-top: 1px solid var(--hair); display: grid; gap: 4px 32px; grid-template-columns: 220px minmax(0, 1fr); padding: 14px 0; }
+.fd-appendix-entry h4 { font-size: 15px; font-weight: 600; line-height: 1.45; }
+.fd-appendix-entry h4 a { color: var(--ink) !important; }
+.fd-appendix-body { max-width: 68ch; }
+.fd-appendix-body p { color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
+.fd-appendix-body p + p { margin-top: 6px; }
+.fd-appendix-body span { color: var(--ink); font-weight: 600; }
+.fd-appendix-body .fd-appendix-source { color: var(--ink-3); font-size: 13px; }
+@media (max-width: 640px) {
+  .fd-appendix-entry { grid-template-columns: minmax(0, 1fr); }
+}
+@media print {
+  .fd-appendix { break-before: page; margin-top: 0; }
+  .fd-appendix-entry { break-inside: avoid; grid-template-columns: 160px minmax(0, 1fr); }
+  .fd-appendix-group h3 { break-after: avoid; }
+}
