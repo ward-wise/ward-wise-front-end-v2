@@ -94,6 +94,7 @@ PAGES: tuple[Page, ...] = (
     Page("suggest_photo", "/suggest-photo", "suggest_photo.html", "ui.suggest_photo"),
     Page("api_docs", "/api-docs", "api_docs.html", "ui.api_docs_page"),
     Page("privacy", "/privacy", "privacy.html", "ui.privacy_page"),
+    Page("mayor", "/mayor", "mayor.html", "ui.mayor_page"),
 )
 PAGES_BY_ENDPOINT = {page.endpoint: page for page in PAGES}
 PAGES_BY_KEY = {page.key: page for page in PAGES}

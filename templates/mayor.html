@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Who do you line up with for mayor? | Ward Wise{% endblock %}
+
+{% block content %}
+{# The quiz keeps its own look. Everything it draws lives under .mc (static/mayor_compass.css), so the
+   site header and footer are untouched. Overlays sit inside .mc so they pick up its colors. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='mayor_compass.css', v=asset_version) }}">
+<div class="mc" id="mc">
+<main id="mc-main">
+  <section class="app" id="app">
+    <div class="wrap">
+      <div class="apphead">
+        <h1>Where do you stand?</h1>
+        <p class="factsline tnum">Chicago mayor 2027 &middot; Election day Feb 23 &middot; Early voting Jan 14 &middot; Runoff Apr 6 &middot; About 4 min</p>
+      </div>
+      <div class="appgrid" id="resview">
+        <div class="qcol"><div class="qcard" id="quiz"></div><div class="live" id="live" aria-live="polite"></div></div>
+        <div class="fcard ccol">
+          <div class="plot" id="hero-chart"></div>
+          <div class="toolbar" id="herotb"></div>
+          <p class="small" style="margin-top:10px">Side to side is taxes and spending. Up and down is police and public safety. Hover a dot for a plain summary. Click for the sources.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section tight fill" id="candidates">
+    <div class="wrap stack" style="gap:20px">
+      <div class="fieldfold" id="fieldfold" hidden>The map and candidate table appear when you finish, so they do not sway your answers. <button type="button" class="linkbtn" id="showAnyway">Show them anyway</button></div>
+      <div id="fieldbody" class="stack" style="gap:20px">
+        <div class="tabhead">
+          <h2 class="h2">The field</h2>
+          <div class="seg" role="tablist" aria-label="Candidates or past mayors">
+            <button type="button" role="tab" id="tabC" aria-pressed="true">Candidates</button>
+            <button type="button" role="tab" id="tabM" aria-pressed="false">Past mayors</button>
+          </div>
+        </div>
+        <div class="fcard fieldmap" id="fieldmap">
+          <div class="plot" id="field-chart"></div>
+          <div class="toolbar" id="fieldtb"></div>
+          <p class="small" style="margin-top:10px">Side to side is taxes and spending. Up and down is police and public safety. Hover a dot for a plain summary. Click for the sources.</p>
+        </div>
+        <div class="cmpbar" id="cmpbar"></div>
+      <div id="panelC" class="stack" style="gap:14px">
+        <p class="small" style="margin-top:0">Positions come from campaign sites, interviews, debates, questionnaires and past votes. Where we found nothing, we say so. The ballot is set on Dec 17, 2026, after petition challenges.</p>
+        <div id="cand-grid"></div>
+        <div class="morerow"><button type="button" class="btn btn-ghost" id="candMore"></button></div>
+        <div id="cnotes" class="stack" style="gap:6px"></div>
+        <div class="norec" id="norec"></div>
+      </div>
+      <div id="panelM" class="stack" style="gap:14px" hidden>
+        <p class="body">Every Chicago mayor since 1837. Older mayors are judged on what the statements meant in their own time, for example private streetcar companies or saloon enforcement. Their records are mostly speeches, so their dots sit closer to the middle.</p>
+        <div class="eras" id="eras"></div>
+        <div class="morerow"><button type="button" class="btn btn-ghost" id="mayMore"></button></div>
+        <div class="card" id="norecCard" hidden>
+          <h3 class="h3">No public record found</h3>
+          <p class="small" style="margin:6px 0 12px">We could not find enough sourced facts to place these mayors.</p>
+          <div class="norecord" id="norecord"></div>
+        </div>
+      </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section tight" id="method">
+    <div class="wrap stack" style="gap:10px">
+      <h2 class="h3">How this works</h2>
+      <p class="body" style="max-width:80ch">Two lines, twenty statements, one source per fact. Side to side is money: higher taxes and more public programs at one end, lower taxes and less spending at the other. Up and down is public safety: more police and enforcement up, police reform and oversight down. <span id="m-check"></span></p>
+      <p class="small">Ward Wise does not endorse candidates. A dot with fewer than 4 facts on a line is pulled toward the middle and drawn faded, so one strong quote cannot push someone to the edge. Words follow one rule: under 1.5 of 10 from the middle reads "near the middle", 1.5 up to 5 reads "somewhat toward", and 5 or more reads "strongly toward". Your answers stay in your browser until you finish; then they are counted, without your name or email, to show how Chicago answered.</p>
+      <p class="small">Sources: campaign sites, Chicago Board of Election Commissioners, City Clerk records, news reports, Chicago Public Library. Checked Nov 10, 2026.</p>
+    </div>
+  </section>
+</main>
+<div class="scrim" id="scrim" hidden></div>
+<div class="tip" id="tip" role="tooltip"></div>
+<aside class="drawer" id="drawer" hidden aria-modal="true" role="dialog" aria-labelledby="dr-name"></aside>
+<div class="ov" id="card-ov" hidden><div class="dlg" id="card-dlg" role="dialog" aria-modal="true" aria-labelledby="card-t" tabindex="-1"></div></div>
+<div class="ov" id="cmp-ov" hidden><div class="dlg wide" id="cmp-dlg" role="dialog" aria-modal="true" aria-labelledby="cmp-t" tabindex="-1"></div></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='mayor_compass_data.js', v=asset_version) }}"></script>
+<script src="{{ url_for('static', filename='mayor_compass.js', v=asset_version) }}"></script>
+{% endblock %}
