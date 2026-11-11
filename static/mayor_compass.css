@@ -588,3 +588,11 @@ body.mc-lock{overflow:hidden}
 .mc .qflip{position:absolute;box-sizing:border-box;margin:0;pointer-events:none;z-index:5;will-change:transform,opacity;box-shadow:0 10px 30px rgb(0 0 0 / 12%)}
 .mc .qbody{display:flex;flex-direction:column}
 .mc .qbody .answers{margin-top:auto}
+
+/* round 9: the match is a count; top 3 wear 1, 2, 3 on the map */
+.mc .rk{fill:var(--ink);stroke:var(--card);stroke-width:2;pointer-events:none}
+.mc .rkn{fill:var(--bg);font-size:11px;font-weight:700;pointer-events:none}
+.mc .pt.hot .rk{transform-box:fill-box;transform-origin:center;transform:scale(1.2)}
+.mc .legend i.r{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:10px;font-weight:700;font-style:normal;margin-right:5px}
+.mc .pod .pds{font-size:11.5px;color:var(--ink-3);white-space:nowrap}
+.mc .mapnote{margin:10px 0 0;padding:9px 12px;border-radius:10px;background:var(--card);color:var(--ink)}

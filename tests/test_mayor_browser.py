@@ -223,19 +223,31 @@ def test_share_card_download_is_counted_and_saves_a_png(page, mayor_site):
     assert page.errors == []
 
 
-def test_best_match_is_the_nearest_dot_on_the_map(page, mayor_site):
-    # Connor: the dot and the match must be the same thing. The finish event's best match must be
-    # the full-record candidate whose dot is nearest the visitor's (x, y are rounded to 2 decimals).
+def test_best_match_is_the_closest_answers_not_the_nearest_dot(page, mayor_site):
+    # Connor, Nov 11: the match is a count. Statement by statement, the same answer is a full point and
+    # each step apart loses a quarter. Only people with 8 or more sourced answers are ranked.
     run_quiz(page, mayor_site)
     _, ph = sent(page)
     fin = named(ph, "mayor_quiz_finished")[0]
-    nearest = page.evaluate("""([x, y]) => window.MayorCompassData.people
-        .filter(p => p.cand && p.x != null && p.y != null && p.proof !== 'thin')
-        .map(p => ({id: p.id, d: Math.hypot(p.x - x, p.y - y)}))
-        .sort((a, b) => a.d - b.d).slice(0, 2)""", [fin["x"], fin["y"]])
-    if nearest[1]["d"] - nearest[0]["d"] > 0.02:  # not a near tie that rounding could flip
-        assert fin["best_match"] == nearest[0]["id"], (fin["best_match"], nearest)
+    assert fin["match_method"] == "closeness"
+    words = {"strongly_agree": 2, "agree": 1, "neutral": 0, "disagree": -1, "strongly_disagree": -2}
+    mine = {q: words[a] for q, a in fin["answers"].items() if a in words}
+    people = page.evaluate("window.MayorCompassData.people.filter(p => p.cand).map(p => ({id: p.id, answers: p.answers.map(a => [a.qid, a.value])}))")
+    scores = {}
+    for p in people:
+        shared = [(mine[q], v) for q, v in p["answers"] if q in mine]
+        if len(p["answers"]) >= 8 and len(shared) >= 5:
+            scores[p["id"]] = sum(1 - abs(u - v) / 4 for u, v in shared) / len(shared)
+    assert scores, "nobody qualified"
+    best = max(scores.values())
+    assert abs(scores[fin["best_match"]] - best) < 1e-9, (fin["best_match"], scores)
+    assert abs(fin["best_match_pct"] - 100 * best) <= 0.5 + 1e-9
+    assert all(t["id"] in scores for t in fin["top3"]), "someone with too few answers was ranked"
     assert [t["pct"] for t in fin["top3"]] == sorted((t["pct"] for t in fin["top3"]), reverse=True)
+    # the page shows the count beside the percent, and marks the top 3 on the map
+    assert "Same side on" in page.locator(".pod").first.inner_text()
+    assert sorted(page.locator("#hero-chart .rkn").all_text_contents()) == [str(i + 1) for i in range(len(fin["top3"]))]
+    assert page.locator(".mnone").filter(has_text="Not enough answers yet").count() > 0
 
 
 def test_every_drawer_offers_a_correction_email_naming_the_person(page, mayor_site):
