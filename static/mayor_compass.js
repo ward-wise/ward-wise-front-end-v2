@@ -275,22 +275,39 @@ let riseNext = false;
 const REDUCED = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 // Card slides off toward the answer: left for disagree, right for agree, up for neutral, down for Not sure and Skip. Motion only, no feedback on the answer.
 // Short travel, a small tilt and a fade, so the eye follows one card out and one card in.
-let swapDir = null;
+let swapDir = null, oldBody = null;
 function flyOut(v){ riseNext = true; swapDir = v; }
-// The card never leaves. Its words are swapped, then eased in, and the card eases to the new
-// height, so nothing below it jumps. One short move per answer, nothing overlaps.
-function easeSwap(qe, h0, back){
-  const reduced = REDUCED(), h1 = qe.offsetHeight;
-  if (!reduced && h0 && Math.abs(h1 - h0) > 1) {
-    qe.style.overflow = "hidden";
-    try { qe.animate([{height: h0 + "px"}, {height: h1 + "px"}], {duration: 220, easing: "cubic-bezier(.2,.8,.2,1)"}).onfinish = () => { qe.style.overflow = ""; }; } catch (e) { qe.style.overflow = ""; }
-  }
+// Card to card, like a carousel: the statement you answered slides out to the left while the next
+// one slides in from the right, both at once, inside a card that keeps one fixed size. Back runs
+// it the other way. The answer you picked stays lit as it leaves. A fast key press just starts
+// the next slide.
+function snapOld(qe){
+  const b = qe.querySelector(".qbody");
+  if (!b) return null;
+  const c = b.cloneNode(true);
+  c.querySelectorAll("[id]").forEach(n => n.removeAttribute("id"));
+  if (typeof swapDir === "number") c.querySelectorAll(".ans").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.v === swapDir)));
+  return {node: c, top: b.offsetTop, left: b.offsetLeft, width: b.offsetWidth};
+}
+function easeSwap(qe, old, back){
   const body = qe.querySelector(".qbody");
-  const parts = body ? [body] : Array.from(qe.children);
-  const kf = reduced ? [{opacity: 0}, {opacity: 1}]
-    : back ? [{opacity: 0, transform: "translateX(-10px)"}, {opacity: 1, transform: "none"}]
-    : [{opacity: 0, transform: "translateY(6px)"}, {opacity: 1, transform: "none"}];
-  parts.forEach(el => { try { el.animate(kf, {duration: reduced ? 150 : 200, easing: "cubic-bezier(.2,.8,.2,1)"}); } catch (e) { /* no motion */ } });
+  if (!body || !old) { // the top 3 and picks steps: a plain fade in
+    Array.from(qe.children).forEach(el => { try { el.animate([{opacity: 0}, {opacity: 1}], {duration: 180, easing: "ease-out"}); } catch (e) { /* no motion */ } });
+    return;
+  }
+  qe.querySelectorAll(".qghost").forEach(n => n.remove());
+  const g = old.node; g.classList.add("qghost"); g.setAttribute("aria-hidden", "true");
+  Object.assign(g.style, {top: old.top + "px", left: old.left + "px", width: old.width + "px"});
+  qe.appendChild(g);
+  // Same slide with Reduce motion on: Connor (who has it on) asked for one seamless card-to-card
+  // flow, and a short slide with a crossfade left both statements on screen at once.
+  const D = qe.offsetWidth, dir = back ? 1 : -1, ms = 340, ease = "cubic-bezier(.45,0,.2,1)";
+  const fade = false;
+  try {
+    g.animate([{transform: "none", opacity: 1}, {transform: `translateX(${dir * D}px)`, opacity: fade ? 0 : 1}], {duration: ms, easing: ease, fill: "forwards"}).onfinish = () => g.remove();
+    body.animate([{transform: `translateX(${-dir * D}px)`, opacity: fade ? 0 : 1}, {transform: "none", opacity: 1}], {duration: ms, easing: ease});
+  } catch (e) { g.remove(); }
+  setTimeout(() => g.remove(), ms + 100);
 }
 function setAns(v){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, WORDS[v]); flyOut(v); answers[qid] = v; delete unsure[qid]; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }
 function setUnsure(){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, "not_sure"); flyOut("down"); delete answers[qid]; unsure[qid] = true; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }
@@ -389,6 +406,21 @@ function renderCount(){
   $("cdwn").onclick = doReveal;
 }
 function reopen(){ track("mayor_quiz_restart", {}); started = false; earlyFinish = false; cdTimers.forEach(clearTimeout); cdTimers = []; finished = false; stage = "q"; showField = false; animYou = false; store.set("mc-done", false); qi = 0; render(); window.scrollTo(0, 0); }
+let bodyH = 0, bodyW = 0;
+function lockBody(qe){
+  const b = qe.querySelector(".qbody"); if (!b) return;
+  if (b.offsetWidth !== bodyW) {
+    bodyW = b.offsetWidth; bodyH = 0;
+    const m = b.cloneNode(true); m.querySelectorAll("[id]").forEach(n => n.removeAttribute("id"));
+    Object.assign(m.style, {position: "absolute", visibility: "hidden", left: "0", top: "0", width: bodyW + "px", minHeight: "0"});
+    qe.appendChild(m);
+    const qt = m.querySelector(".qtext"), qc = m.querySelector(".qctx");
+    ORDER.forEach(id => { qt.textContent = Q[id].text; qc.textContent = Q[id].context || ""; bodyH = Math.max(bodyH, m.offsetHeight); });
+    m.remove();
+  }
+  b.style.minHeight = bodyH + "px";
+}
+window.addEventListener("resize", () => { bodyW = 0; const qe = $("quiz"); if (qe && stage === "q" && !finished) lockBody(qe); });
 function render(cardOnly){
   // Map and table always show. Your dot, matches and the match sort wait until you finish.
   const fold = false;
@@ -396,10 +428,11 @@ function render(cardOnly){
   $("fieldfold").hidden = true; $("fieldbody").hidden = false;
   $("fieldmap").hidden = true;
   $("candMore").textContent = candsAll ? "Show fewer" : "Show all " + PEOPLE.filter(p => p.cand).length + " candidates";
-  const h0 = riseNext && !finished ? $("quiz").offsetHeight : 0;
+  const old = riseNext && !finished && stage === "q" ? snapOld($("quiz")) : null;
   if (finished) $("quiz").innerHTML = ""; else if (stage === "count") renderCount(); else if (stage === "top") renderTop(); else if (stage === "prof") renderProf(); else renderQ();
   const qe = $("quiz");
-  if (riseNext && !finished) easeSwap(qe, h0, riseNext === "back");
+  if (riseNext && !finished) easeSwap(qe, stage === "q" ? old : null, riseNext === "back");
+  if (stage === "q" && !finished) lockBody(qe);
   riseNext = false;
   updateLive();
   // Before the reveal, an answer changes nothing in the table or the maps; rebuilding them on
