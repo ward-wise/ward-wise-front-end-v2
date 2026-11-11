@@ -8,6 +8,11 @@ deploy.**
 ./run.sh          # http://localhost:1837, real data, no credentials
 ```
 
+Looking for something to work on? [wardwise.org/get-involved](https://www.wardwise.org/get-involved)
+lists open ideas. They are tickets on [ward-wise/ideas](https://github.com/ward-wise/ideas). New
+measures live in a repo of their own and join the site through
+[ward-wise-measures](https://github.com/ward-wise/ward-wise-measures). Pages and site fixes come here.
+
 ## Two channels
 
 | Branch | Where it serves | Who merges |

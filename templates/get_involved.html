@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Get involved · Ward Wise{% endblock %}
+{# fd-about brings the ward-grid styles the nomination tracker (about.js) renders with. #}
+{% block body_class %}fd-theme fd-about fd-involved{% endblock %}
+
+{% block content %}
+  <main>
+    <section class="fd-hero fd-center">
+      <div class="fd-wrap fd-narrow fd-stack">
+        <h1 class="fd-h1">Get involved.</h1>
+        <p class="fd-sub">
+          Volunteers build Ward Wise. Some write code. Most bring what they know about their block or
+          their field. The site needs both.
+        </p>
+      </div>
+    </section>
+
+    <section class="fd-section-tight" aria-labelledby="gi-which">
+      <div class="fd-wrap fd-stack-lg">
+        <h2 class="fd-h2 fd-center" id="gi-which">Which sounds like you?</h2>
+        <div class="fd-grid-2 gi-paths">
+          <a class="fd-card gi-path" href="#know">
+            <span class="gi-path-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            </span>
+            <h3 class="fd-h3">I know this city, or this topic.</h3>
+            <p class="fd-body">
+              Residents, block-club leaders, organizers, and people who work in health, housing,
+              schools, planning or city services. No code needed.
+            </p>
+            <p class="gi-path-examples">Nominate a measure · advise on an idea · check a method · host a block audit</p>
+            <span class="fd-more">Start here</span>
+          </a>
+          <a class="fd-card gi-path" href="#build">
+            <span class="gi-path-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 7 3 12l5 5M16 7l5 5-5 5M14 4l-4 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <h3 class="fd-h3">I can build things.</h3>
+            <p class="fd-body">
+              People who write code, wrangle data, analyze it or design. Most projects start a new
+              repo of your own; the site picks up the result.
+            </p>
+            <p class="gi-path-examples">Build a nominated measure · make a dashboard for someone · improve the site</p>
+            <span class="fd-more">Start here</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    {# Real help, with credit the dictionary already shows publicly (nominators who said we may list them).
+       Add an entry when a new measure ships with a listable nominator or a new volunteer builds something. #}
+    {% set helped = [
+      {"kind": "Nominated", "who": "Judy, Ward 15", "what": "asked whether neighbors can count on each other.", "result": "Social Support", "metric": "social_emotional_support_pct"},
+      {"kind": "Nominated", "who": "Scott, Ward 45", "what": "wanted to know about lead in park drinking fountains.", "result": "Water Fountain Lead", "metric": "park_fountain_lead_flagged_pct"},
+      {"kind": "Nominated", "who": "Jackie Schmitz, Ward 43", "what": "asked how much sun reaches the street between tall buildings.", "result": "Sun Access", "metric": "annual_sun_access_pct"},
+      {"kind": "Nominated", "who": "Ryan Greenlaw, Ward 5", "what": "asked how far each ward is from the lakefront.", "result": "Lakefront Proximity", "metric": "lakefront_distance_miles"},
+      {"kind": "Nominated and built", "who": "Connor Florczyk, Ward 42", "what": "asked how fast 311 requests get closed, then redesigned the site and its reports.", "result": "311 Response Time", "metric": "c311_response_days"},
+    ] %}
+    <section class="fd-section-tight" aria-labelledby="gi-helped">
+      <div class="fd-wrap fd-stack">
+        <h2 class="fd-h3" id="gi-helped">How people have helped</h2>
+        <ul class="gi-helped">
+          {% for item in helped %}
+            <li class="fd-card fd-card-line">
+              <p class="fd-tag">{{ item.kind }}</p>
+              <p><strong>{{ item.who }}</strong> {{ item.what }}</p>
+              <a class="fd-more" href="/dictionary#metric-entry-{{ item.metric }}">{{ item.result }}</a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    {# ---------------------------------------------------------------- advisory path #}
+    <section class="fd-section fd-fill gi-track" id="know" aria-labelledby="gi-know">
+      <div class="fd-wrap fd-stack-lg">
+        <div class="fd-stack">
+          <p class="fd-tag">No code needed</p>
+          <h2 class="fd-h1" id="gi-know">You know this city, or this topic.</h2>
+          <p class="fd-sub">The best measures start with someone who lives with the problem or studies it.</p>
+        </div>
+
+        <div class="fd-grid-2 fd-about-split">
+          <div class="fd-stack">
+            <h3 class="fd-h2">Nominate a measure</h3>
+            <p class="fd-body">
+              Tell us what you would want to know about your ward, and why it matters. If we build it,
+              your ward gets the credit on the map. The goal is a measure nominated from every ward.
+            </p>
+            <div class="fd-actions"><a class="fd-btn" href="/suggest-metric">Nominate a measure</a></div>
+          </div>
+          <div class="fd-card">
+            <div id="about-nominations" class="about-nominations"><p class="fd-loading">Loading nominations…</p></div>
+          </div>
+        </div>
+
+        <div class="fd-stack">
+          <h3 class="fd-h2">Advise on an idea</h3>
+          <p class="fd-body">
+            These ideas need someone who knows the subject, such as where the data lives, what it
+            misses, or what a fair comparison looks like. Comment on the idea on GitHub (accounts are
+            free). If you'd rather not use GitHub, send your thoughts through the
+            <a href="/suggest-metric">nomination form</a>.
+          </p>
+          <div class="gi-board" data-idea-board data-labels="expert-wanted" data-cta="Weigh in on GitHub"
+               data-empty="No ideas are waiting on an expert right now."></div>
+        </div>
+
+        <div class="fd-grid-2">
+          <article class="fd-card fd-card-line fd-stack">
+            <p class="fd-tag">Check our work</p>
+            <h3 class="fd-h3">Review how a measure is made</h3>
+            <p class="fd-body">Every measure in the dictionary says where its data comes from and how it is calculated. If you know the source and something looks off, tell us.</p>
+            <a class="fd-more" href="/dictionary">Open the dictionary</a>
+          </article>
+          <article class="fd-card fd-card-line fd-stack">
+            <p class="fd-tag">Your block</p>
+            <h3 class="fd-h3">Host a block audit</h3>
+            <p class="fd-body">Gather neighbors and decide which measures matter most on your blocks. The result is your own wellbeing index, one you can hold your government to year after year.</p>
+            <a class="fd-more" href="/suggest-metric">Send us what your neighbors chose</a>
+          </article>
+          <article class="fd-card fd-card-line fd-stack">
+            <p class="fd-tag">Your corner</p>
+            <h3 class="fd-h3">Submit a photo</h3>
+            <p class="fd-body">Every ward and neighborhood on the map shows a photo of a real place inside it. Send a better one of yours.</p>
+            <a class="fd-more" href="/suggest-photo">Submit a photo</a>
+          </article>
+          <article class="fd-card fd-card-line fd-stack">
+            <p class="fd-tag">Beyond Chicago</p>
+            <h3 class="fd-h3">Bring Ward Wise to your city</h3>
+            <p class="fd-body">Open data and open source travel well. The team is exploring Columbus, Madison, Cincinnati, New York and Los Angeles.</p>
+            <a class="fd-more" href="/your-city">Tell us about your city</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    {# ---------------------------------------------------------------- builder path #}
+    <section class="fd-section gi-track" id="build" aria-labelledby="gi-build">
+      <div class="fd-wrap fd-stack-lg">
+        <div class="fd-stack">
+          <p class="fd-tag">Code, data, analysis, design</p>
+          <h2 class="fd-h1" id="gi-build">You can build things.</h2>
+          <p class="fd-sub">Pick an idea someone nominated, build it in a repo of your own, and the site picks it up.</p>
+        </div>
+
+        <div class="fd-stack">
+          <h3 class="fd-h2">Build a nominated measure</h3>
+          <p class="fd-body">
+            Each idea below is a ticket. Claim one by commenting on it, start a new repo from the
+            measure template, and link the repo on the ticket. You don't need access to anything of
+            ours.
+          </p>
+          <div class="gi-board" data-idea-board data-labels="measure-idea" data-group="domain" data-cta="Claim it on GitHub"
+               data-empty="Every nominated measure is claimed right now. Nominate a new one, or check back soon."></div>
+          <ol class="gi-steps">
+            <li><strong>Claim</strong> an idea with a comment on its ticket.</li>
+            <li><strong>Start a repo</strong> from <a href="https://github.com/ward-wise/measure-template" rel="noopener">measure-template</a> and compute a fine-grained layer: points, a raster, or values on census tracts.</li>
+            <li><strong>Describe it</strong> in <code>aggregation_spec.json</code> and check it with <code>byop validate</code>.</li>
+            <li><strong>Publish a release</strong> and open a pull request adding it to <a href="https://github.com/ward-wise/ward-wise-measures" rel="noopener">ward-wise-measures</a>. Once it merges, it appears for every ward and neighborhood.</li>
+          </ol>
+          <div class="fd-actions">
+            <a class="fd-more" href="https://github.com/ward-wise/ward-wise-measures/blob/main/ADDING_A_MEASURE.md" rel="noopener">Read the full guide</a>
+          </div>
+        </div>
+
+        <div class="fd-stack">
+          <h3 class="fd-h2">Make a dashboard for someone</h3>
+          <p class="fd-body">
+            A block-club captain, a school council and an alder's office each need different views
+            of the same numbers. Build one as a site of your own on the public API, or as a page on
+            this site.
+          </p>
+          <div class="gi-board" data-idea-board data-labels="story-idea" data-cta="Claim it on GitHub"
+               data-empty="No dashboard ideas are open right now. Have one? Open it on the idea board."></div>
+          <div class="fd-grid-2">
+            <article class="fd-card fd-card-line fd-stack">
+              <p class="fd-tag">Your own site</p>
+              <h3 class="fd-h3">Start from the story template</h3>
+              <p class="fd-body">A small static page that reads the public API and draws one chart, ready to fork and publish on GitHub Pages.</p>
+              <a class="fd-more" href="https://github.com/ward-wise/story-template" rel="noopener">story-template</a>
+            </article>
+            <article class="fd-card fd-card-line fd-stack">
+              <p class="fd-tag">A page here</p>
+              <h3 class="fd-h3">Add a page to Ward Wise</h3>
+              <p class="fd-body">The site is open source. Add a page, or a curated list of measures, and open a pull request. The <a href="/reports">reports</a> show what a page can do.</p>
+              <a class="fd-more" href="https://github.com/ward-wise/ward-wise-front-end-v2/blob/main/CONTRIBUTING.md" rel="noopener">Contributing guide</a>
+            </article>
+          </div>
+        </div>
+
+        <div class="fd-grid-2">
+          <article class="fd-card fd-card-line fd-stack">
+            <p class="fd-tag">Developers</p>
+            <h3 class="fd-h3">Build on the data</h3>
+            <p class="fd-body">Every number on the site is available through a small read-only API, along with the dictionary that explains it. Keys are free.</p>
+            <a class="fd-more" href="/api-docs">Read the API docs</a>
+          </article>
+          <article class="fd-card fd-card-line fd-stack">
+            <p class="fd-tag">In person</p>
+            <h3 class="fd-h3">Come to Chi Hack Night</h3>
+            <p class="fd-body">Chicago's weekly meetup for people who use data and technology in the public interest meets on Tuesday evenings. Ward Wise is built there, and newcomers are welcome on either path.</p>
+            <a class="fd-more" href="https://chihacknight.org/" rel="noopener">chihacknight.org</a>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='common.js', v=asset_version) }}"></script>
+  <script src="{{ url_for('static', filename='about.js', v=asset_version) }}"></script>
+  <script src="{{ url_for('static', filename='get_involved.js', v=asset_version) }}"></script>
+{% endblock %}
