@@ -277,9 +277,8 @@ const REDUCED = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 // Short travel, a small tilt and a fade, so the eye follows one card out and one card in.
 let swapDir = null;
 function flyOut(v){ riseNext = true; swapDir = v; }
-// Like sorting flashcards: the answered card glides off toward your answer (disagree left, agree
-// right, neutral up, Not sure and Skip down) and fades, while the next card sits still underneath.
-// No flip and no tilt. The old card is copied in place with the same box, so nothing re-wraps.
+// Like sorting flashcards: the answered card tips toward your answer (disagree left, agree right,
+// neutral up, Not sure and Skip down) and fades, while the next card sits still underneath. The old card is copied in place with the same box, so nothing re-wraps.
 // Back brings the earlier card gliding in from the left. A fast key press starts the next glide.
 // Same glide with Reduce motion on: Connor has it on and asked for this motion.
 function snapOld(qe){
@@ -292,7 +291,6 @@ function snapOld(qe){
 function easeSwap(qe, old, back){
   const host = qe.parentElement;
   host.querySelectorAll(".qflip").forEach(n => n.remove());
-  const ease = "cubic-bezier(.4,0,.2,1)";
   if (back) {
     try { qe.animate([{transform: "translateX(-220px)", opacity: 0}, {transform: "none", opacity: 1}], {duration: 380, easing: "cubic-bezier(.2,.7,.2,1)"}); } catch (e) { /* no motion */ }
     return;
@@ -304,13 +302,23 @@ function easeSwap(qe, old, back){
   const g = old.node; g.classList.add("qflip"); g.setAttribute("aria-hidden", "true");
   Object.assign(g.style, {top: old.top + "px", left: old.left + "px", width: old.width + "px", height: old.height + "px"});
   host.appendChild(g);
-  // Connor: fade faster. Gone in 0.3 s: solid for the first quarter, then it fades as it glides.
-  const W = old.width * 1.05, H = old.height * .7;
-  const to = {"-2": [-W, 0], "-1": [-W, 0], "0": [0, -H], "1": [W, 0], "2": [W, 0]}[String(swapDir)] || [0, H];
+  // Connor: the top moves first and the card tilts, then it disappears; no straight throw across
+  // the map. The card pivots on its bottom edge, so the top swings toward the answer while the
+  // bottom barely moves, then it fades out where it is. Neutral lifts, Not sure and Skip drop.
+  const side = {"-2": -1, "-1": -1, "1": 1, "2": 1}[String(swapDir)] || 0;
+  const lift = String(swapDir) === "0" ? -1 : 1;
+  const kf = side ? [
+      {transform: "none", opacity: 1},
+      {transform: `rotate(${side * 7}deg)`, opacity: 1, offset: .4},
+      {transform: `translateX(${side * 40}px) rotate(${side * 16}deg)`, opacity: 0}]
+    : [{transform: "none", opacity: 1},
+      {transform: `translateY(${lift * 10}px) rotate(${lift * -1.5}deg)`, opacity: 1, offset: .4},
+      {transform: `translateY(${lift * 36}px) rotate(${lift * -3}deg)`, opacity: 0}];
+  g.style.transformOrigin = side ? (side > 0 ? "100% 100%" : "0% 100%") : "50% 100%";
   try {
-    g.animate([{transform: "none", opacity: 1}, {opacity: 1, offset: .25}, {transform: `translate(${to[0]}px,${to[1]}px)`, opacity: 0}], {duration: 300, easing: ease, fill: "forwards"}).onfinish = () => g.remove();
+    g.animate(kf, {duration: 340, easing: "cubic-bezier(.4,0,.6,1)", fill: "forwards"}).onfinish = () => g.remove();
   } catch (e) { g.remove(); }
-  setTimeout(() => g.remove(), 380);
+  setTimeout(() => g.remove(), 420);
 }
 function setAns(v){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, WORDS[v]); flyOut(v); answers[qid] = v; delete unsure[qid]; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }
 function setUnsure(){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, "not_sure"); flyOut("down"); delete answers[qid]; unsure[qid] = true; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }
