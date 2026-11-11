@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import functools
 import http.server
+import re
 import threading
 
 import pytest
@@ -247,7 +248,9 @@ def test_best_match_is_the_closest_answers_not_the_nearest_dot(page, mayor_site)
     # the page shows the count beside the percent, and marks the top 3 on the map
     assert "Same side on" in page.locator(".pod").first.inner_text()
     assert sorted(page.locator("#hero-chart .rkn").all_text_contents()) == [str(i + 1) for i in range(len(fin["top3"]))]
-    assert page.locator(".mnone").filter(has_text="Not enough answers yet").count() > 0
+    # candidates with fewer than 8 answers get no match score: they say so, or say they are placed by leaning
+    assert page.locator(".mnone").filter(has_text=re.compile("Placed by leaning|Not enough answers yet")).count() > 0
+    assert page.locator("#hero-chart .dot.lean").count() > 0, "no hollow dot for a candidate placed by leaning"
 
 
 def test_every_drawer_offers_a_correction_email_naming_the_person(page, mayor_site):

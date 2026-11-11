@@ -597,3 +597,6 @@ body.mc-lock{overflow:hidden}
 .mc .pod .pds{font-size:11.5px;color:var(--ink-3);white-space:nowrap}
 .mc .mapnote{margin:10px 0 0;padding:9px 12px;border-radius:10px;background:var(--card);color:var(--ink)}
 .mc .then{font-size:13px;color:var(--ink-2);margin:6px 0 0}
+/* round 11: candidates placed by leaning (sourced positions on related issues, not quiz answers) */
+.mc .dot.lean{fill:var(--card);stroke:var(--dot-cand);stroke-width:2.5}
+.mc .legend i.l{background:var(--card);border:2px solid var(--dot-cand);box-sizing:border-box}
