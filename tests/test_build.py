@@ -101,5 +101,5 @@ def test_mayor_page_has_disclaimer_and_correction_email(built_site: Path):
     assert fix, "no correction paragraph in How this works"
     text = fix.group(1)
     assert "may contain errors" in text
-    assert "two issues only" in text and "not wrong for being there" in text
+    assert "two lines only" in text and "not wrong for being there" in text
     assert 'href="mailto:connor@wardwise.org?subject=' in text

@@ -14,9 +14,9 @@ import pytest
 pytestmark = pytest.mark.browser
 
 WORDS = {"1": "strongly_disagree", "2": "disagree", "3": "neutral", "4": "agree", "5": "strongly_agree", "6": "not_sure"}
-# 20 keys, a mix of every value, with one 6 (Not sure) in the middle.
-KEYS = list("12345" "43216" "55341" "24135")
-assert len(KEYS) == 20 and KEYS.count("6") == 1
+# 24 keys, a mix of every value, with one 6 (Not sure) in the middle.
+KEYS = list("12345" "43216" "55341" "24135" "2413")
+assert len(KEYS) == 24 and KEYS.count("6") == 1
 
 
 @pytest.fixture(scope="module")
@@ -66,7 +66,7 @@ def named(pairs, name):
 
 def answer(page, keys):
     for i, key in enumerate(keys, start=1):
-        page.wait_for_function(f"document.querySelector('#quiz .qprog')?.textContent.includes('Statement {i} of 20')")
+        page.wait_for_function(f"document.querySelector('#quiz .qprog')?.textContent.includes('Statement {i} of 24')")
         page.keyboard.press(key)
 
 
@@ -109,13 +109,13 @@ def test_full_run_sends_the_whole_story_once(page, mayor_site):
         assert len(named(pairs, "mayor_quiz_finished")) == 1
         assert all(props.get("page") == "mayor" for _, props in pairs), pairs
         answers = named(pairs, "mayor_quiz_answer")
-        assert len(answers) == 20, len(answers)
+        assert len(answers) == 24, len(answers)
         assert [a["answer"] for a in answers] == [WORDS[k] for k in KEYS]
-        assert [a["number"] for a in answers] == list(range(1, 21))
+        assert [a["number"] for a in answers] == list(range(1, 25))
         assert all(isinstance(a["statement"], str) and a["statement"] and isinstance(a["matters"], bool) for a in answers)
         assert len(named(pairs, "mayor_quiz_issues")) == 1 and len(named(pairs, "mayor_quiz_issues")[0]["issues"]) == 2
         fin = named(pairs, "mayor_quiz_finished")[0]
-        assert len(fin["answers"]) == 20, fin["answers"]
+        assert len(fin["answers"]) == 24, fin["answers"]
         assert fin["quiz_ward"] == "5", fin
         assert fin.get("age_band"), fin
         assert isinstance(fin["best_match"], str) and fin["best_match"], fin
@@ -156,13 +156,13 @@ def test_no_match_or_dot_until_the_reveal(page, mayor_site):
     page.wait_for_selector("#quiz .ans")
     assert page.locator(".you-dot, .you-halo, .youg").count() == 0
     answer(page, KEYS[:6])
-    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 7 of 20')")
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 7 of 24')")
     assert page.locator(".mpct, .mbest, .pod").count() == 0, "a match showed mid-quiz"
     assert page.locator(".you-dot, .you-halo, .youg").count() == 0, "the You dot showed mid-quiz"
     assert "Your best match" not in page.inner_text("body")
     answer_rest = KEYS[6:]
     for i, key in enumerate(answer_rest, start=7):
-        page.wait_for_function(f"document.querySelector('#quiz .qprog')?.textContent.includes('Statement {i} of 20')")
+        page.wait_for_function(f"document.querySelector('#quiz .qprog')?.textContent.includes('Statement {i} of 24')")
         page.keyboard.press(key)
     pass_issues(page)
     page.wait_for_selector("#pgo")
@@ -199,7 +199,7 @@ def test_page_loads_without_errors(page, mayor_site):
 def test_change_my_answers_is_counted_and_starts_over(page, mayor_site):
     run_quiz(page, mayor_site)
     page.click("#qredo")
-    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 1 of 20')")
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 1 of 24')")
     ga, ph = sent(page)
     for pairs in (ga, ph):
         assert len(named(pairs, "mayor_quiz_restart")) == 1, pairs
@@ -257,21 +257,21 @@ def test_bar_follows_you_jumps_back_pins_and_copy_link_is_counted(page, mayor_si
     page.goto(f"{mayor_site}/mayor")
     answer(page, KEYS[:6])
     where = "() => [document.querySelector('#quiz .qprog').innerText, [...document.querySelectorAll('#quiz .mseg')].findIndex(b => b.classList.contains('cur'))]"
-    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 7 of 20')")
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 7 of 24')")
     page.locator("#quiz .mseg").nth(2).click()
-    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 3 of 20')")
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 3 of 24')")
     text, cur = page.evaluate(where)
     assert cur == 2 and "6 answered" in text
     page.keyboard.press("Backspace")
-    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 2 of 20')")
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 2 of 24')")
     page.click("#quiz .qprog [data-back]")
-    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 1 of 20')")
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 1 of 24')")
     assert page.locator("#quiz .qprog [data-back]").is_disabled()
     assert not page.evaluate("document.getElementById('qpin').classList.contains('on')")
     page.mouse.wheel(0, 1200)
     page.wait_for_function("document.getElementById('qpin').classList.contains('on')")
     page.locator("#qpin .mseg").nth(4).click()
-    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 5 of 20')")
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 5 of 24')")
     page.click("#copylink")
     page.wait_for_function("document.querySelector('#copylink').innerText.includes('Copied')")
     assert page.evaluate("navigator.clipboard.readText()").rstrip("/") == f"{mayor_site}/mayor"
@@ -300,7 +300,7 @@ def test_start_over_asks_once_then_clears_everything(page, mayor_site):
     assert page.locator(".youg, .you-dot").count() > 0
     page.click("#live [data-reset]")
     page.click("#live [data-reset-yes]")
-    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 1 of 20')")
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 1 of 24')")
     assert "0 answered" in page.locator("#quiz .qprog").inner_text()
     assert page.locator(".youg, .you-dot").count() == 0
     stored = page.evaluate("[localStorage.getItem('mc-answers'), localStorage.getItem('mc-done'), localStorage.getItem('mc-top3')]")
