@@ -284,12 +284,6 @@
 @keyframes mc-curpulse{from{transform:scaleX(.35);opacity:.2}to{transform:scaleX(1);opacity:.45}}
 .mc .mtr.wave .mseg b{opacity:1;animation:mc-wave .45s ease-out calc(var(--i) * 22ms) both}
 @keyframes mc-wave{0%{transform:scaleY(.3)}50%{transform:scaleY(1.9)}100%{transform:scaleY(1)}}
-.mc .qbody.enter .qtext,.mc .qbody.enter .qctx{animation:mc-qin .3s ease-out both}
-.mc .qbody.enter .ans{animation:mc-qin .32s cubic-bezier(.2,1.25,.4,1) both}
-.mc .qbody.enter .ans:nth-child(2){animation-delay:30ms}
-.mc .qbody.enter .ans:nth-child(3){animation-delay:60ms}
-.mc .qbody.enter .ans:nth-child(4){animation-delay:90ms}
-.mc .qbody.enter .ans:nth-child(5){animation-delay:120ms}
 @keyframes mc-qin{from{opacity:.3;transform:translateY(14px)}to{opacity:1;transform:none}}
 .mc .fxring{position:fixed;z-index:2500;pointer-events:none;border:3px solid var(--blue);border-radius:14px}
 .mc .fxdot{position:fixed;z-index:2500;pointer-events:none;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--blue)}
@@ -326,15 +320,17 @@
 .mc #quiz{position:relative}
 .mc #quiz.s2{box-shadow:0 9px 0 -5px var(--fill-2),0 18px 0 -10px var(--line);margin-bottom:20px}
 .mc #quiz.s1{box-shadow:0 9px 0 -5px var(--fill-2);margin-bottom:10px}
-.mc #quiz.rise{animation:mc-cardrise .34s cubic-bezier(.2,.9,.3,1.15) both}
-.mc #quiz.riseback{animation:mc-cardback .34s cubic-bezier(.2,.9,.3,1.15) both}
-@keyframes mc-cardrise{from{transform:translateY(22px) scale(.95);opacity:.55}to{transform:none;opacity:1}}
-@keyframes mc-cardback{from{transform:translateX(-40px) scale(.96);opacity:.55}to{transform:none;opacity:1}}
-.mc .flyer{position:fixed!important;margin:0!important;pointer-events:none;z-index:60;box-shadow:0 14px 36px rgb(0 0 0 / 14%)!important;will-change:transform,opacity}
+.mc #quiz.rise{animation:mc-cardrise .26s cubic-bezier(.2,.8,.2,1) .07s both}
+.mc #quiz.riseback{animation:mc-cardback .26s cubic-bezier(.2,.8,.2,1) .07s both}
+@keyframes mc-cardrise{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+@keyframes mc-cardback{from{transform:translateX(-16px);opacity:0}to{transform:none;opacity:1}}
+.mc .flyer{box-sizing:border-box;position:fixed!important;margin:0!important;pointer-events:none;z-index:60;box-shadow:0 14px 36px rgb(0 0 0 / 14%)!important;will-change:transform,opacity}
 .mc .keyhint{margin:10px 0 0;text-align:center;font-size:12.5px;color:var(--ink-3)}
 .mc .bmsm{font-size:13px;color:var(--ink-2);margin:10px 0 0}
 @media (prefers-reduced-motion:reduce){.mc *{transition:none!important;animation:none!important}
-.mc #quiz.rise,.mc #quiz.riseback{animation:mc-rmfade .22s ease-out .06s both!important}
+.mc #quiz.rise,.mc #quiz.riseback{animation:none!important}
+/* the card box stays put; only the new words fade in, after the old card has faded, so the two never overlap */
+.mc #quiz.rise .qbody,.mc #quiz.riseback .qbody{animation:mc-rmfade .18s ease-out .11s both!important}
 .mc .mile{animation:mc-rmmile 2s linear forwards!important}
 }
 @keyframes mc-rmfade{from{opacity:0}to{opacity:1}}
@@ -532,3 +528,17 @@ body.mc-lock{overflow:hidden}
   .mc .dlg,.mc .dlg.wide{padding:20px 18px 22px}
   .mc .cmphead,.mc .cmprow{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Tighter candidate rows: name, one line of background, one line of status, facts and site. */
+.mc .crow{padding:8px 10px}
+.mc .crow .mn{font-size:16px}
+.mc .cname{gap:1px}
+.mc .cbg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.mc .cmeta{margin-top:2px;gap:6px 10px}
+.mc .cmeta .csite{margin-top:0;font-size:12.5px}
+.mc .mcell{gap:4px}
+.mc .mtop{display:flex;align-items:baseline;gap:6px}
+.mc .mtop .mon{display:inline;margin:0}
+.mc .fd-big{font-size:19px}
+.mc .fd-sub .fd-src{font-size:inherit;margin:0}
+.mc .chead{padding:12px 0 8px}

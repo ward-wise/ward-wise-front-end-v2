@@ -274,7 +274,8 @@ const MILE_TXT = n => n === ORDER.length / 2 ? "Halfway there. " + n + " down, "
 function bump(before){ const after = progressN(); if (after > before) { popSeg = after - 1; if (after % 5 === 0 && after < ORDER.length) mile = {n: after, t: Date.now()}; } }
 let riseNext = false;
 const REDUCED = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-// Card flies off toward the answer: left for disagree, right for agree, up for neutral, down for Not sure and Skip. Motion only, no feedback on the answer.
+// Card slides off toward the answer: left for disagree, right for agree, up for neutral, down for Not sure and Skip. Motion only, no feedback on the answer.
+// Short travel, a small tilt and a fade, so the eye follows one card out and one card in.
 function flyOut(v){
   riseNext = true;
   const gentle = REDUCED();
@@ -282,12 +283,12 @@ function flyOut(v){
   c.removeAttribute("id"); c.querySelectorAll("[id]").forEach(n => n.removeAttribute("id")); c.classList.remove("rise", "riseback", "s1", "s2"); c.classList.add("flyer");
   Object.assign(c.style, {left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px"});
   $("mc").appendChild(c);
-  const T = {"-2": [-760, -30, -14], "-1": [-520, -10, -8], "0": [0, -300, 0], "1": [520, -10, 8], "2": [760, -30, 14], "down": [0, 300, 0]}[String(v)] || [0, 300, 0];
+  const T = {"-2": [-300, 0, -6], "-1": [-220, 0, -4], "0": [0, -120, 0], "1": [220, 0, 4], "2": [300, 0, 6], "down": [0, 120, 0]}[String(v)] || [0, 120, 0];
   const done = () => c.remove();
-  if (gentle) { const g = {"-2": [-48, 0], "-1": [-48, 0], "0": [0, -24], "1": [48, 0], "2": [48, 0]}[String(v)] || [0, 24];
-    try { c.animate([{transform: "none", opacity: 1}, {opacity: 0, offset: .55}, {transform: `translate(${g[0]}px,${g[1]}px)`, opacity: 0}], {duration: 220, easing: "ease-out", fill: "forwards"}).onfinish = done; } catch (e) { done(); }
+  if (gentle) { const g = {"-2": [-16, 0], "-1": [-16, 0], "0": [0, -10], "1": [16, 0], "2": [16, 0]}[String(v)] || [0, 10];
+    try { c.animate([{transform: "none", opacity: 1}, {transform: `translate(${g[0]}px,${g[1]}px)`, opacity: 0}], {duration: 130, easing: "ease-out", fill: "forwards"}).onfinish = done; } catch (e) { done(); }
     setTimeout(done, 500); return; }
-  try { c.animate([{transform: "none", opacity: 1}, {opacity: 1, offset: .6}, {transform: `translate(${T[0] * .7}px,${T[1] * .7}px) rotate(${T[2]}deg) scale(.92)`, opacity: 0}], {duration: 300, easing: "cubic-bezier(.4,0,.9,.6)", fill: "forwards"}).onfinish = done; } catch (e) { done(); }
+  try { c.animate([{transform: "none", opacity: 1}, {opacity: .9, offset: .3}, {transform: `translate(${T[0]}px,${T[1]}px) rotate(${T[2]}deg)`, opacity: 0}], {duration: 280, easing: "cubic-bezier(.4,0,.7,1)", fill: "forwards"}).onfinish = done; } catch (e) { done(); }
   setTimeout(done, 700);
 }
 function setAns(v){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, WORDS[v]); flyOut(v); answers[qid] = v; delete unsure[qid]; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }
@@ -484,9 +485,10 @@ const money = v => v >= 1e6 ? "$" + (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? "$" 
 const shortDate = d => { const m = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return m[+d.slice(5,7) - 1] + " " + (+d.slice(8,10)) + ", " + d.slice(0,4); };
 function fundsCell(f){
   if (!f || f.none) return '<span class="fd-none">' + esc(f && f.none ? "No campaign committee on file" : "No report found") + '</span>';
-  return '<b class="fd-big tnum">' + money(f.raised) + '</b>' + (f.loans ? '<span class="fd-sub tnum">plus ' + money(f.loans) + ' in loans</span>' : "") +
-    '<span class="fd-sub tnum">' + money(f.cash) + ' cash on hand' + (f.through !== "2026-09-30" ? ", as of " + shortDate(f.through) : "") + '</span>' +
-    '<a class="fd-src" href="' + esc(f.report_url) + '" target="_blank" rel="noopener">State filing</a>';
+  // Two lines per row: the amount raised, then loans, cash and the filing link together.
+  return '<b class="fd-big tnum">' + money(f.raised) + '</b>' +
+    '<span class="fd-sub tnum">' + (f.loans ? 'plus ' + money(f.loans) + ' loans · ' : "") + money(f.cash) + ' cash' + (f.through !== "2026-09-30" ? " (" + shortDate(f.through) + ")" : "") +
+    ' · <a class="fd-src" href="' + esc(f.report_url) + '" target="_blank" rel="noopener">Filing</a></span>';
 }
 function lineCell(ax, v, thin, p){
   const mx = mixedText(p, ax), words = mx || say(ax, v, false);
@@ -512,8 +514,8 @@ function renderCands(){
   $("cand-grid").innerHTML = '<div class="ctab' + (live ? " m" : "") + '" role="table" aria-label="2027 candidates"><div class="chead" role="row"><span></span><span role="columnheader">Candidate</span>' + (live ? '<span role="columnheader">Match</span>' : '') + '<span role="columnheader">' + lnHead("Taxes and spending", "Higher", "Lower") + '</span><span role="columnheader">' + lnHead("Police", "Reform", "More") + '</span><span role="columnheader">Raised for the mayor race</span><span></span></div>' +
     (candsAll ? cs : cs.slice(0, 5)).map(({p, m}) => `<div class="crow${p.id === bestId ? " best" : ""}" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources">
       <label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label>
-      <span class="cname" role="cell"><span class="mn">${esc(p.name)}</span><span class="cbg">${esc(p.background || p.role)}</span><span class="cmeta"><span class="chip ${/no challenge/i.test(p.status||"") ? "good" : /did not|withdrew/i.test(p.status||"") ? "weak" : ""}">${esc(p.status || "Status unknown")}</span><span class="cfacts">${p.n} sourced facts</span></span>${p.site ? `<a class="csite" href="${esc(p.site)}" target="_blank" rel="noopener">Campaign site</a>` : `<span class="csite none">No mayor campaign site found</span>`}</span>
-      ${live ? `<span class="mcell" role="cell">${m.pct != null ? `<b class="mpct tnum">${m.pct}%</b><span class="mon">on ${m.n} statements</span><span class="mbar"><i style="width:${m.pct}%"></i></span>${p.id === bestId ? '<span class="mbest">Best match</span>' : ""}` : '<span class="mnone">Too few public positions</span>'}</span>` : ""}
+      <span class="cname" role="cell"><span class="mn">${esc(p.name)}</span><span class="cbg" title="${esc(p.background || p.role)}">${esc(p.background || p.role)}</span><span class="cmeta"><span class="chip ${/no challenge/i.test(p.status||"") ? "good" : /did not|withdrew/i.test(p.status||"") ? "weak" : ""}">${esc(p.status || "Status unknown")}</span><span class="cfacts">${p.n} facts</span>${p.site ? `<a class="csite" href="${esc(p.site)}" target="_blank" rel="noopener">Campaign site</a>` : `<span class="csite none">No campaign site</span>`}</span></span>
+      ${live ? `<span class="mcell" role="cell">${m.pct != null ? `<span class="mtop"><b class="mpct tnum">${m.pct}%</b><span class="mon" title="Based on ${m.n} statements you both have answers on">on ${m.n}</span></span><span class="mbar"><i style="width:${m.pct}%"></i></span>${p.id === bestId ? '<span class="mbest">Best match</span>' : ""}` : '<span class="mnone">Too few public positions</span>'}</span>` : ""}
       <span class="cell" role="cell">${lineCell("x", p.x, p.proof === "thin", p)}</span>
       <span class="cell" role="cell">${lineCell("y", p.y, p.proof === "thin", p)}</span>
       <span class="cfund" role="cell">${fundsCell(p.funds)}</span>
