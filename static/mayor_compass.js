@@ -13,6 +13,7 @@
 //   mayor_quiz_person_opened {person}                 the drawer opens on a person
 //   mayor_quiz_card_copied   {where}                  result picture copied (where: top, result or card)
 //   mayor_quiz_reset         {answered, finished}     Start over, after Yes
+//   mayor_quiz_why_opened    {match}                  "See why" opened under the result (statement list)
 // quiz_ward is the ward typed into the quiz; track() already sets "ward" to the visitor's own saved ward.
 (function () {
 "use strict";
@@ -72,7 +73,7 @@ if (store.get("mc-ver", 0) < 2) { if (answers.S4 != null) delete answers.S4; sto
 // Nov 10, 2026 (round 8): the map lines changed to Progressive/Conservative and More city control/More personal freedom,
 // with 24 statements. Answers saved on the old lines would place people wrongly, so they start fresh.
 if (store.get("mc-ver", 0) < 3) { answers = {}; unsure = {}; stars = {}; ["mc-answers", "mc-unsure", "mc-stars"].forEach(k => store.set(k, {})); store.set("mc-done", false); store.set("mc-ver", 3); }
-let stage = "q", stepsDone = false, animYou = false, bdAll = false, pickTop = [], draft = {};
+let stage = "q", stepsDone = false, animYou = false, bdAll = false, bdOpen = false, pickTop = [], draft = {};
 let animPod = false, cdTimers = [], cdLeft = 0;
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (DEMO) {
@@ -377,7 +378,7 @@ function resetAll(){
   cdTimers.forEach(clearTimeout); cdTimers = [];
   answers = {}; unsure = {}; stars = {}; top3 = []; profile = {}; pickTop = []; draft = {};
   ["mc-answers", "mc-unsure", "mc-stars", "mc-profile"].forEach(k => store.set(k, {})); store.set("mc-top3", []); store.set("mc-done", false);
-  started = false; earlyFinish = false; stepsDone = false; finished = false; stage = "q"; qi = 0; showField = false; animYou = false; bdAll = false;
+  started = false; earlyFinish = false; stepsDone = false; finished = false; stage = "q"; qi = 0; showField = false; animYou = false; bdAll = false; bdOpen = false;
   render(); window.scrollTo(0, 0);
 }
 function goBack(){
@@ -489,7 +490,7 @@ function finish(){
   if (!stepsDone) { riseNext = true; stage = "top"; pickTop = top3.slice(); draft = Object.assign({}, profile); showField = false; render(); window.scrollTo(0, 0); return; }
   reveal();
 }
-function doReveal(){ cdTimers.forEach(clearTimeout); cdTimers = []; stepsDone = true; stage = "q"; finished = true; showField = false; bdAll = false; animYou = true; animPod = true; store.set("mc-done", true); trackFinished(); render(); window.scrollTo(0, 0); }
+function doReveal(){ cdTimers.forEach(clearTimeout); cdTimers = []; stepsDone = true; stage = "q"; finished = true; showField = false; bdAll = false; bdOpen = false; animYou = true; animPod = true; store.set("mc-done", true); trackFinished(); render(); window.scrollTo(0, 0); }
 /* drumroll: 3, 2, 1 (about 1.35 s), then the result. Click or any key skips it. No result shows until it ends. */
 function reveal(){
   stepsDone = true;
@@ -601,7 +602,8 @@ function updateLive(){
     h += '<div class="podium' + (go ? " go" : "") + '" role="group" aria-label="Your top ' + pods.length + ' matches" style="grid-template-columns:repeat(' + pods.length + ',minmax(0,1fr))">' + pods.map((c, i) => '<button type="button" class="pod p' + (i + 1) + '" data-id="' + c.p.id + '" style="--d:' + [360, 180, 0][i] + 'ms"><span class="lift"><span class="pdn">' + esc(c.p.name) + '</span><span class="pdp tnum">' + c.m.pct + '%</span><small class="lead2">' + ["Best match", "2nd", "3rd"][i] + '</small></span><span class="blk">' + (i + 1) + '</span></button>').join("") + burst + '</div>';
     h += '<p class="bmsm">Match is how close their dot is to yours on the map: on top of each other is 100%, a full map apart is 0%. Starred statements count double in where your dot lands. Faded dots have too few facts to rank, so they stay off the top 3.</p>';
 
-    h += breakdownHTML(top.p);
+    // The statement list sits behind "See why" (Connor, Nov 11: the open list was too much under the result).
+    h += '<div class="why"><button type="button" class="linkbtn" id="bdwhy" aria-expanded="' + bdOpen + '">' + (bdOpen ? "Hide the statements" : "See why you match " + esc(top.p.name)) + '</button></div>' + (bdOpen ? breakdownHTML(top.p) : "");
     const lean = profile && profile.lean;
     if (lean && lean !== "Undecided" && lean !== "Prefer not to say" && lean !== top.p.name) h += '<p class="leanline">You said you lean toward ' + esc(lean) + '. Your answers line up most with ' + esc(top.p.name) + '.</p>';
   } else h += '<p class="hint">No candidate has enough public positions to name a match yet.</p>';
@@ -609,6 +611,7 @@ function updateLive(){
   $("live").innerHTML = h + REDO.replace('<div class="actions">', '<div class="actions"><button type="button" class="btn" id="qcopy">Copy my results</button><button type="button" class="btn btn-ghost" id="qcard">See my share card</button>');
   $("qredo").onclick = reopen; $("qcard").onclick = openCard; $("qcopy").onclick = () => copyCard($("qcopy"), "result");
   const bm = $("bdmore"); if (bm) bm.onclick = () => { bdAll = !bdAll; updateLive(); };
+  const bw = $("bdwhy"); if (bw) bw.onclick = () => { bdOpen = !bdOpen; if (bdOpen) track("mayor_quiz_why_opened", {match: top.p.id}); updateLive(); const b2 = $("bdwhy"); if (b2) b2.focus({preventScroll: true}); };
 }
 /* "You and <best match>": same sign = agree, opposite sign = differ, a Neutral on either side = counted apart */
 function breakdownHTML(p){

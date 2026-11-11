@@ -309,3 +309,18 @@ def test_start_over_asks_once_then_clears_everything(page, mayor_site):
     page.reload()
     page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('0 answered')")
     assert page.errors == []
+
+
+def test_statement_list_stays_behind_see_why(page, mayor_site):
+    """Connor, Nov 11: the open list under the result was too much. It opens on "See why" and is counted."""
+    run_quiz(page, mayor_site)
+    assert page.locator("#live .bdrow").count() == 0
+    assert page.locator("#bdwhy").get_attribute("aria-expanded") == "false"
+    page.click("#bdwhy")
+    page.wait_for_selector("#live .bdrow")
+    assert page.locator("#bdwhy").get_attribute("aria-expanded") == "true"
+    ga, ph = sent(page)
+    for pairs in (ga, ph):
+        assert len(named(pairs, "mayor_quiz_why_opened")) == 1, pairs
+    page.click("#bdwhy")
+    page.wait_for_function("!document.querySelector('#live .bdrow')")
