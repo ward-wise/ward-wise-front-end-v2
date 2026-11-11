@@ -118,15 +118,16 @@
         <div class="fd-stack">
           <p class="fd-tag">Who builds it</p>
           <h2 class="fd-h1">The team.</h2>
-          <p class="fd-sub">Volunteers who met at Chi Hack Night, each from a different ward.</p>
+          <p class="fd-sub">Volunteers who met at Chi Hack Night, each from a different neighborhood.</p>
         </div>
-        {# The team, in ward order. Add `linkedin` (a full profile URL) to show that link too; a link
+        {# The team, in ward order, then the rest of Chicagoland. Add `linkedin` (a full profile URL) to show that link too; a link
            only appears when its URL is set. #}
         {% set team = [
           {"name": "Harry Brisson", "photo": "harry-brisson", "role": "12th Ward · Data coordinator", "github": "HarryBrisson", "linkedin": "https://www.linkedin.com/in/ejbrisson/"},
           {"name": "Angel Carbajal", "photo": "angel-carbajal", "role": "33rd Ward · UX and design", "github": "zyplos", "linkedin": "https://www.linkedin.com/in/angel-carbajal/"},
           {"name": "Connor Florczyk", "photo": "connor-florczyk", "role": "42nd Ward · UX and reporting", "github": "cflorczyk9", "linkedin": "https://www.linkedin.com/in/connor-florczyk/"},
           {"name": "Jackie Schmitz", "photo": "jackie-schmitz", "role": "43rd Ward · Personalization", "github": "jackieschmitz", "linkedin": "https://www.linkedin.com/in/jaclyn-s-7928a4134"},
+          {"name": "Sebastian Krzysiak", "photo": "sebastian-krzysiak", "role": "Chicagoland · Software engineer", "github": "sebastiankrzysiak", "linkedin": "https://www.linkedin.com/in/sebastiankrzysiak"},
         ] %}
         <ul class="fd-team">
           {% for person in team %}
