@@ -11,6 +11,7 @@
 //   mayor_quiz_restart       {}                       Change my answers
 //   mayor_quiz_share_card    {}                       share card downloaded
 //   mayor_quiz_person_opened {person}                 the drawer opens on a person
+//   mayor_quiz_link_copied   {}                       Copy link at the top of the page
 // quiz_ward is the ward typed into the quiz; track() already sets "ward" to the visitor's own saved ward.
 (function () {
 "use strict";
@@ -68,7 +69,7 @@ let answers = store.get("mc-answers", {}), stars = store.get("mc-stars", {}), un
 // Statement S4 was reworded on Nov 10, 2026 (accept federal help -> turn away federal forces). Drop answers saved before that.
 if (store.get("mc-ver", 0) < 2) { if (answers.S4 != null) delete answers.S4; store.set("mc-answers", answers); store.set("mc-ver", 2); }
 let stage = "q", stepsDone = false, animYou = false, bdAll = false, pickTop = [], draft = {};
-let animPod = false, popSeg = -1, cdTimers = [], cdLeft = 0;
+let animPod = false, cdTimers = [], cdLeft = 0;
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (DEMO) {
   answers = {}; stars = {}; unsure = {}; profile = {}; top3 = ["Crime and public safety", "Housing costs", "Taxes"];
@@ -322,23 +323,73 @@ function easeSwap(qe, old, back){
 }
 function setAns(v){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, WORDS[v]); flyOut(v); answers[qid] = v; delete unsure[qid]; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }
 function setUnsure(){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, "not_sure"); flyOut("down"); delete answers[qid]; unsure[qid] = true; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }
-function meterHTML(n, cur){
-  let h = '<div class="mtr" role="progressbar" aria-valuemin="0" aria-valuemax="' + ORDER.length + '" aria-valuenow="' + n + '" aria-label="Quiz progress">';
-  for (let g = 0; g < 1; g++) { h += '<div class="mgrp">'; for (let i = 0; i < ORDER.length; i++) { const k = i; h += '<span class="mseg' + (cur && k === n ? " cur" : "") + '" style="--i:' + k + '"><b class="' + (k < n ? "on" : "") + (k === popSeg && k < n ? " pop" : "") + '"></b></span>'; } h += '</div>'; }
-  return h + '</div>';
+function meterHTML(cur, live){
+  let h = '<div class="mtr' + (live ? "" : " wave") + '" role="group" aria-label="Statements. Pick one to go to it."><div class="mgrp">';
+  for (let i = 0; i < ORDER.length; i++) {
+    const qid = ORDER[i], st = unsure[qid] || answers[qid] != null ? "on" : answers[qid] === null ? "sk" : "";
+    const word = st === "on" ? "answered" : st === "sk" ? "skipped" : "not answered";
+    h += '<button type="button" class="mseg' + (i === cur ? " cur" : "") + '" data-k="' + i + '" style="--i:' + i + '"'
+      + (i === cur ? ' aria-current="step"' : "") + (live ? "" : ' disabled tabindex="-1"')
+      + ' aria-label="Statement ' + (i + 1) + ', ' + word + '" title="' + (i + 1) + '. ' + esc(Q[qid].text) + '"><span class="sbar"><b class="' + st + '"></b></span></button>';
+  }
+  return h + '</div></div>';
 }
+/* The top of the quiz card: Back, where you are, how many are left, and the statement bar. The same
+   parts fill the strip that pins under the site header when the card scrolls out of view. */
+function headParts(){
+  const back = '<button type="button" class="linkbtn qbk" data-back' + (stage === "q" && qi === 0 ? " disabled" : "") + '>\u2190 Back</button>';
+  const left = stage === "top" ? "Two quick steps" : stage === "prof" ? "Last step, all optional" : `Statement ${qi+1} of ${ORDER.length}`;
+  const right = stage === "q" ? `${answered()} answered, ${ORDER.length - progressN()} to go` : `${answered()} answered`;
+  return {back, left, right, meter: meterHTML(stage === "q" ? qi : -1, true)};
+}
+function headHTML(){ const h = headParts(); return `<div class="qprog tnum"><span class="qwhere">${h.back}<span>${h.left}</span></span><span>${h.right}</span></div>${h.meter}`; }
+function goBack(){
+  if (finished || stage === "count") return;
+  if (stage === "q") { if (qi > 0) { qi--; riseNext = "back"; render(true); } }
+  else if (stage === "top") $("tback").click();
+  else if (stage === "prof") $("pback").click();
+}
+function jumpTo(k){
+  if (finished || stage === "count" || (stage === "q" && k === qi)) return;
+  if (stage === "prof" && $("pw")) draft = {ward: $("pw").value, age: draft.age || "", lean: $("pl").value};
+  const fromQ = stage === "q";
+  if (fromQ && k > qi) flyOut("down"); else riseNext = "back";
+  stage = "q"; qi = k; render(fromQ);
+}
+function wireHead(root, fromPin){
+  const toCard = () => { if (fromPin) window.scrollTo({top: Math.max(0, $("app").getBoundingClientRect().top + window.scrollY - pinTop()), behavior: "smooth"}); };
+  root.querySelectorAll("[data-back]").forEach(b => b.onclick = () => { goBack(); toCard(); });
+  root.querySelectorAll(".mseg[data-k]").forEach(b => b.onclick = () => { jumpTo(+b.dataset.k); toCard(); });
+}
+/* pinned strip: shows while the card's own bar is above the bottom of the site header */
+let pinOn = false;
+function pinTop(){ const hd = document.querySelector("header.gn") || document.querySelector(".site-header"); return hd ? Math.max(0, hd.getBoundingClientRect().bottom) : 0; }
+function fillPin(){
+  const inn = $("qpin-in"); if (!inn) return;
+  if (finished || !(stage === "q" || stage === "top" || stage === "prof")) { inn.innerHTML = ""; return; }
+  const h = headParts();
+  inn.innerHTML = `<span class="qwhere tnum">${h.back}<span>${h.left}</span></span>${h.meter}<span class="tnum pinright">${h.right}</span>`;
+  wireHead(inn, true);
+}
+function updatePin(){
+  const pin = $("qpin"); if (!pin) return;
+  const m = $("quiz").querySelector(".mtr"), top = pinTop();
+  const show = !finished && !!$("qpin-in").firstChild && !!m && m.getBoundingClientRect().bottom < top + 4;
+  pin.style.top = top + "px";
+  if (show !== pinOn) { pinOn = show; pin.classList.toggle("on", show); }
+}
+window.addEventListener("scroll", updatePin, {passive: true});
 function renderQ(still){
   if (qi >= ORDER.length) qi = ORDER.length - 1;
   const qid = ORDER[qi], q = Q[qid], a = answers[qid];
-  $("quiz").innerHTML = `<div class="qprog tnum"><span>Statement ${qi+1} of ${ORDER.length}</span><span>${answered()} answered, ${ORDER.length - progressN()} to go</span></div>
-    ${meterHTML(progressN(), true)}
+  $("quiz").innerHTML = `${headHTML()}
     <div class="qbody">
     <p class="qtext" id="qtext">${esc(q.text)}</p>
     <p class="qctx">${q.context ? esc(q.context) : ""}</p>
     <div class="answers five" role="group" aria-labelledby="qtext">${[-2,-1,0,1,2].map(v => `<button type="button" class="ans" data-v="${v}" aria-pressed="${a === v}">${LABELS[v]}</button>`).join("")}</div>
     <div class="unsurerow"><button type="button" class="unsurebtn" id="qunsure" aria-pressed="${!!unsure[qid]}">Not sure</button></div>
     </div>
-    <p class="keyhint">Press 1 to 5, 6 for Not sure, or use the arrow keys.</p>
+    <p class="keyhint">Press 1 to 5, 6 for Not sure, or use the arrow keys. Backspace goes back.</p>
     <div class="qfoot">
       <button type="button" class="star" id="star" aria-pressed="${!!stars[qid]}">${stars[qid] ? "★ Matters to me" : "☆ Matters to me"}</button>
       <div class="actions" style="gap:16px">
@@ -349,18 +400,17 @@ function renderQ(still){
     </div>
     ${answered() >= 10 ? '<div class="finnow"><button type="button" class="linkbtn" id="qfin">Finish now</button><span class="small">Your result is less reliable with fewer answers.</span></div>' : ""}`;
   if ($("qfin")) $("qfin").onclick = () => { earlyFinish = true; finish(); };
-  popSeg = -1;
   $("quiz").querySelectorAll(".ans").forEach(b => b.onclick = () => setAns(+b.dataset.v));
   $("qunsure").onclick = setUnsure;
   $("star").onclick = () => { stars[qid] = !stars[qid]; store.set("mc-stars", stars); renderQ(true); };
-  $("qback").onclick = () => { if (qi > 0) { qi--; riseNext = "back"; render(true); } };
+  $("qback").onclick = goBack;
+  wireHead($("quiz"), false);
   $("qskip").onclick = () => { noteAnswer(qid, "skipped"); flyOut("down"); const b = progressN(); answers[qid] = null; delete unsure[qid]; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); };
   $("qnext").onclick = () => { flyOut(a == null ? "down" : a); advance(); };
 }
 /* two short steps after the last statement, before the reveal */
 function renderTop(){
-  $("quiz").innerHTML = `<div class="qprog tnum"><span>Two quick steps</span><span>${answered()} answered</span></div>
-    ${meterHTML(ORDER.length, false)}
+  $("quiz").innerHTML = `${headHTML()}
     <p class="stepq" id="qtext">Which issues matter most to you? Pick up to 3.</p>
     <div class="chips" role="group" aria-labelledby="qtext">${TOPICS.map(tp => `<button type="button" class="tchip" aria-pressed="${pickTop.includes(tp)}" ${!pickTop.includes(tp) && pickTop.length >= 3 ? "disabled" : ""}>${esc(tp)}</button>`).join("")}</div>
     <div class="qfoot"><span class="small tnum">${pickTop.length} of 3 picked</span>
@@ -370,14 +420,14 @@ function renderTop(){
     renderTop(); $("quiz").querySelectorAll(".tchip")[i].focus();
   });
   $("tback").onclick = () => { riseNext = "back"; stage = "q"; qi = ORDER.length - 1; render(); };
+  wireHead($("quiz"), false);
   $("tskip").onclick = () => { flyOut("down"); top3 = []; store.set("mc-top3", top3); track("mayor_quiz_issues", {issues: []}); stage = "prof"; render(); };
   $("tgo").onclick = () => { flyOut(1); top3 = pickTop.slice(); store.set("mc-top3", top3); track("mayor_quiz_issues", {issues: top3.slice()}); stage = "prof"; render(); };
 }
 function renderProf(){
   const cands = PEOPLE.filter(p => p.cand).map(p => p.name).sort((x, y) => x.localeCompare(y));
   const sel = (v, cur) => cur === v ? " selected" : "";
-  $("quiz").innerHTML = `<div class="qprog tnum"><span>Last step, all optional</span><span>${answered()} answered</span></div>
-    ${meterHTML(ORDER.length, false)}
+  $("quiz").innerHTML = `${headHTML()}
     <p class="stepq" id="qtext">Help show how Chicago answered</p>
     <p class="stepsub">Three quick picks. No name or email.</p>
     <div class="pform">
@@ -393,6 +443,7 @@ function renderProf(){
   ["pw", "pl"].forEach(id => $(id).onchange = grab);
   $("quiz").querySelectorAll("[data-age]").forEach(btn => btn.onclick = () => { grab(); draft.age = draft.age === btn.dataset.age ? "" : btn.dataset.age; $("quiz").querySelectorAll("[data-age]").forEach(x => x.setAttribute("aria-pressed", x.dataset.age === draft.age)); });
   $("pback").onclick = () => { riseNext = "back"; grab(); stage = "top"; render(); };
+  wireHead($("quiz"), false);
   $("pskip").onclick = () => { flyOut("down"); profile = {}; store.set("mc-profile", profile); track("mayor_quiz_profile", {skipped: true}); reveal(); };
   $("pgo").onclick = () => { flyOut(1); grab(); profile = draft; store.set("mc-profile", profile); track("mayor_quiz_profile", profileProps(profile, false)); reveal(); };
 }
@@ -412,7 +463,7 @@ function reveal(){
 function tick(n){ const e = $("cdnum"); if (e) e.innerHTML = "<span>" + n + "</span>"; }
 function renderCount(){
   $("quiz").innerHTML = `<div class="cdwn" id="cdwn" role="status"><div class="qprog tnum"><span>All ${ORDER.length} statements in</span><span>${answered()} answered</span></div>
-    ${meterHTML(ORDER.length, false).replace('class="mtr"', 'class="mtr wave"')}
+    ${meterHTML(-1, false)}
     <div class="cdstage"><p class="cdlab">Tallying your answers</p><div class="cdnum" id="cdnum"><span>3</span></div><p class="small">Click or press any key to skip</p></div></div>`;
   $("cdwn").onclick = doReveal;
 }
@@ -445,6 +496,7 @@ function render(cardOnly){
   if (riseNext && !finished) easeSwap(qe, stage === "q" ? old : null, riseNext === "back");
   if (stage === "q" && !finished) lockBody(qe);
   riseNext = false;
+  fillPin(); updatePin();
   updateLive();
   // Before the reveal, an answer changes nothing in the table or the maps; rebuilding them on
   // every answer is what made the card stutter.
@@ -455,10 +507,12 @@ function render(cardOnly){
 /* keys: 1 to 5 pick an answer, 6 is Not sure */
 document.addEventListener("keydown", e => {
   if (stage === "count" && !finished) { if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && e.key !== "Shift" && e.key !== "Tab") { e.preventDefault(); doReveal(); } return; }
-  if (finished || stage !== "q" || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (finished || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.target.matches && e.target.matches("input,textarea,select")) return;
   if (e.target.closest && e.target.closest("header, nav, footer")) return; // keys 1 to 6 belong to the quiz, not to the site menu
   if (!$("cmp-ov").hidden || !$("card-ov").hidden || !$("drawer").hidden) return;
+  if (e.key === "Backspace") { if (stage === "q" || stage === "top" || stage === "prof") { e.preventDefault(); goBack(); } return; }
+  if (stage !== "q") return;
   const map = {"1": -2, "2": -1, "3": 0, "4": 1, "5": 2};
   const ar = {ArrowLeft: e.shiftKey ? -2 : -1, ArrowRight: e.shiftKey ? 2 : 1, ArrowUp: 0};
   if (e.key in map) { e.preventDefault(); setAns(map[e.key]); } else if (e.key in ar) { e.preventDefault(); setAns(ar[e.key]); } else if (e.key === "ArrowDown") { e.preventDefault(); setUnsure(); } else if (e.key === "6") { e.preventDefault(); setUnsure(); }
@@ -715,6 +769,18 @@ $("tabC").onclick = () => showTab(true); $("tabM").onclick = () => showTab(false
 $("m-check").textContent = DATA.check;
 
 started = progressN() > 0; // a reload mid-quiz continues the same run
+/* Copy link at the top: copies the page address without any ?demo, so friends land on a fresh quiz */
+let copyT = 0;
+if ($("copylink")) $("copylink").onclick = async () => {
+  const btn = $("copylink"), label = btn.querySelector(".cltext"), url = location.origin + location.pathname;
+  let ok = false;
+  try { await navigator.clipboard.writeText(url); ok = true; } catch (e) {
+    try { const t = document.createElement("textarea"); t.value = url; t.setAttribute("readonly", ""); t.style.position = "fixed"; t.style.opacity = "0"; document.body.appendChild(t); t.select(); ok = document.execCommand("copy"); t.remove(); } catch (e2) { ok = false; }
+  }
+  label.textContent = ok ? "Copied" : url; btn.classList.toggle("done", ok);
+  if (ok) track("mayor_quiz_link_copied", {});
+  clearTimeout(copyT); copyT = setTimeout(() => { label.textContent = "Copy link"; btn.classList.remove("done"); }, ok ? 2000 : 8000);
+};
 qi = ORDER.findIndex(q => !isAnswered(q)); if (qi < 0) qi = ORDER.length - 1;
 $("showAnyway").onclick = () => { showField = true; render(); };
 if (DEMO && !MID) { // sample profile leans toward someone who is NOT the best match

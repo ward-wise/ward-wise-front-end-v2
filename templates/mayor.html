@@ -7,12 +7,16 @@
    site header and footer are untouched. Overlays sit inside .mc so they pick up its colors. #}
 <link rel="stylesheet" href="{{ url_for('static', filename='mayor_compass.css', v=asset_version) }}">
 <div class="mc" id="mc">
+<div class="qpin" id="qpin" role="region" aria-label="Quiz progress"><div class="wrap qpin-in" id="qpin-in"></div></div>
 <main id="mc-main">
   <section class="app" id="app">
     <div class="wrap">
       <div class="apphead">
         <h1>Where do you stand?</h1>
-        <p class="factsline tnum">Chicago mayor 2027 &middot; Election day Feb 23 &middot; Early voting Jan 14 &middot; Runoff Apr 6 &middot; About 4 min</p>
+        <div class="headside">
+          <p class="factsline tnum">Chicago mayor 2027 &middot; Election day Feb 23 &middot; Early voting Jan 14 &middot; Runoff Apr 6 &middot; About 4 min</p>
+          <button type="button" class="copylink" id="copylink" title="Copy this page's link to share with friends"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M6.6 9.4a2.6 2.6 0 0 0 3.7 0l2.4-2.4a2.6 2.6 0 0 0-3.7-3.7l-.9.9M9.4 6.6a2.6 2.6 0 0 0-3.7 0L3.3 9a2.6 2.6 0 0 0 3.7 3.7l.9-.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="cltext" aria-live="polite">Copy link</span></button>
+        </div>
       </div>
       <div class="appgrid" id="resview">
         <div class="qcol"><div class="qcard" id="quiz"></div><div class="live" id="live" aria-live="polite"></div></div>

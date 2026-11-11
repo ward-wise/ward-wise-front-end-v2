@@ -248,3 +248,33 @@ def test_every_drawer_offers_a_correction_email_naming_the_person(page, mayor_si
     assert href.startswith("mailto:connor@wardwise.org?subject="), href
     from urllib.parse import unquote
     assert unquote(href.split("subject=", 1)[1]) == "Mayor quiz correction: " + name
+
+
+def test_bar_follows_you_jumps_back_pins_and_copy_link_is_counted(page, mayor_site):
+    """The bar rings the statement you are on, a click on it jumps there, Backspace goes back, the bar pins
+    under the site header when the card scrolls away, and Copy link copies the page address and is counted."""
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=mayor_site)
+    page.goto(f"{mayor_site}/mayor")
+    answer(page, KEYS[:6])
+    where = "() => [document.querySelector('#quiz .qprog').innerText, [...document.querySelectorAll('#quiz .mseg')].findIndex(b => b.classList.contains('cur'))]"
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 7 of 20')")
+    page.locator("#quiz .mseg").nth(2).click()
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 3 of 20')")
+    text, cur = page.evaluate(where)
+    assert cur == 2 and "6 answered" in text
+    page.keyboard.press("Backspace")
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 2 of 20')")
+    page.click("#quiz .qprog [data-back]")
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 1 of 20')")
+    assert page.locator("#quiz .qprog [data-back]").is_disabled()
+    assert not page.evaluate("document.getElementById('qpin').classList.contains('on')")
+    page.mouse.wheel(0, 1200)
+    page.wait_for_function("document.getElementById('qpin').classList.contains('on')")
+    page.locator("#qpin .mseg").nth(4).click()
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 5 of 20')")
+    page.click("#copylink")
+    page.wait_for_function("document.querySelector('#copylink').innerText.includes('Copied')")
+    assert page.evaluate("navigator.clipboard.readText()").rstrip("/") == f"{mayor_site}/mayor"
+    ga, ph = sent(page)
+    assert len(named(ph, "mayor_quiz_link_copied")) == 1 and len(named(ga, "mayor_quiz_link_copied")) == 1
+    assert page.errors == []

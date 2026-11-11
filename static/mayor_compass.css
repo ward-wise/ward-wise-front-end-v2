@@ -272,14 +272,36 @@
 .mc .rchip{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--link);background:var(--blue-wash);border-radius:980px;padding:5px 12px}
 .mc .rtip{font-size:12.5px;color:var(--ink-3)}
 
-.mc .mtr{display:grid;grid-template-columns:1fr;gap:0;margin:10px 0 26px}
-.mc .mgrp{display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:3px}
-.mc .mseg{position:relative;display:block;height:10px;border-radius:5px;background:var(--fill-2);overflow:hidden}
+.mc .mtr{margin:10px 0 26px}
+.mc .mgrp{display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:5px}
+.mc .mseg{display:block;min-width:0;background:none;border:0;padding:7px 0;margin:-7px 0;cursor:pointer;border-radius:6px}
+.mc .mseg:disabled{cursor:default}
+.mc .mseg:focus-visible{outline:none}
+.mc .mseg:focus-visible .sbar{box-shadow:0 0 0 3px var(--focus)}
+.mc .sbar{position:relative;display:block;height:10px;border-radius:5px;background:var(--fill-2);overflow:hidden;transition:transform .15s ease-out}
+.mc .mseg:not(:disabled):hover .sbar{transform:scaleY(1.4)}
 .mc .mseg b{position:absolute;inset:0;background:var(--blue);border-radius:5px;opacity:0;transform-origin:center}
 .mc .mseg b.on{opacity:1}
-
-.mc .mseg.cur::after{content:"";position:absolute;inset:0;border-radius:5px;background:var(--blue);opacity:.28;transform-origin:left;animation:mc-curpulse 1s ease-in-out infinite alternate}
+.mc .mseg b.sk{opacity:.3}
+.mc .mseg.cur .sbar{outline:2px solid var(--ink);outline-offset:2px}
+.mc .mseg.cur b:not(.on)::after{content:"";position:absolute;inset:0;border-radius:5px;background:var(--blue);opacity:.28;transform-origin:left;animation:mc-curpulse 1s ease-in-out infinite alternate}
+.mc .mseg.cur b:not(.on){opacity:1;background:none}
 @keyframes mc-curpulse{from{transform:scaleX(.35);opacity:.2}to{transform:scaleX(1);opacity:.45}}
+.mc .qwhere{display:inline-flex;align-items:baseline;gap:14px}
+.mc .qbk{font-size:14px;padding:0}
+.mc .qbk:disabled{color:var(--ink-3);opacity:.5;cursor:default}
+/* the strip that pins under the site header once the card's own bar scrolls away */
+.mc .qpin{position:fixed;left:0;right:0;top:0;z-index:30;background:var(--bg);border-bottom:1px solid var(--hair);opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .18s ease-out,transform .18s ease-out,visibility 0s linear .18s}
+.mc .qpin.on{opacity:1;visibility:visible;transform:none;transition:opacity .18s ease-out,transform .18s ease-out}
+.mc .qpin-in{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:24px;padding-top:10px;padding-bottom:10px;font-size:14px;color:var(--ink-2)}
+.mc .qpin-in .mtr{margin:0}
+.mc .pinright{white-space:nowrap}
+/* Copy link, top right by the dates */
+.mc .headside{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.mc .copylink{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--link);background:var(--card);border:1px solid var(--line);border-radius:980px;padding:6px 14px;cursor:pointer;transition:background-color .15s ease-out,border-color .15s ease-out}
+.mc .copylink:hover{border-color:var(--link)}
+.mc .copylink.done{background:var(--blue-wash);border-color:transparent}
+.mc .copylink:focus-visible{outline:none;box-shadow:0 0 0 3px var(--focus)}
 .mc .mtr.wave .mseg b{opacity:1;animation:mc-wave .45s ease-out calc(var(--i) * 22ms) both}
 @keyframes mc-wave{0%{transform:scaleY(.3)}50%{transform:scaleY(1.9)}100%{transform:scaleY(1)}}
 @keyframes mc-qin{from{opacity:.3;transform:translateY(14px)}to{opacity:1;transform:none}}
