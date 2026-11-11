@@ -194,3 +194,30 @@ def test_page_loads_without_errors(page, mayor_site):
     page.wait_for_selector("#quiz .ans")
     page.wait_for_timeout(500)
     assert page.errors == []
+
+
+def test_change_my_answers_is_counted_and_starts_over(page, mayor_site):
+    run_quiz(page, mayor_site)
+    page.click("#qredo")
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 1 of 20')")
+    ga, ph = sent(page)
+    for pairs in (ga, ph):
+        assert len(named(pairs, "mayor_quiz_restart")) == 1, pairs
+    # A second run is a new quiz run: it counts as started again.
+    page.keyboard.press("3")
+    ga, ph = sent(page)
+    for pairs in (ga, ph):
+        assert len(named(pairs, "mayor_quiz_started")) == 2
+
+
+def test_share_card_download_is_counted_and_saves_a_png(page, mayor_site):
+    run_quiz(page, mayor_site)
+    page.click("#qcard")
+    page.wait_for_selector("#card-dl")
+    with page.expect_download() as info:
+        page.click("#card-dl")
+    assert info.value.suggested_filename.endswith(".png")
+    ga, ph = sent(page)
+    for pairs in (ga, ph):
+        assert len(named(pairs, "mayor_quiz_share_card")) == 1, pairs
+    assert page.errors == []
