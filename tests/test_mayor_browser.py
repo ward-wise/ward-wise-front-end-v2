@@ -224,37 +224,30 @@ def test_share_card_download_is_counted_and_saves_a_png(page, mayor_site):
     assert page.errors == []
 
 
-def test_best_match_is_the_closest_answers_not_the_nearest_dot(page, mayor_site):
-    # Connor, Nov 11: the match is a count. Statement by statement, the same answer is a full point and
-    # each step apart earns less (1, .75, .35, .1, 0). Only people with 8 or more sourced answers are ranked.
+def test_best_match_is_the_nearest_dot_on_the_map(page, mayor_site):
+    # Connor, Nov 11: "the dot has to be closest to their closest match", and the number of statements a
+    # candidate has answered must play no part. So the best match is the nearest candidate dot, solid
+    # or hollow (placed by leaning), and the percent is map closeness (x, y are rounded to 2 decimals).
     run_quiz(page, mayor_site)
     _, ph = sent(page)
     fin = named(ph, "mayor_quiz_finished")[0]
-    assert fin["match_method"] == "closeness"
-    words = {"strongly_agree": 2, "agree": 1, "neutral": 0, "disagree": -1, "strongly_disagree": -2}
-    mine = {q: words[a] for q, a in fin["answers"].items() if a in words}
-    people = page.evaluate("window.MayorCompassData.people.filter(p => p.cand).map(p => ({id: p.id, answers: p.answers.map(a => [a.qid, a.value])}))")
-    scores = {}
-    for p in people:
-        shared = [(mine[q], v) for q, v in p["answers"] if q in mine]
-        if len(p["answers"]) >= 8 and len(shared) >= 5:
-            scores[p["id"]] = sum([1, .75, .35, .1, 0][abs(u - v)] for u, v in shared) / len(shared)
-    assert scores, "nobody qualified"
-    best = max(scores.values())
-    assert abs(scores[fin["best_match"]] - best) < 1e-9, (fin["best_match"], scores)
-    assert abs(fin["best_match_pct"] - 100 * best) <= 0.5 + 1e-9
-    assert all(t["id"] in scores for t in fin["top3"]), "someone with too few answers was ranked"
+    assert fin["match_method"] == "map"
+    dots = page.evaluate("""([x, y]) => window.MayorCompassData.people
+        .filter(p => p.cand && p.x != null && p.y != null)
+        .map(p => ({id: p.id, lean: !!p.by_lean, d: Math.hypot(p.x - x, p.y - y)}))
+        .sort((a, b) => a.d - b.d)""", [fin["x"], fin["y"]])
+    assert any(d["lean"] for d in dots), "no candidate is placed by leaning"
+    if dots[1]["d"] - dots[0]["d"] > 0.02:  # not a near tie that rounding could flip
+        assert fin["best_match"] == dots[0]["id"], (fin["best_match"], dots[:3])
+    assert abs(fin["best_match_pct"] - 100 * (1 - dots[0]["d"] / 20)) <= 1
     assert [t["pct"] for t in fin["top3"]] == sorted((t["pct"] for t in fin["top3"]), reverse=True)
-    # the page shows the count beside the percent, and marks the top 3 on the map
-    assert "Same side on" in page.locator(".pod").first.inner_text()
-    assert sorted(page.locator("#hero-chart .rkn").all_text_contents()) == [str(i + 1) for i in range(len(fin["top3"]))]
-    # candidates with fewer than 8 answers get no match score: they say so, or say they are placed by leaning
-    assert page.locator(".mnone").filter(has_text=re.compile("Placed by leaning|Not enough answers yet")).count() > 0
+    # the page: three ranked rows with no statement count, 1 2 3 on the map, hollow dots for leaning
+    assert page.locator(".ranklist .pod").count() == 3
+    assert "same side" not in page.locator(".ranklist").inner_text().lower()
+    assert sorted(page.locator("#hero-chart .rkn").all_text_contents()) == ["1", "2", "3"]
     assert page.locator("#hero-chart .dot.lean").count() > 0, "no hollow dot for a candidate placed by leaning"
-    # the result card names leaning-placed candidates near the visitor, without a score
-    near = page.locator("#live .leannear")
-    assert near.count() == 1 and 1 <= near.locator("button[data-id]").count() <= 3
-    assert "%" not in near.inner_text()
+    # the nearest dot wears badge 1: no other candidate dot sits closer to the You dot
+    assert page.locator("#mapnote").is_hidden()
 
 
 def test_every_drawer_offers_a_correction_email_naming_the_person(page, mayor_site):
@@ -333,10 +326,10 @@ def test_start_over_asks_once_then_clears_everything(page, mayor_site):
 def test_statement_list_stays_behind_see_why(page, mayor_site):
     """Connor, Nov 11: the open list under the result was too much. It opens on "See why" and is counted."""
     run_quiz(page, mayor_site)
-    assert page.locator("#live .bdrow").count() == 0
+    assert page.locator("#live .bd").count() == 0
     assert page.locator("#bdwhy").get_attribute("aria-expanded") == "false"
     page.click("#bdwhy")
-    page.wait_for_selector("#live .bdrow")
+    page.wait_for_selector("#live .bd .bdaxis")  # See why opens with the two lines, then any shared statements
     # the visitor's top issues come first in the list, and the old "Your top issues" line is gone
     assert page.locator("#live .topline").count() == 0
     flags = page.evaluate("[...document.querySelectorAll('#live .bdrow')].map(r => !!r.querySelector('.bds .chip'))")
@@ -346,4 +339,4 @@ def test_statement_list_stays_behind_see_why(page, mayor_site):
     for pairs in (ga, ph):
         assert len(named(pairs, "mayor_quiz_why_opened")) == 1, pairs
     page.click("#bdwhy")
-    page.wait_for_function("!document.querySelector('#live .bdrow')")
+    page.wait_for_function("!document.querySelector('#live .bd')")

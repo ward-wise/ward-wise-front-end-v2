@@ -58,7 +58,7 @@ function trackFinished(){
   const me = you(), ans = {};
   ORDER.forEach(q => { if (answers[q] != null) ans[q] = WORDS[answers[q]]; else if (unsure[q]) ans[q] = "not_sure"; else if (q in answers) ans[q] = "skipped"; });
   const ranked = rankOf(PEOPLE.filter(p => p.cand));
-  const o = {match_method: "closeness", answers: ans, matters: ORDER.filter(q => stars[q]), issues: top3.slice(), answered: answered(), finished_early: earlyFinish,
+  const o = {match_method: "map", answers: ans, matters: ORDER.filter(q => stars[q]), issues: top3.slice(), answered: answered(), finished_early: earlyFinish,
     top3: ranked.slice(0, 3).map(c => ({id: c.p.id, pct: c.m.pct})), x: Math.round(me.x * 100) / 100, y: Math.round(me.y * 100) / 100};
   if (profile && profile.ward) o.quiz_ward = profile.ward;
   if (profile && profile.age) o.age_band = profile.age;
@@ -569,11 +569,6 @@ function you(){
   const m = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
   return {x: m(ax.econ), y: m(ax.control), n};
 }
-// The match is a count (Connor, Nov 11: "this should be count"). Statement by statement, how close is
-// your answer to theirs: the same answer is a full point, one step apart is three quarters,
-// two steps a third, three steps a tenth, opposite ends zero (STEP). A starred statement counts twice, as it does in where
-// your dot lands. A person needs MIN_ANS sourced answers to be ranked (Connor: 8 or more) and you
-// need MIN_SHARED statements in common. d (map distance) is kept only to explain a nearer dot.
 // How we know: a vote or act, their own words, a press account, or our reading of a related act.
 const basisWord = (a, long) => a.basis === "action" ? (long ? "Based on a vote or action" : "Vote or action") : a.basis === "stated" ? "Stated publicly" : a.basis === "report" ? "Reported account" : "Judged from a related act";
 // Past mayors (round 9): the same question as it stood in their own time, with the year.
@@ -584,40 +579,29 @@ const QTOPIC = {S1: ["Crime and public safety"], S2: ["Crime and public safety",
   E13: ["Schools", "City budget and pensions"], E17: ["Schools"], E16: ["Public transit (CTA)"], E3: ["Jobs and the economy"],
   E5: ["Housing costs"], E15: ["Housing costs"], E12: ["Housing costs"], C2: ["Housing costs"], C4: ["Housing costs"], C5: ["Housing costs"], C3: ["Housing costs"]};
 const mine = qid => (QTOPIC[qid] || []).some(t => top3.includes(t));
-const MIN_ANS = 8, MIN_SHARED = 5;
-const STEP = [1, .75, .35, .1, 0]; // points for answers 0, 1, 2, 3 or 4 steps apart (Connor, Nov 11: steeper, so opposite sides earn little)
+// The match IS the map (Connor, Nov 11, after seeing a best match far from his dot: "the dot has to be
+// closest to their closest match", and "we are trying to understand candidate on the 2 axis, not how
+// many you match with because that will be biased to people with more responses"). So the best match
+// is the nearest dot, solid or hollow, and the percent is map closeness: on top of each other is 100%,
+// a full map-width (20 points) apart is 0%. How many statements a person has answered plays no part.
+const MAP_WIDTH = 20;
 const nAns = p => p.answers.filter(a => Q[a.qid]).length;
 function match(p, me){
-  let w = 0, sum = 0, n = 0, same = 0, sides = 0;
-  for (const a of p.answers) { const u = answers[a.qid]; if (u == null || !Q[a.qid]) continue;
-    const k = stars[a.qid] ? 2 : 1; n++; w += k; sum += k * STEP[Math.abs(u - a.value)];
-    if (u !== 0 && a.value !== 0) { sides++; if (Math.sign(u) === Math.sign(a.value)) same++; } }
+  if (p.x == null || p.y == null) return {pct: null, d: null};
   me = me || you();
-  const few = nAns(p) < MIN_ANS, ok = !few && n >= MIN_SHARED;
-  return {pct: ok ? Math.round(100 * sum / w) : null, raw: ok ? sum / w : null, n, same, sides, few,
-    d: p.x == null || p.y == null ? null : Math.hypot(p.x - me.x, p.y - me.y)};
+  const d = Math.hypot(p.x - me.x, p.y - me.y);
+  return {pct: Math.round(100 * Math.max(0, 1 - d / MAP_WIDTH)), d};
 }
-// best first: closeness, then more shared statements, then the nearer dot
+// nearest dot first
 function rankOf(list){
-  const me = you(), far = c => c.m.d == null ? 99 : c.m.d;
-  return list.map(p => ({p, m: match(p, me)})).filter(c => c.m.pct != null).sort((a, b) => (b.m.raw - a.m.raw) || (b.m.n - a.m.n) || (far(a) - far(b)));
-}
-// One line for the map when the nearest candidate dot is not the best match (Connor: people will
-// question a result when another dot sits closer).
-function nearNote(me, top){
-  if (!top) return "";
-  const dots = PEOPLE.filter(p => p.cand && p.x != null && p.y != null).map(p => ({p, m: match(p, me)})).sort((a, b) => a.m.d - b.m.d);
-  const near = dots[0]; if (!near || near.p.id === top.p.id) return "";
-  if (top.m.d != null && top.m.d - near.m.d < 0.3) return "";
-  if (near.m.pct == null) return esc(near.p.name) + "'s dot sits nearer to yours, but " + (near.p.by_lean ? esc(near.p.short) + " is placed by leaning and has too few statement answers to score as a match." : near.m.few ? esc(near.p.short) + " has " + nAns(near.p) + (nAns(near.p) === 1 ? " sourced answer" : " sourced answers") + ", too few to rank." : "you two share too few answered statements to rank.");
-  if (near.m.pct >= top.m.pct) return "";
-  return esc(near.p.name) + "'s dot sits nearer to yours, but your answers are closer to " + esc(top.p.name) + "'s, statement by statement (" + top.m.pct + "% to " + near.m.pct + "%). A dot is an average, so it can hide single statements where you differ.";
+  const me = you();
+  return list.map(p => ({p, m: match(p, me)})).filter(c => c.m.d != null).sort((a, b) => a.m.d - b.m.d);
 }
 function updateLive(){
   if (!finished) { window._me = null; window._top = null; window._top3 = []; window._note = ""; window._mayor = null; $("live").innerHTML = ""; if ($("copyres")) $("copyres").hidden = true; return; }
   const me = you(), ranked = rankOf(PEOPLE.filter(p => p.cand));
   const top = ranked[0] || null;
-  window._me = me; window._top = top ? {p: top.p, pct: top.m.pct} : null; window._top3 = ranked.slice(0, 3).map(c => ({p: c.p, pct: c.m.pct})); window._note = nearNote(me, top);
+  window._me = me; window._top = top ? {p: top.p, pct: top.m.pct} : null; window._top3 = ranked.slice(0, 3).map(c => ({p: c.p, pct: c.m.pct})); window._note = "";
   if ($("copyres")) $("copyres").hidden = me.n < 4;
   if (me.n < 4) {
     const need = 4 - me.n;
@@ -626,22 +610,19 @@ function updateLive(){
     return;
   }
   const sent = (ax, lab) => "On " + lab + ', you land <em class="' + (ax === "y" ? "t" : "") + '">' + (level(me[ax]) === 0 ? "near the middle" : say(ax, me[ax]).toLowerCase()) + "</em>.";
-  const ms = rankOf(PEOPLE.filter(p => !p.cand))[0]; // past mayors use the same count and the same 8-answer bar
+  const ms = rankOf(PEOPLE.filter(p => !p.cand))[0]; // the nearest past mayor dot
   window._mayor = ms ? ms.p : null;
   const done = true;
   let h = '<div class="reslabel">' + (done ? "Your best match" : "Best match so far") + ' <span style="text-transform:none;letter-spacing:0;font-weight:400">(based on ' + me.n + ' of ' + ORDER.length + ' statements)</span></div>';
   if (top) {
     const pods = ranked.slice(0, 3); animPod = false;
     // Plain ranked rows: a near tie reads as a near tie. No podium blocks, no confetti.
-    h += '<div class="ranklist" role="group" aria-label="Your top ' + pods.length + ' matches">' + pods.map((c, i) => '<button type="button" class="pod" data-id="' + c.p.id + '"><span class="rn">' + (i + 1) + '</span><span class="pdn">' + esc(c.p.name) + '</span><b class="pdp tnum">' + c.m.pct + '%</b><span class="rline"><span class="rbar" aria-hidden="true"><i style="width:' + c.m.pct + '%"></i></span><small class="pds tnum">Same side on ' + c.m.same + ' of ' + c.m.sides + '</small></span></button>').join("") + '</div>';
-    h += '<p class="bmsm">Match counts how close your answers are to theirs, statement by statement. The same answer is a full point, each step apart is less, and opposite ends is zero. Starred statements count double. A candidate needs ' + MIN_ANS + ' or more sourced answers to be ranked.</p>';
-
-    const nearLean = PEOPLE.filter(p => p.cand && p.by_lean).map(p => ({p, d: Math.hypot(p.x - me.x, p.y - me.y)})).sort((a, b) => a.d - b.d).slice(0, 3);
-    if (nearLean.length) h += '<p class="leannear"><b>Near you by leaning:</b> ' + nearLean.map(c => '<button type="button" class="linkbtn" data-id="' + c.p.id + '">' + esc(c.p.name) + '</button>').join(", ") + '. <span>These candidates have too few answers on the statements to score, so they are placed by their sourced positions on related issues.</span></p>';
+    h += '<div class="ranklist" role="group" aria-label="Your top ' + pods.length + ' matches">' + pods.map((c, i) => '<button type="button" class="pod" data-id="' + c.p.id + '"><span class="rn">' + (i + 1) + '</span><span class="pdn">' + esc(c.p.name) + '</span><b class="pdp tnum">' + c.m.pct + '%</b><span class="rline"><span class="rbar" aria-hidden="true"><i style="width:' + c.m.pct + '%"></i></span>' + (c.p.by_lean ? '<small class="pds">Placed by leaning</small>' : '') + '</span></button>').join("") + '</div>';
+    h += '<p class="bmsm">Your best match is the candidate whose dot is nearest yours on the map. On top of each other is 100%, a full map apart is 0%. Starred statements count double in where your dot lands. A hollow dot is placed by leaning: the candidate\'s own sourced positions on related issues.</p>';
     // The statement list sits behind "See why" (Connor, Nov 11: the open list was too much under the result).
-    h += '<div class="why"><button type="button" class="linkbtn" id="bdwhy" aria-expanded="' + bdOpen + '">' + (bdOpen ? "Hide the statements" : "See why you match " + esc(top.p.name)) + '</button></div>' + (bdOpen ? breakdownHTML(top.p) : "");
+    h += '<div class="why"><button type="button" class="linkbtn" id="bdwhy" aria-expanded="' + bdOpen + '">' + (bdOpen ? "Hide the details" : "See why you match " + esc(top.p.name)) + '</button></div>' + (bdOpen ? breakdownHTML(top.p) : "");
     const lean = profile && profile.lean;
-    if (lean && lean !== "Undecided" && lean !== "Prefer not to say" && lean !== top.p.name) h += '<p class="leanline">You said you lean toward ' + esc(lean) + '. Your answers line up most with ' + esc(top.p.name) + '.</p>';
+    if (lean && lean !== "Undecided" && lean !== "Prefer not to say" && lean !== top.p.name) h += '<p class="leanline">You said you lean toward ' + esc(lean) + '. Your dot sits nearest ' + esc(top.p.name) + '.</p>';
   } else h += '<p class="hint">No candidate has enough public positions to name a match yet.</p>';
   h += '<p class="resline">' + sent("x", "the economy") + " " + sent("y", "enforcement") + (ms ? ' <span style="font-weight:400;color:var(--ink-2)">Closest past mayor: ' + esc(ms.p.name) + '.</span>' : "") + '</p>';
   $("live").innerHTML = h + REDO.replace('<span class="resetwrap">', '<button type="button" class="linkbtn" id="qcard">See share card</button><span class="resetwrap">');
@@ -649,18 +630,19 @@ function updateLive(){
   const bm = $("bdmore"); if (bm) bm.onclick = () => { bdAll = !bdAll; updateLive(); };
   const bw = $("bdwhy"); if (bw) bw.onclick = () => { bdOpen = !bdOpen; if (bdOpen) track("mayor_quiz_why_opened", {match: top.p.id}); updateLive(); const b2 = $("bdwhy"); if (b2) b2.focus({preventScroll: true}); };
 }
-/* "You and <best match>": same sign = agree, opposite sign = differ, a Neutral on either side = counted apart */
+/* "See why": where you and the best match sit on each line, then the statements you both answered */
 function breakdownHTML(p){
   const mp = {}; p.answers.forEach(a => mp[a.qid] = a);
   const rows = [];
   ORDER.forEach(qid => { const u = answers[qid], a = mp[qid]; if (u == null || !a) return;
     rows.push({qid, u, a, kind: (u === 0 || a.value === 0) ? "neutral" : (Math.sign(u) === Math.sign(a.value) ? "agree" : "differ")}); });
   rows.sort((a, b) => mine(b.qid) - mine(a.qid)); // the visitor's top issues first, quiz order within each group
-  const n = k => rows.filter(r => r.kind === k).length, pl = c => c + (c === 1 ? " statement" : " statements");
+  const me = you(), word = (ax, v) => level(v) === 0 ? "near the middle" : say(ax, v).toLowerCase();
   let h = '<div class="bd"><div class="reslabel" style="margin:0">You and ' + esc(p.name) + '</div>';
-  if (!rows.length) return h + '<p class="bdsub">You and ' + esc(p.name) + ' have no statement you both answered.</p></div>';
-  h += '<p class="bdsum">You agree on ' + pl(n("agree")) + ' and differ on ' + n("differ") + '.</p>';
-  if (n("neutral")) h += '<p class="bdsub">On ' + pl(n("neutral")) + ', one side is neutral. Those are counted apart.</p>';
+  h += '<div class="bdaxis"><p><b>Economy.</b> You: ' + word("x", me.x) + '. ' + esc(p.short) + ': ' + word("x", p.x) + '.</p><p><b>Enforcement.</b> You: ' + word("y", me.y) + '. ' + esc(p.short) + ': ' + word("y", p.y) + '.</p></div>';
+  if (p.by_lean) h += '<p class="bdsub">' + esc(p.short) + ' is placed by leaning: their own sourced positions on related issues. <button type="button" class="linkbtn" data-id="' + p.id + '">Open ' + esc(p.short) + "'s positions and sources</button></p>";
+  if (!rows.length) return h + '<p class="bdsub">' + esc(p.name) + ' has no sourced answer yet on a statement you answered.</p></div>';
+  h += '<p class="bdsub">Statements you both answered, your top issues first:</p>';
   const tag = {agree: ["good", "Agree"], differ: ["weak", "Differ"], neutral: ["", "One side neutral"]};
   h += '<div class="bdlist">' + (bdAll ? rows : rows.slice(0, 5)).map(r => '<div class="bdrow"><div class="bds">' + esc(Q[r.qid].text) + (mine(r.qid) ? ' <span class="chip blue">Your issue</span>' : '') + '</div><div class="bdc"><span class="chip blue">You: ' + LABELS[r.u] + '</span><span class="chip">' + esc(p.short) + ': ' + LABELS[r.a.value] + '</span><span class="chip ' + tag[r.kind][0] + '">' + tag[r.kind][1] + '</span><a href="' + esc(r.a.source_url) + '" target="_blank" rel="noopener">Source</a></div></div>').join("") + '</div>';
   if (rows.length > 5) h += '<div><button type="button" class="linkbtn" id="bdmore">' + (bdAll ? "Show fewer" : "Show all " + rows.length) + '</button></div>';
@@ -705,7 +687,7 @@ function renderCands(){
     (candsAll ? cs : cs.slice(0, 12)).map(({p, m}) => `<div class="crow${p.id === bestId ? " best" : ""}" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources">
       <label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label>
       <span class="cname" role="cell"><span class="mn" title="${esc(p.background || p.role)}">${esc(p.name)}</span><span class="cmeta"><span class="cstat ${/no challenge/i.test(p.status||"") ? "good" : /did not|withdrew/i.test(p.status||"") ? "weak" : ""}">${esc(p.status || "Status unknown")}</span> · ${p.n} ${p.n === 1 ? "fact" : "facts"}${p.site ? ` · <a class="csite" href="${esc(p.site)}" target="_blank" rel="noopener">Site</a>` : ""}</span></span>
-      ${live ? `<span class="mcell" role="cell">${m.pct != null ? `<span class="mtop"><b class="mpct tnum">${m.pct}%</b><span class="mbar"><i style="width:${m.pct}%"></i></span></span><span class="mon">${m.same} of ${m.sides} same side</span>` : `<span class="mnone">${p.by_lean ? "Placed by leaning" : m.few ? (p.x == null || p.y == null ? "Not enough to place yet" : "Not enough answers yet") : "Too few shared answers"}</span>`}</span>` : ""}
+      ${live ? `<span class="mcell" role="cell">${m.pct != null ? `<span class="mtop"><b class="mpct tnum">${m.pct}%</b><span class="mbar"><i style="width:${m.pct}%"></i></span></span><span class="mon">${p.id === bestId ? "Best match" : p.by_lean ? "By leaning" : ""}</span>` : `<span class="mnone">Not enough to place yet</span>`}</span>` : ""}
       <span class="cell" role="cell">${lineCell("x", p.x, p.proof === "thin", p)}</span>
       <span class="cell" role="cell">${lineCell("y", p.y, p.proof === "thin", p)}</span>
       <span class="cfund" role="cell">${fundsCell(p.funds)}</span>
@@ -723,7 +705,7 @@ function toggleCmp(id){
 function renderCmpBar(){
   const el = $("cmpbar"), live = finished && you().n >= 4;
   if (cmp.length === 2) el.innerHTML = `<p class="small">Comparing <b>${esc(BY[cmp[0]].name)}</b> and <b>${esc(BY[cmp[1]].name)}</b>.</p><span class="actions" style="gap:14px"><button type="button" class="linkbtn" id="cmpclr">Clear</button><button type="button" class="btn sm" id="cmpgo">Compare these two</button></span>`;
-  else el.innerHTML = `<p class="small">${live ? "Sorted by how close your answers are to each candidate's, statement by statement. " : ""}Compare 2: tick two rows, candidates or past mayors, to see their answers side by side, with sources.${cmp.length === 1 ? " Pick one more." : ""}</p>`;
+  else el.innerHTML = `<p class="small">${live ? "Sorted by how close each candidate's dot is to yours on the map. " : ""}Compare 2: tick two rows, candidates or past mayors, to see their answers side by side, with sources.${cmp.length === 1 ? " Pick one more." : ""}</p>`;
   if (cmp.length === 2) { $("cmpgo").onclick = openCmp; $("cmpclr").onclick = () => { cmp = []; renderCands(); renderMayors(); }; }
 }
 let lastFocus = null;
