@@ -308,6 +308,10 @@
 .mc .copylink{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--link);background:var(--card);border:1px solid var(--line);border-radius:980px;padding:6px 14px;cursor:pointer;transition:background-color .15s ease-out,border-color .15s ease-out}
 .mc .copylink:hover{border-color:var(--link)}
 .mc .copylink.done{background:var(--blue-wash);border-color:transparent}
+.mc .copyres{background:var(--blue);color:#fff;border-color:transparent}
+.mc .copyres:hover{background:var(--blue-hover);border-color:transparent}
+.mc .copyres.done{background:var(--blue-wash);color:var(--link)}
+.mc .copyres[hidden]{display:none}
 .mc .copylink:focus-visible{outline:none;box-shadow:0 0 0 3px var(--focus)}
 .mc .mtr.wave .mseg b{opacity:1;animation:mc-wave .45s ease-out calc(var(--i) * 22ms) both}
 @keyframes mc-wave{0%{transform:scaleY(.3)}50%{transform:scaleY(1.9)}100%{transform:scaleY(1)}}

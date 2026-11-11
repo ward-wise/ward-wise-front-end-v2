@@ -11,8 +11,7 @@
 //   mayor_quiz_restart       {}                       Change my answers
 //   mayor_quiz_share_card    {}                       share card downloaded
 //   mayor_quiz_person_opened {person}                 the drawer opens on a person
-//   mayor_quiz_link_copied   {}                       Copy link at the top of the page
-//   mayor_quiz_card_copied   {where}                  result picture copied (where: result or card)
+//   mayor_quiz_card_copied   {where}                  result picture copied (where: top, result or card)
 //   mayor_quiz_reset         {answered, finished}     Start over, after Yes
 // quiz_ward is the ward typed into the quiz; track() already sets "ward" to the visitor's own saved ward.
 (function () {
@@ -565,11 +564,12 @@ function match(p){
   return {pct: Math.round(100 * Math.max(0, 1 - d / MAP_WIDTH)), n, d};
 }
 function updateLive(){
-  if (!finished) { window._me = null; window._top = null; $("live").innerHTML = ""; return; }
+  if (!finished) { window._me = null; window._top = null; window._mayor = null; $("live").innerHTML = ""; if ($("copyres")) $("copyres").hidden = true; return; }
   const me = you(), cs = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)}));
   const ranked = cs.filter(c => c.m.pct != null && c.p.proof !== "thin").sort((a, b) => a.m.d - b.m.d);
   const top = ranked[0] || null;
   window._me = me; window._top = top ? {p: top.p, pct: top.m.pct} : null; window._top3 = ranked.slice(0, 3).map(c => ({p: c.p, pct: c.m.pct}));
+  if ($("copyres")) $("copyres").hidden = me.n < 4;
   if (me.n < 4) {
     const need = 4 - me.n;
     $("live").innerHTML = '<div class="reslabel">Your result</div><p class="hint">You answered too few statements to place you. Answer ' + need + ' more and your match appears here, with your dot on the chart.</p>' + REDO;
@@ -578,6 +578,7 @@ function updateLive(){
   }
   const sent = (ax, lab) => "On " + lab + ', you land <em class="' + (ax === "y" ? "t" : "") + '">' + (level(me[ax]) === 0 ? "near the middle" : say(ax, me[ax]).toLowerCase()) + "</em>.";
   const ms = PEOPLE.filter(p => !p.cand && p.x != null && p.y != null).map(p => ({p, d: Math.hypot(p.x - me.x, p.y - me.y)})).sort((a, b) => a.d - b.d)[0];
+  window._mayor = ms ? ms.p : null;
   const done = true;
   let h = '<div class="reslabel">' + (done ? "Your best match" : "Best match so far") + ' <span style="text-transform:none;letter-spacing:0;font-weight:400">(based on ' + me.n + ' of ' + ORDER.length + ' statements)</span></div>';
   if (top3.length) h += '<p class="topline"><b>Your top issues:</b> ' + top3.map(esc).join(", ") + '</p>';
@@ -592,7 +593,7 @@ function updateLive(){
     if (lean && lean !== "Undecided" && lean !== "Prefer not to say" && lean !== top.p.name) h += '<p class="leanline">You said you lean toward ' + esc(lean) + '. Your answers line up most with ' + esc(top.p.name) + '.</p>';
   } else h += '<p class="hint">No candidate has enough public positions to name a match yet.</p>';
   h += '<p class="resline">' + sent("x", "the economy") + " " + sent("y", "city control") + (ms ? ' <span style="font-weight:400;color:var(--ink-2)">Closest past mayor: ' + esc(ms.p.name) + '.</span>' : "") + '</p>';
-  $("live").innerHTML = h + REDO.replace('<div class="actions">', '<div class="actions"><button type="button" class="btn" id="qcopy">Copy my result</button><button type="button" class="btn btn-ghost" id="qcard">See my share card</button>');
+  $("live").innerHTML = h + REDO.replace('<div class="actions">', '<div class="actions"><button type="button" class="btn" id="qcopy">Copy my results</button><button type="button" class="btn btn-ghost" id="qcard">See my share card</button>');
   $("qredo").onclick = reopen; $("qcard").onclick = openCard; $("qcopy").onclick = () => copyCard($("qcopy"), "result");
   const bm = $("bdmore"); if (bm) bm.onclick = () => { bdAll = !bdAll; updateLive(); };
 }
@@ -705,6 +706,9 @@ function wrapText(g, text, x, y, maxW, lh){
   text.split(" ").forEach(w => { const test = line ? line + " " + w : w; if (g.measureText(test).width > maxW && line) { g.fillText(line, x, yy); line = w; yy += lh; } else line = test; });
   g.fillText(line, x, yy); return yy;
 }
+/* QR code for https://www.wardwise.org/mayor (version 3, error level M), made once with segno 1.6.1.
+   The address never changes, so the page needs no QR library. */
+const QR = ["11111110100100011001001111111", "10000010010000110010101000001", "10111010101001101100001011101", "10111010100111101001101011101", "10111010010001100110001011101", "10000010100011111001001000001", "11111110101010101010101111111", "00000000110001101111100000000", "01010111110110001000011101101", "01000101110011111000101001101", "10011111010111001101001100110", "01011101110100101001011110110", "10111110111100000101001101000", "01101001011111001011110101010", "01001110100101111000101000011", "01011001000000010110111100001", "01111111010110000101110000010", "01001100001011011010011101111", "10110010110000111100010001011", "00011100100100000111100011010", "10110010000101011001111110110", "00000000110111101100100010001", "11111110100100100110101011110", "10000010110010100000100010110", "10111010011110001010111111011", "10111010111010111101111011001", "10111010010011101111100011001", "10000010100100010111100101010", "11111110011101101101111011010"];
 function drawCard(me, top){
   const c = document.createElement("canvas"); c.width = 1080; c.height = 1350; const g = c.getContext("2d");
   const F = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif';
@@ -716,11 +720,11 @@ function drawCard(me, top){
   g.fillStyle = "#0071e3"; g.beginPath(); g.arc(52, 18, 4.2, 0, 7); g.fill();
   g.fillStyle = "#1c2433"; g.beginPath(); g.arc(18, 46, 4.6, 0, 7); g.fill(); g.restore();
   g.fillStyle = "#1d1d1f"; g.textBaseline = "alphabetic"; g.font = "700 46px " + F; g.fillText("Ward Wise", 168, 132);
-  g.font = "700 58px " + F; const yEnd = wrapText(g, "Where I stand on Chicago's 2027 mayor race", 72, 270, 936, 68);
-  g.fillStyle = "#6e6e73"; g.font = "600 30px " + F; g.fillText("My spot on the map", 72, yEnd + 70);
-  g.fillStyle = "#0071e3"; g.font = "700 74px " + F; const yq = wrapText(g, quadName(me), 72, yEnd + 150, 936, 82);
+  g.font = "700 52px " + F; const yEnd = wrapText(g, "My spot in Chicago's 2027 mayor race", 72, 248, 936, 62);
+  g.fillStyle = "#6e6e73"; g.font = "600 28px " + F; g.fillText("Where I land on the map", 72, yEnd + 58);
+  g.fillStyle = "#0071e3"; g.font = "700 66px " + F; const yq = wrapText(g, quadName(me), 72, yEnd + 132, 936, 74);
   // map: the 4 quadrant colors, same layout as the page map (right = lower taxes, up = more police)
-  const my = Math.max(yq + 60, 540), S = Math.min(600, 1110 - my), mx = (1080 - S) / 2, h = S / 2;
+  const my = yq + 50, S = Math.max(360, Math.min(560, 980 - my)), mx = (1080 - S) / 2, h = S / 2;
   const col = ["rgba(240,160,60,0.42)", "rgba(60,180,140,0.42)", "rgba(150,120,220,0.42)", "rgba(90,160,235,0.42)"];
   [[mx + h, my, col[0]], [mx, my, col[1]], [mx, my + h, col[2]], [mx + h, my + h, col[3]]].forEach(q => { g.fillStyle = q[2]; g.fillRect(q[0], q[1], h, h); });
   g.strokeStyle = "rgba(29,29,31,0.45)"; g.lineWidth = 2; g.beginPath(); g.moveTo(mx, my + h); g.lineTo(mx + S, my + h); g.moveTo(mx + h, my); g.lineTo(mx + h, my + S); g.stroke();
@@ -740,17 +744,31 @@ function drawCard(me, top){
   g.fillStyle = "#0071e3"; g.strokeStyle = "#ffffff"; g.lineWidth = 6; g.beginPath(); g.arc(dx, dy, 18, 0, 7); g.stroke(); g.fill();
   const badge = (n, x, y, r) => { g.fillStyle = "#1d1d1f"; g.strokeStyle = "#ffffff"; g.lineWidth = 3; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.stroke();
     g.fillStyle = "#ffffff"; g.font = "700 " + Math.round(r * 1.15) + "px " + F; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(String(n), x, y + 1); g.textAlign = "left"; g.textBaseline = "alphabetic"; };
-  t3.map((t, i) => [t, i]).reverse().forEach(([t, i]) => { if (t.p.x != null && t.p.y != null) badge(i + 1, X(t.p.x), Y(t.p.y), 15); });
+  // badges that would cover each other sit side by side, so 1, 2 and 3 all stay readable
+  const spots = [];
+  t3.forEach((t, i) => { if (t.p.x == null || t.p.y == null) return; let bx = X(t.p.x), by = Y(t.p.y);
+    for (let k = 0; k < 6 && spots.some(o => Math.hypot(o[0] - bx, o[1] - by) < 31); k++) bx += 31;
+    spots.push([bx, by, i]); });
+  spots.reverse().forEach(([bx, by, i]) => badge(i + 1, bx, by, 15));
   g.font = "800 28px " + F; const yl = dx > mx + S - 110 ? -1 : 1; g.textAlign = yl > 0 ? "left" : "right";
   g.lineWidth = 7; g.strokeStyle = "#ffffff"; g.lineJoin = "round"; g.strokeText("You", dx + 30 * yl, dy - 24); g.fillStyle = "#0071e3"; g.fillText("You", dx + 30 * yl, dy - 24); g.textAlign = "left";
-  // under the map: the 3 closest, numbered like the map, then the link
+  // under the map: the 3 closest, numbered like the map, then the closest past mayor
+  const y0 = my + S;
   if (t3.length) {
-    g.fillStyle = "#6e6e73"; g.font = "600 28px " + F; g.fillText("My closest 2027 candidates", 72, my + S + 56);
-    let x = 72; const yb = my + S + 108;
+    g.fillStyle = "#6e6e73"; g.font = "600 26px " + F; g.fillText("My closest 2027 candidates", 72, y0 + 50);
+    let x = 72; const yb = y0 + 98;
     t3.forEach((t, i) => { badge(i + 1, x + 17, yb - 11, 17); g.fillStyle = "#1d1d1f"; g.font = "700 32px " + F; const txt = t.p.short + " " + t.pct + "%"; g.fillText(txt, x + 44, yb); x += 44 + g.measureText(txt).width + 34; });
-  } else { g.fillStyle = "#1d1d1f"; g.font = "700 32px " + F; g.fillText("No candidate has enough public positions to match yet.", 72, my + S + 90); }
-  g.fillStyle = "#0071e3"; g.font = "600 34px " + F;
-  g.fillText("Take the quiz at wardwise.org/mayor", 72, 1306);
+  } else { g.fillStyle = "#1d1d1f"; g.font = "700 30px " + F; g.fillText("No candidate has enough public positions to match yet.", 72, y0 + 80); }
+  const pm = window._mayor;
+  if (pm) { g.font = "600 28px " + F; g.fillStyle = "#6e6e73"; g.fillText("Closest past mayor:", 72, y0 + 150); const w = g.measureText("Closest past mayor: ").width; g.fillStyle = "#1d1d1f"; g.font = "700 28px " + F; g.fillText(pm.name, 72 + w, y0 + 150); }
+  // bottom: a QR code for friends on a phone, and the printed link
+  g.fillStyle = "#e8e8ed"; g.fillRect(0, 1150, 1080, 2);
+  const qs = 5, qx = 72, qy = 1172;
+  g.fillStyle = "#ffffff"; g.fillRect(qx - 8, qy - 8, QR.length * qs + 16, QR.length * qs + 16);
+  g.fillStyle = "#1d1d1f"; QR.forEach((row, r) => { for (let c2 = 0; c2 < row.length; c2++) if (row[c2] === "1") g.fillRect(qx + c2 * qs, qy + r * qs, qs, qs); });
+  const tx = qx + QR.length * qs + 36;
+  g.fillStyle = "#6e6e73"; g.font = "600 28px " + F; g.fillText("Scan or visit to take the quiz", tx, 1226);
+  g.fillStyle = "#0071e3"; g.font = "700 52px " + F; g.fillText("wardwise.org/mayor", tx, 1292);
   return c;
 }
 let cardCanvas = null;
@@ -776,9 +794,9 @@ async function copyCard(btn, where){
   } catch (e) { ok = false; }
   if (!ok) { if ($("card-ov").hidden) openCard(); return; }
   track("mayor_quiz_card_copied", {where});
-  const was = btn.dataset.label || btn.textContent; btn.dataset.label = was;
-  btn.textContent = "Copied, paste it anywhere"; btn.classList.add("done");
-  clearTimeout(btn._t); btn._t = setTimeout(() => { btn.textContent = was; btn.classList.remove("done"); }, 2500);
+  const lab = btn.querySelector(".cltext") || btn, was = btn.dataset.label || lab.textContent; btn.dataset.label = was;
+  lab.textContent = "Copied, paste it anywhere"; btn.classList.add("done");
+  clearTimeout(btn._t); btn._t = setTimeout(() => { lab.textContent = was; btn.classList.remove("done"); }, 2500);
 }
 function closeCard(){ $("card-ov").hidden = true; lockOn(false); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
 $("card-ov").addEventListener("mousedown", e => { if (e.target === $("card-ov")) closeCard(); });
@@ -830,18 +848,8 @@ $("tabC").onclick = () => showTab(true); $("tabM").onclick = () => showTab(false
 $("m-check").textContent = DATA.check;
 
 started = progressN() > 0; // a reload mid-quiz continues the same run
-/* Copy link at the top: copies the page address without any ?demo, so friends land on a fresh quiz */
-let copyT = 0;
-if ($("copylink")) $("copylink").onclick = async () => {
-  const btn = $("copylink"), label = btn.querySelector(".cltext"), url = location.origin + location.pathname;
-  let ok = false;
-  try { await navigator.clipboard.writeText(url); ok = true; } catch (e) {
-    try { const t = document.createElement("textarea"); t.value = url; t.setAttribute("readonly", ""); t.style.position = "fixed"; t.style.opacity = "0"; document.body.appendChild(t); t.select(); ok = document.execCommand("copy"); t.remove(); } catch (e2) { ok = false; }
-  }
-  label.textContent = ok ? "Copied" : url; btn.classList.toggle("done", ok);
-  if (ok) track("mayor_quiz_link_copied", {});
-  clearTimeout(copyT); copyT = setTimeout(() => { label.textContent = "Copy link"; btn.classList.remove("done"); }, ok ? 2000 : 8000);
-};
+/* Copy my results at the top right: shown only after the reveal, copies the same picture as the result screen */
+if ($("copyres")) $("copyres").onclick = () => copyCard($("copyres"), "top");
 qi = ORDER.findIndex(q => !isAnswered(q)); if (qi < 0) qi = ORDER.length - 1;
 $("showAnyway").onclick = () => { showField = true; render(); };
 if (DEMO && !MID) { // sample profile leans toward someone who is NOT the best match

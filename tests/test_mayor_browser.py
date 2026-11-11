@@ -250,9 +250,9 @@ def test_every_drawer_offers_a_correction_email_naming_the_person(page, mayor_si
     assert unquote(href.split("subject=", 1)[1]) == "Mayor quiz correction: " + name
 
 
-def test_bar_follows_you_jumps_back_pins_and_copy_link_is_counted(page, mayor_site):
+def test_bar_follows_you_jumps_back_and_pins(page, mayor_site):
     """The bar rings the statement you are on, a click on it jumps there, Backspace goes back, the bar pins
-    under the site header when the card scrolls away, and Copy link copies the page address and is counted."""
+    under the site header when the card scrolls away, and Copy my results stays hidden until there is a result."""
     page.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=mayor_site)
     page.goto(f"{mayor_site}/mayor")
     answer(page, KEYS[:6])
@@ -272,24 +272,23 @@ def test_bar_follows_you_jumps_back_pins_and_copy_link_is_counted(page, mayor_si
     page.wait_for_function("document.getElementById('qpin').classList.contains('on')")
     page.locator("#qpin .mseg").nth(4).click()
     page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 5 of 24')")
-    page.click("#copylink")
-    page.wait_for_function("document.querySelector('#copylink').innerText.includes('Copied')")
-    assert page.evaluate("navigator.clipboard.readText()").rstrip("/") == f"{mayor_site}/mayor"
-    ga, ph = sent(page)
-    assert len(named(ph, "mayor_quiz_link_copied")) == 1 and len(named(ga, "mayor_quiz_link_copied")) == 1
+    assert page.locator("#copyres").is_hidden(), "Copy my results shows before there is a result"
     assert page.errors == []
 
 
 def test_copy_my_result_puts_a_picture_on_the_clipboard_and_is_counted(page, mayor_site):
     page.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=mayor_site)
     run_quiz(page, mayor_site)
+    assert page.locator("#copyres").is_visible()
+    page.click("#copyres")
+    page.wait_for_function("document.querySelector('#copyres').innerText.includes('Copied')")
     page.click("#qcopy")
     page.wait_for_function("document.querySelector('#qcopy').innerText.includes('Copied')")
     types = page.evaluate("async () => (await navigator.clipboard.read())[0].types")
     assert "image/png" in types
     ga, ph = sent(page)
-    assert [p.get("where") for p in named(ph, "mayor_quiz_card_copied")] == ["result"]
-    assert len(named(ga, "mayor_quiz_card_copied")) == 1
+    assert [p.get("where") for p in named(ph, "mayor_quiz_card_copied")] == ["top", "result"]
+    assert len(named(ga, "mayor_quiz_card_copied")) == 2
     assert page.errors == []
 
 
