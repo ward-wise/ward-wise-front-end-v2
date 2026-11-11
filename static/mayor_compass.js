@@ -54,7 +54,7 @@ function trackFinished(){
   if (DEMO || !window.WardWiseAnalytics) return;
   const me = you(), ans = {};
   ORDER.forEach(q => { if (answers[q] != null) ans[q] = WORDS[answers[q]]; else if (unsure[q]) ans[q] = "not_sure"; else if (q in answers) ans[q] = "skipped"; });
-  const ranked = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)})).filter(c => c.m.pct != null).sort((a, b) => b.m.pct - a.m.pct || b.m.n - a.m.n);
+  const ranked = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)})).filter(c => c.m.pct != null).sort((a, b) => a.m.d - b.m.d);
   const o = {answers: ans, matters: ORDER.filter(q => stars[q]), issues: top3.slice(), answered: answered(), finished_early: earlyFinish,
     top3: ranked.slice(0, 3).map(c => ({id: c.p.id, pct: c.m.pct})), x: Math.round(me.x * 100) / 100, y: Math.round(me.y * 100) / 100};
   if (profile && profile.ward) o.quiz_ward = profile.ward;
@@ -467,20 +467,27 @@ document.addEventListener("keydown", e => {
 /* ---------- scoring ---------- */
 function you(){
   const ax = {econ: [], safety: []};
-  for (const [qid, v] of Object.entries(answers)) if (v != null && Q[qid]) ax[Q[qid].axis].push(v * Q[qid].agree_direction * 5);
+  // A starred statement ("Matters to me") counts twice in where your dot lands.
+  for (const [qid, v] of Object.entries(answers)) if (v != null && Q[qid]) { const s = v * Q[qid].agree_direction * 5; ax[Q[qid].axis].push(s); if (stars[qid]) ax[Q[qid].axis].push(s); }
   const m = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
   return {x: m(ax.econ), y: m(ax.safety), n: ax.econ.length + ax.safety.length};
 }
+// The match IS the map (Connor: the dot and the match should be the same thing). It is how close
+// a candidate's dot is to yours: on top of each other is 100%, a full map-width (20 points) apart
+// is 0%. So the best match is always the nearest dot. n = statements you both have answers on,
+// kept for the "You and X" breakdown.
+const MAP_WIDTH = 20;
 function match(p){
-  let w = 0, s = 0, n = 0;
-  for (const a of p.answers) { const u = answers[a.qid]; if (u == null) continue; const wt = stars[a.qid] ? 2 : 1; s += wt * (1 - Math.abs(u - a.value) / 4); w += wt; n++; }
-  // Thin records: pull the match toward 50% (a coin flip) when few statements are shared; full weight at 8+.
-  return n >= 3 ? {pct: Math.round(100 * (0.5 + (s / w - 0.5) * Math.min(1, n / 8))), n} : {pct: null, n};
+  let n = 0;
+  for (const a of p.answers) if (answers[a.qid] != null) n++;
+  if (p.x == null || p.y == null) return {pct: null, n, d: null};
+  const me = you(), d = Math.hypot(p.x - me.x, p.y - me.y);
+  return {pct: Math.round(100 * Math.max(0, 1 - d / MAP_WIDTH)), n, d};
 }
 function updateLive(){
   if (!finished) { window._me = null; window._top = null; $("live").innerHTML = ""; return; }
   const me = you(), cs = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)}));
-  const ranked = cs.filter(c => c.m.pct != null).sort((a, b) => b.m.pct - a.m.pct || b.m.n - a.m.n);
+  const ranked = cs.filter(c => c.m.pct != null).sort((a, b) => a.m.d - b.m.d);
   const top = ranked[0] || null;
   window._me = me; window._top = top ? {p: top.p, pct: top.m.pct} : null;
   if (me.n < 4) {
@@ -497,8 +504,8 @@ function updateLive(){
   if (top) {
     const pods = ranked.slice(0, 3), go = animPod; animPod = false;
     const burst = go && !reduced() ? '<div class="burst" aria-hidden="true">' + Array.from({length: 18}, (_, i) => { const a = (i / 18) * Math.PI * 2 + .2, d = 70 + (i % 3) * 30; return '<i style="--dx:' + Math.round(Math.cos(a) * d * 1.3) + 'px;--dy:' + Math.round(Math.sin(a) * d - 20) + 'px;--r:' + (i * 47 % 360) + 'deg;--c:' + ["var(--blue)", "var(--good)", "var(--weak)", "var(--ink-3)"][i % 4] + '"></i>'; }).join("") + '</div>' : "";
-    h += '<div class="podium' + (go ? " go" : "") + '" role="group" aria-label="Your top ' + pods.length + ' matches" style="grid-template-columns:repeat(' + pods.length + ',minmax(0,1fr))">' + pods.map((c, i) => '<button type="button" class="pod p' + (i + 1) + '" data-id="' + c.p.id + '" style="--d:' + [360, 180, 0][i] + 'ms"><span class="lift"><span class="pdn">' + esc(c.p.name) + '</span><span class="pdp tnum">' + c.m.pct + '%</span><small class="lead2">on ' + c.m.n + ' statements</small></span><span class="blk">' + (i + 1) + '</span></button>').join("") + burst + '</div>';
-    h += '<p class="bmsm">Based on ' + top.m.n + ' statements you both have answers on. Fewer than 8 pulls the match toward 50%. Starred statements count double.</p>';
+    h += '<div class="podium' + (go ? " go" : "") + '" role="group" aria-label="Your top ' + pods.length + ' matches" style="grid-template-columns:repeat(' + pods.length + ',minmax(0,1fr))">' + pods.map((c, i) => '<button type="button" class="pod p' + (i + 1) + '" data-id="' + c.p.id + '" style="--d:' + [360, 180, 0][i] + 'ms"><span class="lift"><span class="pdn">' + esc(c.p.name) + '</span><span class="pdp tnum">' + c.m.pct + '%</span><small class="lead2">' + ["Closest on the map", "2nd closest", "3rd closest"][i] + '</small></span><span class="blk">' + (i + 1) + '</span></button>').join("") + burst + '</div>';
+    h += '<p class="bmsm">Match is how close their dot is to yours on the map: on top of each other is 100%, a full map apart is 0%. Starred statements count double in where your dot lands.</p>';
 
     h += breakdownHTML(top.p);
     const lean = profile && profile.lean;
@@ -555,14 +562,14 @@ function renderCands(){
   const f = p => (p.funds && p.funds.raised) || -1;
   const live = finished && you().n >= 4;
   const cs = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)}));
-  if (live) cs.sort((a, b) => ((b.m.pct != null) - (a.m.pct != null)) || (b.m.pct - a.m.pct) || (b.m.n - a.m.n) || (f(b.p) - f(a.p)));
+  if (live) cs.sort((a, b) => ((b.m.pct != null) - (a.m.pct != null)) || (a.m.d - b.m.d) || (f(b.p) - f(a.p)));
   else cs.sort((a, b) => f(b.p) - f(a.p));
   const bestId = live && cs[0] && cs[0].m.pct != null ? cs[0].p.id : null;
   $("cand-grid").innerHTML = '<div class="ctab' + (live ? " m" : "") + '" role="table" aria-label="2027 candidates"><div class="chead" role="row"><span></span><span role="columnheader">Candidate</span>' + (live ? '<span role="columnheader">Match</span>' : '') + '<span role="columnheader">' + lnHead("Taxes and spending", "Higher", "Lower") + '</span><span role="columnheader">' + lnHead("Police", "Reform", "More") + '</span><span role="columnheader">Raised for the mayor race</span><span></span></div>' +
     (candsAll ? cs : cs.slice(0, 12)).map(({p, m}) => `<div class="crow${p.id === bestId ? " best" : ""}" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources">
       <label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label>
       <span class="cname" role="cell"><span class="mn" title="${esc(p.background || p.role)}">${esc(p.name)}</span><span class="cmeta"><span class="cstat ${/no challenge/i.test(p.status||"") ? "good" : /did not|withdrew/i.test(p.status||"") ? "weak" : ""}">${esc(p.status || "Status unknown")}</span> · ${p.n} ${p.n === 1 ? "fact" : "facts"}${p.site ? ` · <a class="csite" href="${esc(p.site)}" target="_blank" rel="noopener">Site</a>` : ""}</span></span>
-      ${live ? `<span class="mcell" role="cell">${m.pct != null ? `<span class="mtop"><b class="mpct tnum">${m.pct}%</b><span class="mbar"><i style="width:${m.pct}%"></i></span></span><span class="mon">${p.id === bestId ? "Best match, " : ""}${m.n} statements</span>` : '<span class="mnone">Too few positions</span>'}</span>` : ""}
+      ${live ? `<span class="mcell" role="cell">${m.pct != null ? `<span class="mtop"><b class="mpct tnum">${m.pct}%</b><span class="mbar"><i style="width:${m.pct}%"></i></span></span><span class="mon">${p.id === bestId ? "Best match" : ""}</span>` : '<span class="mnone">No dot yet</span>'}</span>` : ""}
       <span class="cell" role="cell">${lineCell("x", p.x, p.proof === "thin", p)}</span>
       <span class="cell" role="cell">${lineCell("y", p.y, p.proof === "thin", p)}</span>
       <span class="cfund" role="cell">${fundsCell(p.funds)}</span>
@@ -580,7 +587,7 @@ function toggleCmp(id){
 function renderCmpBar(){
   const el = $("cmpbar"), live = finished && you().n >= 4;
   if (cmp.length === 2) el.innerHTML = `<p class="small">Comparing <b>${esc(BY[cmp[0]].name)}</b> and <b>${esc(BY[cmp[1]].name)}</b>.</p><span class="actions" style="gap:14px"><button type="button" class="linkbtn" id="cmpclr">Clear</button><button type="button" class="btn sm" id="cmpgo">Compare these two</button></span>`;
-  else el.innerHTML = `<p class="small">${live ? "Sorted by how well each candidate's sourced positions match your answers. " : ""}Compare 2: tick two rows, candidates or past mayors, to see their answers side by side, with sources.${cmp.length === 1 ? " Pick one more." : ""}</p>`;
+  else el.innerHTML = `<p class="small">${live ? "Sorted by how close each candidate's dot is to yours on the map. " : ""}Compare 2: tick two rows, candidates or past mayors, to see their answers side by side, with sources.${cmp.length === 1 ? " Pick one more." : ""}</p>`;
   if (cmp.length === 2) { $("cmpgo").onclick = openCmp; $("cmpclr").onclick = () => { cmp = []; renderCands(); renderMayors(); }; }
 }
 let lastFocus = null;
@@ -707,7 +714,7 @@ started = progressN() > 0; // a reload mid-quiz continues the same run
 qi = ORDER.findIndex(q => !isAnswered(q)); if (qi < 0) qi = ORDER.length - 1;
 $("showAnyway").onclick = () => { showField = true; render(); };
 if (DEMO && !MID) { // sample profile leans toward someone who is NOT the best match
-  const r = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)})).filter(c => c.m.pct != null).sort((a, b) => b.m.pct - a.m.pct || b.m.n - a.m.n);
+  const r = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)})).filter(c => c.m.pct != null).sort((a, b) => a.m.d - b.m.d);
   profile = {ward: "5", age: "25 to 34", lean: (r[1] || r[0]).p.name};
 }
 render();
