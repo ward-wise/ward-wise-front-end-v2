@@ -301,13 +301,13 @@ def test_copy_my_result_puts_a_picture_on_the_clipboard_and_is_counted(page, may
     assert page.locator("#copyres").is_visible()
     page.click("#copyres")
     page.wait_for_function("document.querySelector('#copyres').innerText.includes('Copied')")
-    page.click("#qcopy")
-    page.wait_for_function("document.querySelector('#qcopy').innerText.includes('Copied')")
+    # one blue button on the screen: the result card has no second copy button (Connor, Nov 11)
+    assert page.locator("#qcopy").count() == 0 and page.locator("#live .btn:not(.btn-ghost)").count() == 0
     types = page.evaluate("async () => (await navigator.clipboard.read())[0].types")
     assert "image/png" in types
     ga, ph = sent(page)
-    assert [p.get("where") for p in named(ph, "mayor_quiz_card_copied")] == ["top", "result"]
-    assert len(named(ga, "mayor_quiz_card_copied")) == 2
+    assert [p.get("where") for p in named(ph, "mayor_quiz_card_copied")] == ["top"]
+    assert len(named(ga, "mayor_quiz_card_copied")) == 1
     assert page.errors == []
 
 
@@ -337,6 +337,10 @@ def test_statement_list_stays_behind_see_why(page, mayor_site):
     assert page.locator("#bdwhy").get_attribute("aria-expanded") == "false"
     page.click("#bdwhy")
     page.wait_for_selector("#live .bdrow")
+    # the visitor's top issues come first in the list, and the old "Your top issues" line is gone
+    assert page.locator("#live .topline").count() == 0
+    flags = page.evaluate("[...document.querySelectorAll('#live .bdrow')].map(r => !!r.querySelector('.bds .chip'))")
+    assert flags == sorted(flags, reverse=True), flags
     assert page.locator("#bdwhy").get_attribute("aria-expanded") == "true"
     ga, ph = sent(page)
     for pairs in (ga, ph):

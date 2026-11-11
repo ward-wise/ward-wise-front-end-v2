@@ -578,6 +578,12 @@ function you(){
 const basisWord = (a, long) => a.basis === "action" ? (long ? "Based on a vote or action" : "Vote or action") : a.basis === "stated" ? "Stated publicly" : a.basis === "report" ? "Reported account" : "Judged from a related act";
 // Past mayors (round 9): the same question as it stood in their own time, with the year.
 const thenLine = a => a.then ? '<p class="then"><b>The question in ' + esc(String(a.year || "their day")) + ':</b> ' + esc(a.then) + '</p>' : "";
+// Which statements belong to each "top issue" a visitor can pick. Used to put their issues first in "See why".
+const QTOPIC = {S1: ["Crime and public safety"], S2: ["Crime and public safety", "Police reform"], S6: ["Police reform"], S12: ["Homelessness"], S5: ["Immigration"], S4: ["Immigration"],
+  E1: ["Taxes", "Jobs and the economy"], E7: ["Taxes"], E11: ["Taxes", "Homelessness"], E6: ["Taxes", "City budget and pensions"], E10: ["City budget and pensions"], E14: ["City budget and pensions"],
+  E13: ["Schools", "City budget and pensions"], E17: ["Schools"], E16: ["Public transit (CTA)"], E3: ["Jobs and the economy"],
+  E5: ["Housing costs"], E15: ["Housing costs"], E12: ["Housing costs"], C2: ["Housing costs"], C4: ["Housing costs"], C5: ["Housing costs"], C3: ["Housing costs"]};
+const mine = qid => (QTOPIC[qid] || []).some(t => top3.includes(t));
 const MIN_ANS = 8, MIN_SHARED = 5;
 const STEP = [1, .75, .35, .1, 0]; // points for answers 0, 1, 2, 3 or 4 steps apart (Connor, Nov 11: steeper, so opposite sides earn little)
 const nAns = p => p.answers.filter(a => Q[a.qid]).length;
@@ -624,11 +630,10 @@ function updateLive(){
   window._mayor = ms ? ms.p : null;
   const done = true;
   let h = '<div class="reslabel">' + (done ? "Your best match" : "Best match so far") + ' <span style="text-transform:none;letter-spacing:0;font-weight:400">(based on ' + me.n + ' of ' + ORDER.length + ' statements)</span></div>';
-  if (top3.length) h += '<p class="topline"><b>Your top issues:</b> ' + top3.map(esc).join(", ") + '</p>';
   if (top) {
-    const pods = ranked.slice(0, 3), go = animPod; animPod = false;
-    const burst = go && !reduced() ? '<div class="burst" aria-hidden="true">' + Array.from({length: 18}, (_, i) => { const a = (i / 18) * Math.PI * 2 + .2, d = 70 + (i % 3) * 30; return '<i style="--dx:' + Math.round(Math.cos(a) * d * 1.3) + 'px;--dy:' + Math.round(Math.sin(a) * d - 20) + 'px;--r:' + (i * 47 % 360) + 'deg;--c:' + ["var(--blue)", "var(--good)", "var(--weak)", "var(--ink-3)"][i % 4] + '"></i>'; }).join("") + '</div>' : "";
-    h += '<div class="podium' + (go ? " go" : "") + '" role="group" aria-label="Your top ' + pods.length + ' matches" style="grid-template-columns:repeat(' + pods.length + ',minmax(0,1fr))">' + pods.map((c, i) => '<button type="button" class="pod p' + (i + 1) + '" data-id="' + c.p.id + '" style="--d:' + [360, 180, 0][i] + 'ms"><span class="lift"><span class="pdn">' + esc(c.p.name) + '</span><span class="pdp tnum">' + c.m.pct + '%</span><small class="lead2">' + ["Best match", "2nd", "3rd"][i] + '</small><small class="pds tnum">Same side on ' + c.m.same + ' of ' + c.m.sides + '</small></span><span class="blk">' + (i + 1) + '</span></button>').join("") + burst + '</div>';
+    const pods = ranked.slice(0, 3); animPod = false;
+    // Plain ranked rows: a near tie reads as a near tie. No podium blocks, no confetti.
+    h += '<div class="ranklist" role="group" aria-label="Your top ' + pods.length + ' matches">' + pods.map((c, i) => '<button type="button" class="pod" data-id="' + c.p.id + '"><span class="rn">' + (i + 1) + '</span><span class="pdn">' + esc(c.p.name) + '</span><b class="pdp tnum">' + c.m.pct + '%</b><span class="rline"><span class="rbar" aria-hidden="true"><i style="width:' + c.m.pct + '%"></i></span><small class="pds tnum">Same side on ' + c.m.same + ' of ' + c.m.sides + '</small></span></button>').join("") + '</div>';
     h += '<p class="bmsm">Match counts how close your answers are to theirs, statement by statement. The same answer is a full point, each step apart is less, and opposite ends is zero. Starred statements count double. A candidate needs ' + MIN_ANS + ' or more sourced answers to be ranked.</p>';
 
     const nearLean = PEOPLE.filter(p => p.cand && p.by_lean).map(p => ({p, d: Math.hypot(p.x - me.x, p.y - me.y)})).sort((a, b) => a.d - b.d).slice(0, 3);
@@ -639,8 +644,8 @@ function updateLive(){
     if (lean && lean !== "Undecided" && lean !== "Prefer not to say" && lean !== top.p.name) h += '<p class="leanline">You said you lean toward ' + esc(lean) + '. Your answers line up most with ' + esc(top.p.name) + '.</p>';
   } else h += '<p class="hint">No candidate has enough public positions to name a match yet.</p>';
   h += '<p class="resline">' + sent("x", "the economy") + " " + sent("y", "enforcement") + (ms ? ' <span style="font-weight:400;color:var(--ink-2)">Closest past mayor: ' + esc(ms.p.name) + '.</span>' : "") + '</p>';
-  $("live").innerHTML = h + REDO.replace('<div class="actions">', '<div class="actions"><button type="button" class="btn" id="qcopy">Copy my results</button><button type="button" class="btn btn-ghost" id="qcard">See my share card</button>');
-  $("qredo").onclick = reopen; $("qcard").onclick = openCard; $("qcopy").onclick = () => copyCard($("qcopy"), "result");
+  $("live").innerHTML = h + REDO.replace('<span class="resetwrap">', '<button type="button" class="linkbtn" id="qcard">See share card</button><span class="resetwrap">');
+  $("qredo").onclick = reopen; $("qcard").onclick = openCard;
   const bm = $("bdmore"); if (bm) bm.onclick = () => { bdAll = !bdAll; updateLive(); };
   const bw = $("bdwhy"); if (bw) bw.onclick = () => { bdOpen = !bdOpen; if (bdOpen) track("mayor_quiz_why_opened", {match: top.p.id}); updateLive(); const b2 = $("bdwhy"); if (b2) b2.focus({preventScroll: true}); };
 }
@@ -650,13 +655,14 @@ function breakdownHTML(p){
   const rows = [];
   ORDER.forEach(qid => { const u = answers[qid], a = mp[qid]; if (u == null || !a) return;
     rows.push({qid, u, a, kind: (u === 0 || a.value === 0) ? "neutral" : (Math.sign(u) === Math.sign(a.value) ? "agree" : "differ")}); });
+  rows.sort((a, b) => mine(b.qid) - mine(a.qid)); // the visitor's top issues first, quiz order within each group
   const n = k => rows.filter(r => r.kind === k).length, pl = c => c + (c === 1 ? " statement" : " statements");
   let h = '<div class="bd"><div class="reslabel" style="margin:0">You and ' + esc(p.name) + '</div>';
   if (!rows.length) return h + '<p class="bdsub">You and ' + esc(p.name) + ' have no statement you both answered.</p></div>';
   h += '<p class="bdsum">You agree on ' + pl(n("agree")) + ' and differ on ' + n("differ") + '.</p>';
   if (n("neutral")) h += '<p class="bdsub">On ' + pl(n("neutral")) + ', one side is neutral. Those are counted apart.</p>';
   const tag = {agree: ["good", "Agree"], differ: ["weak", "Differ"], neutral: ["", "One side neutral"]};
-  h += '<div class="bdlist">' + (bdAll ? rows : rows.slice(0, 5)).map(r => '<div class="bdrow"><div class="bds">' + esc(Q[r.qid].text) + '</div><div class="bdc"><span class="chip blue">You: ' + LABELS[r.u] + '</span><span class="chip">' + esc(p.short) + ': ' + LABELS[r.a.value] + '</span><span class="chip ' + tag[r.kind][0] + '">' + tag[r.kind][1] + '</span><a href="' + esc(r.a.source_url) + '" target="_blank" rel="noopener">Source</a></div></div>').join("") + '</div>';
+  h += '<div class="bdlist">' + (bdAll ? rows : rows.slice(0, 5)).map(r => '<div class="bdrow"><div class="bds">' + esc(Q[r.qid].text) + (mine(r.qid) ? ' <span class="chip blue">Your issue</span>' : '') + '</div><div class="bdc"><span class="chip blue">You: ' + LABELS[r.u] + '</span><span class="chip">' + esc(p.short) + ': ' + LABELS[r.a.value] + '</span><span class="chip ' + tag[r.kind][0] + '">' + tag[r.kind][1] + '</span><a href="' + esc(r.a.source_url) + '" target="_blank" rel="noopener">Source</a></div></div>').join("") + '</div>';
   if (rows.length > 5) h += '<div><button type="button" class="linkbtn" id="bdmore">' + (bdAll ? "Show fewer" : "Show all " + rows.length) + '</button></div>';
   return h + '</div>';
 }

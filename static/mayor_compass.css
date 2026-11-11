@@ -603,3 +603,19 @@ body.mc-lock{overflow:hidden}
 .mc .leannear{font-size:14px;line-height:1.45;margin:12px 0 0}
 .mc .leannear .linkbtn{font-size:14px;padding:0;font-weight:600}
 .mc .leannear span{color:var(--ink-2)}
+/* round 11 layout: plain ranked rows for the top 3 */
+.mc .ranklist{display:grid;gap:0;margin-top:2px}
+.mc .ranklist .pod{display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;justify-items:start;gap:6px 10px;text-align:left;padding:12px 0;border-top:1px solid var(--hair);width:100%}
+.mc .ranklist .rline{grid-column:2 / 4;display:flex;align-items:center;gap:12px;width:100%}
+.mc .ranklist .rline .rbar{flex:1}
+.mc .ranklist .pod:first-child{border-top:0}
+.mc .ranklist .rn{font-family:var(--sfd);font-size:15px;font-weight:700;color:var(--ink-2)}
+.mc .ranklist .pod .pdn{font-size:16px}
+.mc .ranklist .pod .pdp{font-size:19px;justify-self:end}
+.mc .ranklist .pod:first-child .pdn{font-size:17px}
+.mc .ranklist .rbar{display:block;width:100%;height:6px;border-radius:3px;background:var(--fill-2);overflow:hidden}
+.mc .ranklist .rbar i{display:block;height:100%;border-radius:3px;background:color-mix(in srgb,var(--blue) 55%,var(--card))}
+.mc .ranklist .pod:first-child .rbar i{background:var(--blue)}
+.mc .ranklist .pod .pds{font-size:12.5px;color:var(--ink-2)}
+.mc .live .actions .linkbtn{font-size:14px;padding:0}
+.mc .bds .chip{font-size:11px;vertical-align:1px;margin-left:4px}
