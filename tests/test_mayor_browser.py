@@ -251,6 +251,10 @@ def test_best_match_is_the_closest_answers_not_the_nearest_dot(page, mayor_site)
     # candidates with fewer than 8 answers get no match score: they say so, or say they are placed by leaning
     assert page.locator(".mnone").filter(has_text=re.compile("Placed by leaning|Not enough answers yet")).count() > 0
     assert page.locator("#hero-chart .dot.lean").count() > 0, "no hollow dot for a candidate placed by leaning"
+    # the result card names leaning-placed candidates near the visitor, without a score
+    near = page.locator("#live .leannear")
+    assert near.count() == 1 and 1 <= near.locator("button[data-id]").count() <= 3
+    assert "%" not in near.inner_text()
 
 
 def test_every_drawer_offers_a_correction_email_naming_the_person(page, mayor_site):

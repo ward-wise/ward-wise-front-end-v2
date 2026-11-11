@@ -600,3 +600,6 @@ body.mc-lock{overflow:hidden}
 /* round 11: candidates placed by leaning (sourced positions on related issues, not quiz answers) */
 .mc .dot.lean{fill:var(--card);stroke:var(--dot-cand);stroke-width:2.5}
 .mc .legend i.l{background:var(--card);border:2px solid var(--dot-cand);box-sizing:border-box}
+.mc .leannear{font-size:14px;line-height:1.45;margin:12px 0 0}
+.mc .leannear .linkbtn{font-size:14px;padding:0;font-weight:600}
+.mc .leannear span{color:var(--ink-2)}
