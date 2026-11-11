@@ -298,6 +298,13 @@
 .mc .pinright{white-space:nowrap}
 /* Copy link, top right by the dates */
 .mc .headside{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.mc .qright{display:inline-flex;align-items:baseline;gap:14px}
+.mc .resetwrap{display:inline-flex;align-items:baseline;gap:12px}
+.mc .rsbtn{font-size:14px;padding:0;color:var(--ink-2)}
+.mc .rsbtn:hover{color:var(--link)}
+.mc .rsq{font-size:14px;color:var(--ink)}
+.mc .resetwrap .linkbtn{font-size:14px;padding:0}
+.mc .rsyes{font-weight:600}
 .mc .copylink{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--link);background:var(--card);border:1px solid var(--line);border-radius:980px;padding:6px 14px;cursor:pointer;transition:background-color .15s ease-out,border-color .15s ease-out}
 .mc .copylink:hover{border-color:var(--link)}
 .mc .copylink.done{background:var(--blue-wash);border-color:transparent}

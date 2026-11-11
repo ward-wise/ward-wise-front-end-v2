@@ -12,6 +12,8 @@
 //   mayor_quiz_share_card    {}                       share card downloaded
 //   mayor_quiz_person_opened {person}                 the drawer opens on a person
 //   mayor_quiz_link_copied   {}                       Copy link at the top of the page
+//   mayor_quiz_card_copied   {where}                  result picture copied (where: result or card)
+//   mayor_quiz_reset         {answered, finished}     Start over, after Yes
 // quiz_ward is the ward typed into the quiz; track() already sets "ward" to the visitor's own saved ward.
 (function () {
 "use strict";
@@ -342,7 +344,27 @@ function headParts(){
   const right = stage === "q" ? `${answered()} answered, ${ORDER.length - progressN()} to go` : `${answered()} answered`;
   return {back, left, right, meter: meterHTML(stage === "q" ? qi : -1, true)};
 }
-function headHTML(){ const h = headParts(); return `<div class="qprog tnum"><span class="qwhere">${h.back}<span>${h.left}</span></span><span>${h.right}</span></div>${h.meter}`; }
+function headHTML(){
+  const h = headParts(), any = progressN() > 0 || Object.keys(stars).some(k => stars[k]);
+  return `<div class="qprog tnum"><span class="qwhere">${h.back}<span>${h.left}</span></span><span class="qright"><span>${h.right}</span>${any ? '<span class="resetwrap">' + RESET_BTN + '</span>' : ""}</span></div>${h.meter}`;
+}
+/* Start over: one click asks "Clear all answers?" in place; Yes wipes answers, stars, issues and picks. */
+const RESET_BTN = '<button type="button" class="linkbtn rsbtn" data-reset>Start over</button>';
+document.addEventListener("click", e => {
+  const t = e.target.closest && e.target.closest("[data-reset], [data-reset-yes], [data-reset-no]"); if (!t || !t.closest("#mc")) return;
+  const w = t.closest(".resetwrap"); if (!w) return;
+  if (t.hasAttribute("data-reset")) { w.innerHTML = '<span class="rsq">Clear all answers?</span><button type="button" class="linkbtn rsyes" data-reset-yes>Yes</button><button type="button" class="linkbtn" data-reset-no>Cancel</button>'; w.querySelector("[data-reset-yes]").focus(); }
+  else if (t.hasAttribute("data-reset-no")) { w.innerHTML = RESET_BTN; w.querySelector("[data-reset]").focus(); }
+  else resetAll();
+});
+function resetAll(){
+  track("mayor_quiz_reset", {answered: answered(), finished});
+  cdTimers.forEach(clearTimeout); cdTimers = [];
+  answers = {}; unsure = {}; stars = {}; top3 = []; profile = {}; pickTop = []; draft = {};
+  ["mc-answers", "mc-unsure", "mc-stars", "mc-profile"].forEach(k => store.set(k, {})); store.set("mc-top3", []); store.set("mc-done", false);
+  started = false; earlyFinish = false; stepsDone = false; finished = false; stage = "q"; qi = 0; showField = false; animYou = false; bdAll = false;
+  render(); window.scrollTo(0, 0);
+}
 function goBack(){
   if (finished || stage === "count") return;
   if (stage === "q") { if (qi > 0) { qi--; riseNext = "back"; render(true); } }
@@ -544,7 +566,7 @@ function updateLive(){
   const me = you(), cs = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)}));
   const ranked = cs.filter(c => c.m.pct != null && c.p.proof !== "thin").sort((a, b) => a.m.d - b.m.d);
   const top = ranked[0] || null;
-  window._me = me; window._top = top ? {p: top.p, pct: top.m.pct} : null;
+  window._me = me; window._top = top ? {p: top.p, pct: top.m.pct} : null; window._top3 = ranked.slice(0, 3).map(c => ({p: c.p, pct: c.m.pct}));
   if (me.n < 4) {
     const need = 4 - me.n;
     $("live").innerHTML = '<div class="reslabel">Your result</div><p class="hint">You answered too few statements to place you. Answer ' + need + ' more and your match appears here, with your dot on the chart.</p>' + REDO;
@@ -567,8 +589,8 @@ function updateLive(){
     if (lean && lean !== "Undecided" && lean !== "Prefer not to say" && lean !== top.p.name) h += '<p class="leanline">You said you lean toward ' + esc(lean) + '. Your answers line up most with ' + esc(top.p.name) + '.</p>';
   } else h += '<p class="hint">No candidate has enough public positions to name a match yet.</p>';
   h += '<p class="resline">' + sent("x", "money") + " " + sent("y", "public safety") + (ms ? ' <span style="font-weight:400;color:var(--ink-2)">Closest past mayor: ' + esc(ms.p.name) + '.</span>' : "") + '</p>';
-  $("live").innerHTML = h + REDO.replace('<div class="actions">', '<div class="actions"><button type="button" class="btn" id="qcard">Make my share card</button>');
-  $("qredo").onclick = reopen; $("qcard").onclick = openCard;
+  $("live").innerHTML = h + REDO.replace('<div class="actions">', '<div class="actions"><button type="button" class="btn" id="qcopy">Copy my result</button><button type="button" class="btn btn-ghost" id="qcard">See my share card</button>');
+  $("qredo").onclick = reopen; $("qcard").onclick = openCard; $("qcopy").onclick = () => copyCard($("qcopy"), "result");
   const bm = $("bdmore"); if (bm) bm.onclick = () => { bdAll = !bdAll; updateLive(); };
 }
 /* "You and <best match>": same sign = agree, opposite sign = differ, a Neutral on either side = counted apart */
@@ -587,7 +609,7 @@ function breakdownHTML(p){
   if (rows.length > 5) h += '<div><button type="button" class="linkbtn" id="bdmore">' + (bdAll ? "Show fewer" : "Show all " + rows.length) + '</button></div>';
   return h + '</div>';
 }
-const REDO = '<div class="actions"><button type="button" class="btn btn-ghost" id="qredo">Change my answers</button></div>';
+const REDO = '<div class="actions"><button type="button" class="btn btn-ghost" id="qredo">Change my answers</button><span class="resetwrap">' + RESET_BTN + '</span></div>';
 
 /* ---------- candidates + mayors ---------- */
 const money = v => v >= 1e6 ? "$" + (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? "$" + Math.round(v / 1e3) + "K" : "$" + Math.round(v);
@@ -694,19 +716,38 @@ function drawCard(me, top){
   g.font = "700 58px " + F; const yEnd = wrapText(g, "Where I stand on Chicago's 2027 mayor race", 72, 270, 936, 68);
   g.fillStyle = "#6e6e73"; g.font = "600 30px " + F; g.fillText("My spot on the map", 72, yEnd + 70);
   g.fillStyle = "#0071e3"; g.font = "700 74px " + F; const yq = wrapText(g, quadName(me), 72, yEnd + 150, 936, 82);
-  // mini map: the 4 quadrant colors, same layout as the page map (right = lower taxes, up = more police)
-  const S = 520, mx = (1080 - S) / 2, my = Math.max(yq + 50, 640), h = S / 2;
+  // map: the 4 quadrant colors, same layout as the page map (right = lower taxes, up = more police)
+  const my = Math.max(yq + 60, 540), S = Math.min(600, 1110 - my), mx = (1080 - S) / 2, h = S / 2;
   const col = ["rgba(240,160,60,0.42)", "rgba(60,180,140,0.42)", "rgba(150,120,220,0.42)", "rgba(90,160,235,0.42)"];
   [[mx + h, my, col[0]], [mx, my, col[1]], [mx, my + h, col[2]], [mx + h, my + h, col[3]]].forEach(q => { g.fillStyle = q[2]; g.fillRect(q[0], q[1], h, h); });
   g.strokeStyle = "rgba(29,29,31,0.45)"; g.lineWidth = 2; g.beginPath(); g.moveTo(mx, my + h); g.lineTo(mx + S, my + h); g.moveTo(mx + h, my); g.lineTo(mx + h, my + S); g.stroke();
-  const k = S / 20, dx = mx + h + Math.max(-10, Math.min(10, me.x)) * k, dy = my + h - Math.max(-10, Math.min(10, me.y)) * k;
+  const k = S / 20, X = v => mx + h + Math.max(-10, Math.min(10, v)) * k, Y = v => my + h - Math.max(-10, Math.min(10, v)) * k;
+  const word = (t, x, y, al) => { g.textAlign = al; g.lineWidth = 6; g.strokeStyle = "rgba(255,255,255,0.85)"; g.lineJoin = "round"; g.strokeText(t, x, y); g.fillStyle = "rgba(29,29,31,0.7)"; g.fillText(t, x, y); };
+  g.font = "600 20px " + F;
+  word("More police", mx + h, my + 30, "center"); word("Police reform", mx + h, my + S - 14, "center");
+  word("Higher taxes", mx + 12, my + h - 12, "left"); word("Lower taxes", mx + S - 12, my + h - 12, "right"); g.textAlign = "left";
+  // every 2027 candidate with a spot on both lines (hollow = thin record, like the page map); your top 3 get 1, 2, 3
+  const t3 = (window._top3 || []), near = t3.map(t => t.p.id);
+  PEOPLE.filter(p => p.cand && p.x != null && p.y != null && !near.includes(p.id)).forEach(p => {
+    g.beginPath(); g.arc(X(p.x), Y(p.y), 8, 0, 7);
+    if (p.proof === "thin") { g.strokeStyle = "rgba(29,29,31,0.55)"; g.lineWidth = 3; g.stroke(); }
+    else { g.fillStyle = "rgba(29,29,31,0.5)"; g.fill(); g.strokeStyle = "#ffffff"; g.lineWidth = 2.5; g.stroke(); } });
+  const dx = X(me.x), dy = Y(me.y);
   g.fillStyle = "rgba(0,113,227,0.18)"; g.beginPath(); g.arc(dx, dy, 34, 0, 7); g.fill();
   g.fillStyle = "#0071e3"; g.strokeStyle = "#ffffff"; g.lineWidth = 6; g.beginPath(); g.arc(dx, dy, 18, 0, 7); g.stroke(); g.fill();
-  g.fillStyle = "#1d1d1f"; g.font = "700 26px " + F; g.textAlign = dx > mx + S - 90 ? "right" : "left"; const lx = dx + (g.textAlign === "left" ? 28 : -28), ly = dy - 22; g.lineWidth = 7; g.strokeStyle = "#ffffff"; g.strokeText("You", lx, ly); g.fillText("You", lx, ly); g.textAlign = "left";
-  const yb = my + S + 70;
-  if (top) { g.fillStyle = "#1d1d1f"; g.font = "700 38px " + F; wrapText(g, "Closest 2027 candidate: " + top.p.name + ", " + top.pct + "%", 72, yb, 936, 46); }
+  const badge = (n, x, y, r) => { g.fillStyle = "#1d1d1f"; g.strokeStyle = "#ffffff"; g.lineWidth = 3; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.stroke();
+    g.fillStyle = "#ffffff"; g.font = "700 " + Math.round(r * 1.15) + "px " + F; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(String(n), x, y + 1); g.textAlign = "left"; g.textBaseline = "alphabetic"; };
+  t3.map((t, i) => [t, i]).reverse().forEach(([t, i]) => { if (t.p.x != null && t.p.y != null) badge(i + 1, X(t.p.x), Y(t.p.y), 15); });
+  g.font = "800 28px " + F; const yl = dx > mx + S - 110 ? -1 : 1; g.textAlign = yl > 0 ? "left" : "right";
+  g.lineWidth = 7; g.strokeStyle = "#ffffff"; g.lineJoin = "round"; g.strokeText("You", dx + 30 * yl, dy - 24); g.fillStyle = "#0071e3"; g.fillText("You", dx + 30 * yl, dy - 24); g.textAlign = "left";
+  // under the map: the 3 closest, numbered like the map, then the link
+  if (t3.length) {
+    g.fillStyle = "#6e6e73"; g.font = "600 28px " + F; g.fillText("My closest 2027 candidates", 72, my + S + 56);
+    let x = 72; const yb = my + S + 108;
+    t3.forEach((t, i) => { badge(i + 1, x + 17, yb - 11, 17); g.fillStyle = "#1d1d1f"; g.font = "700 32px " + F; const txt = t.p.short + " " + t.pct + "%"; g.fillText(txt, x + 44, yb); x += 44 + g.measureText(txt).width + 34; });
+  } else { g.fillStyle = "#1d1d1f"; g.font = "700 32px " + F; g.fillText("No candidate has enough public positions to match yet.", 72, my + S + 90); }
   g.fillStyle = "#0071e3"; g.font = "600 34px " + F;
-  g.fillText("Take the quiz at wardwise.org/mayor", 72, 1296);
+  g.fillText("Take the quiz at wardwise.org/mayor", 72, 1306);
   return c;
 }
 let cardCanvas = null;
@@ -715,9 +756,26 @@ function openCard(){
   cardCanvas = drawCard(me, top); const url = cardCanvas.toDataURL("image/png");
   $("card-dlg").innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 id="card-t" class="h3" style="font-size:15px;color:var(--ink-2);font-weight:600">Your share card</h2><button type="button" class="iconbtn" id="card-x" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>
     <img class="cardimg" id="cardimg" alt="Share card: ${esc(quadName(me))}" src="${url}">
-    <div class="cardact"><button type="button" class="btn" id="card-dl">Download</button><span class="small">Or right-click the image to save it.</span></div>`;
+    <div class="cardact"><button type="button" class="btn" id="card-cp">Copy</button><button type="button" class="btn btn-ghost" id="card-dl">Download</button><span class="small">Pastes as a picture, with the quiz link on it.</span></div>`;
   lastFocus = document.activeElement; $("card-ov").hidden = false; lockOn(true); $("card-dlg").focus();
-  $("card-x").onclick = closeCard;
+  $("card-x").onclick = closeCard; $("card-cp").onclick = () => copyCard($("card-cp"), "card");
+}
+/* Copy the picture to the clipboard in one click. It already carries "Take the quiz at wardwise.org/mayor".
+   Where the browser cannot copy a picture, the share card opens with its Download button instead. */
+async function copyCard(btn, where){
+  const me = window._me; if (!me || me.n < 4) return;
+  const c = drawCard(me, window._top);
+  let ok = false;
+  try {
+    if (!window.ClipboardItem || !navigator.clipboard || !navigator.clipboard.write) throw new Error("no clipboard");
+    await navigator.clipboard.write([new ClipboardItem({"image/png": new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error("no image")), "image/png"))})]);
+    ok = true;
+  } catch (e) { ok = false; }
+  if (!ok) { if ($("card-ov").hidden) openCard(); return; }
+  track("mayor_quiz_card_copied", {where});
+  const was = btn.dataset.label || btn.textContent; btn.dataset.label = was;
+  btn.textContent = "Copied, paste it anywhere"; btn.classList.add("done");
+  clearTimeout(btn._t); btn._t = setTimeout(() => { btn.textContent = was; btn.classList.remove("done"); }, 2500);
 }
 function closeCard(){ $("card-ov").hidden = true; lockOn(false); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
 $("card-ov").addEventListener("mousedown", e => { if (e.target === $("card-ov")) closeCard(); });

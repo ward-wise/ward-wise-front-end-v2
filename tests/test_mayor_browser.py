@@ -278,3 +278,35 @@ def test_bar_follows_you_jumps_back_pins_and_copy_link_is_counted(page, mayor_si
     ga, ph = sent(page)
     assert len(named(ph, "mayor_quiz_link_copied")) == 1 and len(named(ga, "mayor_quiz_link_copied")) == 1
     assert page.errors == []
+
+
+def test_copy_my_result_puts_a_picture_on_the_clipboard_and_is_counted(page, mayor_site):
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=mayor_site)
+    run_quiz(page, mayor_site)
+    page.click("#qcopy")
+    page.wait_for_function("document.querySelector('#qcopy').innerText.includes('Copied')")
+    types = page.evaluate("async () => (await navigator.clipboard.read())[0].types")
+    assert "image/png" in types
+    ga, ph = sent(page)
+    assert [p.get("where") for p in named(ph, "mayor_quiz_card_copied")] == ["result"]
+    assert len(named(ga, "mayor_quiz_card_copied")) == 1
+    assert page.errors == []
+
+
+def test_start_over_asks_once_then_clears_everything(page, mayor_site):
+    run_quiz(page, mayor_site)
+    page.click("#live [data-reset]")
+    page.click("#live [data-reset-no]")
+    assert page.locator(".youg, .you-dot").count() > 0
+    page.click("#live [data-reset]")
+    page.click("#live [data-reset-yes]")
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 1 of 20')")
+    assert "0 answered" in page.locator("#quiz .qprog").inner_text()
+    assert page.locator(".youg, .you-dot").count() == 0
+    stored = page.evaluate("[localStorage.getItem('mc-answers'), localStorage.getItem('mc-done'), localStorage.getItem('mc-top3')]")
+    assert stored == ["{}", "false", "[]"]
+    ga, ph = sent(page)
+    assert [p.get("finished") for p in named(ph, "mayor_quiz_reset")] == [True]
+    page.reload()
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('0 answered')")
+    assert page.errors == []
