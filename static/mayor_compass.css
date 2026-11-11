@@ -185,6 +185,18 @@
 .mc .dot.pre{fill:var(--dot-mayor);opacity:.55;stroke:var(--card);stroke-width:1}
 .mc .dot.thin{opacity:.5}
 .mc .pt:focus{outline:none}
+/* light 10 by 10 grid on the map */
+.mc .grid line{stroke:var(--ink);stroke-opacity:.07;stroke-width:1;pointer-events:none}
+/* dot hover: grow with a soft ring, others fade (transform and opacity only, 150ms) */
+.mc .pt .dot,.mc .pt .thinring{transform-box:fill-box;transform-origin:center;transition:transform .15s ease-out,opacity .15s ease-out}
+.mc .hring{fill:none;stroke:var(--ink-2);stroke-width:1.5;opacity:0;transform-box:fill-box;transform-origin:center;transform:scale(.6);transition:transform .15s ease-out,opacity .15s ease-out;pointer-events:none}
+.mc .pt.hot .dot{transform:scale(1.35);opacity:1}
+.mc .pt.hot .thinring{transform:scale(1.35)}
+.mc .pt.hot .hring{opacity:.6;transform:scale(1)}
+.mc .plot svg.hov .pt:not(.hot) .dot{opacity:.3}
+.mc .lab,.mc .lead{transition:opacity .15s ease-out}
+.mc .plot svg.hov .lab:not(.hot):not(.you):not(.match),.mc .plot svg.hov .lead{opacity:.35}
+.mc .lab.hot{font-weight:700}
 .mc .pt:focus-visible .dot{stroke:var(--blue);stroke-width:3}
 .mc .thinring{fill:none;stroke:var(--ink-3);stroke-width:1.2;stroke-dasharray:2 2.5;pointer-events:none}
 .mc .you-halo{fill:var(--blue-wash);stroke:var(--blue);stroke-width:1.5;pointer-events:none}
