@@ -277,10 +277,11 @@ const REDUCED = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 // Short travel, a small tilt and a fade, so the eye follows one card out and one card in.
 let swapDir = null;
 function flyOut(v){ riseNext = true; swapDir = v; }
-// A flashcard flip: the answered card turns over and the next statement is on its back. The old
-// card is copied in place (same box, so nothing re-wraps), then both faces turn together around
-// the vertical axis with their backs hidden. Back flips the other way. A fast key press starts the
-// next flip at once. Same flip with Reduce motion on: Connor has it on and asked for the flip.
+// Like sorting flashcards: the answered card glides off toward your answer (disagree left, agree
+// right, neutral up, Not sure and Skip down) and fades, while the next card sits still underneath.
+// No flip and no tilt. The old card is copied in place with the same box, so nothing re-wraps.
+// Back brings the earlier card gliding in from the left. A fast key press starts the next glide.
+// Same glide with Reduce motion on: Connor has it on and asked for this motion.
 function snapOld(qe){
   if (!qe.querySelector(".qbody")) return null;
   const c = qe.cloneNode(true);
@@ -289,21 +290,28 @@ function snapOld(qe){
   return {node: c, top: qe.offsetTop, left: qe.offsetLeft, width: qe.offsetWidth, height: qe.offsetHeight};
 }
 function easeSwap(qe, old, back){
+  const host = qe.parentElement;
+  host.querySelectorAll(".qflip").forEach(n => n.remove());
+  const ease = "cubic-bezier(.4,0,.2,1)";
+  if (back) {
+    try { qe.animate([{transform: "translateX(-220px)", opacity: 0}, {transform: "none", opacity: 1}], {duration: 380, easing: "cubic-bezier(.2,.7,.2,1)"}); } catch (e) { /* no motion */ }
+    return;
+  }
   if (!qe.querySelector(".qbody") || !old) { // the top 3 and picks steps: a plain fade in
     Array.from(qe.children).forEach(el => { try { el.animate([{opacity: 0}, {opacity: 1}], {duration: 180, easing: "ease-out"}); } catch (e) { /* no motion */ } });
     return;
   }
-  const host = qe.parentElement;
-  host.querySelectorAll(".qflip").forEach(n => n.remove());
   const g = old.node; g.classList.add("qflip"); g.setAttribute("aria-hidden", "true");
   Object.assign(g.style, {top: old.top + "px", left: old.left + "px", width: old.width + "px", height: old.height + "px"});
   host.appendChild(g);
-  const turn = back ? 180 : -180, ms = 520, ease = "cubic-bezier(.45,.05,.25,1)";
+  // Far enough to clear the card underneath, and solid until it mostly has, so the two
+  // statements never show through each other.
+  const W = old.width * 1.05, H = old.height * .7;
+  const to = {"-2": [-W, 0], "-1": [-W, 0], "0": [0, -H], "1": [W, 0], "2": [W, 0]}[String(swapDir)] || [0, H];
   try {
-    g.animate([{transform: "perspective(1400px) rotateY(0deg)"}, {transform: `perspective(1400px) rotateY(${turn}deg)`}], {duration: ms, easing: ease, fill: "forwards"}).onfinish = () => g.remove();
-    qe.animate([{transform: `perspective(1400px) rotateY(${-turn}deg)`}, {transform: "perspective(1400px) rotateY(0deg)"}], {duration: ms, easing: ease});
+    g.animate([{transform: "none", opacity: 1}, {opacity: 1, offset: .55}, {transform: `translate(${to[0]}px,${to[1]}px)`, opacity: 0}], {duration: 480, easing: ease, fill: "forwards"}).onfinish = () => g.remove();
   } catch (e) { g.remove(); }
-  setTimeout(() => g.remove(), ms + 100);
+  setTimeout(() => g.remove(), 560);
 }
 function setAns(v){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, WORDS[v]); flyOut(v); answers[qid] = v; delete unsure[qid]; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }
 function setUnsure(){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, "not_sure"); flyOut("down"); delete answers[qid]; unsure[qid] = true; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }

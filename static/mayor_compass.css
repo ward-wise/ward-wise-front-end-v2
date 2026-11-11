@@ -538,9 +538,8 @@ body.mc-lock{overflow:hidden}
 .mc .fd-sub .fd-src{font-size:inherit;margin:0}
 .mc .chead{padding:10px 0 6px}
 
-/* Flashcard flip: both faces hide their backs, so only one statement shows at any moment. */
+/* The answered card glides off on top of the next one. */
 .mc .qcol{position:relative}
-.mc #quiz,.mc .qflip{backface-visibility:hidden;-webkit-backface-visibility:hidden}
-.mc .qflip{position:absolute;box-sizing:border-box;margin:0;pointer-events:none;z-index:2;will-change:transform}
+.mc .qflip{position:absolute;box-sizing:border-box;margin:0;pointer-events:none;z-index:5;will-change:transform,opacity;box-shadow:0 10px 30px rgb(0 0 0 / 12%)}
 .mc .qbody{display:flex;flex-direction:column}
 .mc .qbody .answers{margin-top:auto}
