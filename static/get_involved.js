@@ -51,7 +51,8 @@
       title: issue.title,
       url: issue.html_url,
       labels,
-      domain: domain ? domain.slice("domain:".length).trim() : "",
+      // labels are written domain:psychological_wellbeing; show "Psychological wellbeing"
+      domain: domain ? domain.slice("domain:".length).replace(/[_-]+/g, " ").trim() : "",
       nominator: formField(issue.body, /nominat/i).split("\n")[0].slice(0, 80),
       work: work ? work[0] : "",
       claimed: labels.includes("in-progress") || (issue.assignees || []).length > 0,
