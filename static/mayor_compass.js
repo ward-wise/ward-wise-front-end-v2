@@ -68,7 +68,7 @@ let answers = store.get("mc-answers", {}), stars = store.get("mc-stars", {}), un
 // Statement S4 was reworded on Nov 10, 2026 (accept federal help -> turn away federal forces). Drop answers saved before that.
 if (store.get("mc-ver", 0) < 2) { if (answers.S4 != null) delete answers.S4; store.set("mc-answers", answers); store.set("mc-ver", 2); }
 let stage = "q", stepsDone = false, animYou = false, bdAll = false, pickTop = [], draft = {};
-let animPod = false, mile = null, popSeg = -1, cdTimers = [], cdLeft = 0;
+let animPod = false, popSeg = -1, cdTimers = [], cdLeft = 0;
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (DEMO) {
   answers = {}; stars = {}; unsure = {}; profile = {}; top3 = ["Crime and public safety", "Housing costs", "Taxes"];
@@ -270,26 +270,27 @@ document.addEventListener("click", e => { if (e.target.closest(".preOn")) setPre
 const answered = () => Object.keys(answers).filter(k => answers[k] != null).length + Object.keys(unsure).length;
 const progressN = () => Object.keys(answers).length + Object.keys(unsure).length;
 const isAnswered = q => (q in answers) || !!unsure[q];
-const MILE_TXT = n => n === ORDER.length / 2 ? "Halfway there. " + n + " down, " + (ORDER.length - n) + " to go" : n + " down, " + (ORDER.length - n) + " to go";
-function bump(before){ const after = progressN(); if (after > before) { popSeg = after - 1; if (after % 5 === 0 && after < ORDER.length) mile = {n: after, t: Date.now()}; } }
+function bump(before){ /* progress fills quietly: no banners, no pop */ }
 let riseNext = false;
 const REDUCED = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 // Card slides off toward the answer: left for disagree, right for agree, up for neutral, down for Not sure and Skip. Motion only, no feedback on the answer.
 // Short travel, a small tilt and a fade, so the eye follows one card out and one card in.
-function flyOut(v){
-  riseNext = true;
-  const gentle = REDUCED();
-  const el = $("quiz"), r = el.getBoundingClientRect(), c = el.cloneNode(true);
-  c.removeAttribute("id"); c.querySelectorAll("[id]").forEach(n => n.removeAttribute("id")); c.classList.remove("rise", "riseback", "s1", "s2"); c.classList.add("flyer");
-  Object.assign(c.style, {left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px"});
-  $("mc").appendChild(c);
-  const T = {"-2": [-300, 0, -6], "-1": [-220, 0, -4], "0": [0, -120, 0], "1": [220, 0, 4], "2": [300, 0, 6], "down": [0, 120, 0]}[String(v)] || [0, 120, 0];
-  const done = () => c.remove();
-  if (gentle) { const g = {"-2": [-16, 0], "-1": [-16, 0], "0": [0, -10], "1": [16, 0], "2": [16, 0]}[String(v)] || [0, 10];
-    try { c.animate([{transform: "none", opacity: 1}, {transform: `translate(${g[0]}px,${g[1]}px)`, opacity: 0}], {duration: 130, easing: "ease-out", fill: "forwards"}).onfinish = done; } catch (e) { done(); }
-    setTimeout(done, 500); return; }
-  try { c.animate([{transform: "none", opacity: 1}, {opacity: .9, offset: .3}, {transform: `translate(${T[0]}px,${T[1]}px) rotate(${T[2]}deg)`, opacity: 0}], {duration: 280, easing: "cubic-bezier(.4,0,.7,1)", fill: "forwards"}).onfinish = done; } catch (e) { done(); }
-  setTimeout(done, 700);
+let swapDir = null;
+function flyOut(v){ riseNext = true; swapDir = v; }
+// The card never leaves. Its words are swapped, then eased in, and the card eases to the new
+// height, so nothing below it jumps. One short move per answer, nothing overlaps.
+function easeSwap(qe, h0, back){
+  const reduced = REDUCED(), h1 = qe.offsetHeight;
+  if (!reduced && h0 && Math.abs(h1 - h0) > 1) {
+    qe.style.overflow = "hidden";
+    try { qe.animate([{height: h0 + "px"}, {height: h1 + "px"}], {duration: 220, easing: "cubic-bezier(.2,.8,.2,1)"}).onfinish = () => { qe.style.overflow = ""; }; } catch (e) { qe.style.overflow = ""; }
+  }
+  const body = qe.querySelector(".qbody");
+  const parts = body ? [body] : Array.from(qe.children);
+  const kf = reduced ? [{opacity: 0}, {opacity: 1}]
+    : back ? [{opacity: 0, transform: "translateX(-10px)"}, {opacity: 1, transform: "none"}]
+    : [{opacity: 0, transform: "translateY(6px)"}, {opacity: 1, transform: "none"}];
+  parts.forEach(el => { try { el.animate(kf, {duration: reduced ? 150 : 200, easing: "cubic-bezier(.2,.8,.2,1)"}); } catch (e) { /* no motion */ } });
 }
 function setAns(v){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, WORDS[v]); flyOut(v); answers[qid] = v; delete unsure[qid]; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }
 function setUnsure(){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, "not_sure"); flyOut("down"); delete answers[qid]; unsure[qid] = true; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }
@@ -303,7 +304,6 @@ function renderQ(still){
   const qid = ORDER[qi], q = Q[qid], a = answers[qid];
   $("quiz").innerHTML = `<div class="qprog tnum"><span>Statement ${qi+1} of ${ORDER.length}</span><span>${answered()} answered, ${ORDER.length - progressN()} to go</span></div>
     ${meterHTML(progressN(), true)}
-    <div class="rslot">${mile && Date.now() - mile.t < 2000 ? `<div class="mile" role="status" style="animation-delay:-${Date.now() - mile.t}ms">${MILE_TXT(mile.n)}</div>` : ""}</div>
     <div class="qbody">
     <p class="qtext" id="qtext">${esc(q.text)}</p>
     <p class="qctx">${q.context ? esc(q.context) : ""}</p>
@@ -325,7 +325,7 @@ function renderQ(still){
   $("quiz").querySelectorAll(".ans").forEach(b => b.onclick = () => setAns(+b.dataset.v));
   $("qunsure").onclick = setUnsure;
   $("star").onclick = () => { stars[qid] = !stars[qid]; store.set("mc-stars", stars); renderQ(true); };
-  $("qback").onclick = () => { if (qi > 0) { qi--; riseNext = "back"; render(); } };
+  $("qback").onclick = () => { if (qi > 0) { qi--; riseNext = "back"; render(true); } };
   $("qskip").onclick = () => { noteAnswer(qid, "skipped"); flyOut("down"); const b = progressN(); answers[qid] = null; delete unsure[qid]; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); };
   $("qnext").onclick = () => { flyOut(a == null ? "down" : a); advance(); };
 }
@@ -368,7 +368,7 @@ function renderProf(){
   $("pskip").onclick = () => { flyOut("down"); profile = {}; store.set("mc-profile", profile); track("mayor_quiz_profile", {skipped: true}); reveal(); };
   $("pgo").onclick = () => { flyOut(1); grab(); profile = draft; store.set("mc-profile", profile); track("mayor_quiz_profile", profileProps(profile, false)); reveal(); };
 }
-function advance(){ if (qi >= ORDER.length - 1) { earlyFinish = false; finish(); return; } qi++; render(); }
+function advance(){ if (qi >= ORDER.length - 1) { earlyFinish = false; finish(); return; } qi++; render(true); }
 function finish(){
   if (!stepsDone) { riseNext = true; stage = "top"; pickTop = top3.slice(); draft = Object.assign({}, profile); showField = false; render(); window.scrollTo(0, 0); return; }
   reveal();
@@ -389,19 +389,22 @@ function renderCount(){
   $("cdwn").onclick = doReveal;
 }
 function reopen(){ track("mayor_quiz_restart", {}); started = false; earlyFinish = false; cdTimers.forEach(clearTimeout); cdTimers = []; finished = false; stage = "q"; showField = false; animYou = false; store.set("mc-done", false); qi = 0; render(); window.scrollTo(0, 0); }
-function render(){
+function render(cardOnly){
   // Map and table always show. Your dot, matches and the match sort wait until you finish.
   const fold = false;
   $("quiz").hidden = finished; $("app").classList.toggle("isdone", finished);
   $("fieldfold").hidden = true; $("fieldbody").hidden = false;
   $("fieldmap").hidden = true;
   $("candMore").textContent = candsAll ? "Show fewer" : "Show all " + PEOPLE.filter(p => p.cand).length + " candidates";
+  const h0 = riseNext && !finished ? $("quiz").offsetHeight : 0;
   if (finished) $("quiz").innerHTML = ""; else if (stage === "count") renderCount(); else if (stage === "top") renderTop(); else if (stage === "prof") renderProf(); else renderQ();
-  const qe = $("quiz"), rem = stage === "q" ? ORDER.length - qi - 1 : 0;
-  qe.classList.remove("rise", "riseback", "s1", "s2"); if (rem >= 2) qe.classList.add("s2"); else if (rem === 1) qe.classList.add("s1");
-  if (riseNext && !finished) { void qe.offsetWidth; qe.classList.add(riseNext === "back" ? "riseback" : "rise"); }
+  const qe = $("quiz");
+  if (riseNext && !finished) easeSwap(qe, h0, riseNext === "back");
   riseNext = false;
   updateLive();
+  // Before the reveal, an answer changes nothing in the table or the maps; rebuilding them on
+  // every answer is what made the card stutter.
+  if (cardOnly) return;
   if (!fold) { renderCands(); renderMayors(); }
   drawMaps();
 }
@@ -484,10 +487,10 @@ const REDO = '<div class="actions"><button type="button" class="btn btn-ghost" i
 const money = v => v >= 1e6 ? "$" + (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? "$" + Math.round(v / 1e3) + "K" : "$" + Math.round(v);
 const shortDate = d => { const m = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return m[+d.slice(5,7) - 1] + " " + (+d.slice(8,10)) + ", " + d.slice(0,4); };
 function fundsCell(f){
-  if (!f || f.none) return '<span class="fd-none">' + esc(f && f.none ? "No campaign committee on file" : "No report found") + '</span>';
-  // Two lines per row: the amount raised, then loans, cash and the filing link together.
-  return '<b class="fd-big tnum">' + money(f.raised) + '</b>' +
-    '<span class="fd-sub tnum">' + (f.loans ? 'plus ' + money(f.loans) + ' loans · ' : "") + money(f.cash) + ' cash' + (f.through !== "2026-09-30" ? " (" + shortDate(f.through) + ")" : "") +
+  if (!f || f.none) return '<span class="fd-none">' + esc(f && f.none ? "No committee on file" : "No report found") + '</span>';
+  // Two short lines: raised (plus loans), then cash and the filing link.
+  return '<span class="fd-top"><b class="fd-big tnum">' + money(f.raised) + '</b>' + (f.loans ? '<span class="fd-sub tnum"> + ' + money(f.loans) + ' loans</span>' : "") + '</span>' +
+    '<span class="fd-sub tnum">' + money(f.cash) + ' cash' + (f.through !== "2026-09-30" ? " (" + shortDate(f.through) + ")" : "") +
     ' · <a class="fd-src" href="' + esc(f.report_url) + '" target="_blank" rel="noopener">Filing</a></span>';
 }
 function lineCell(ax, v, thin, p){
@@ -512,10 +515,10 @@ function renderCands(){
   else cs.sort((a, b) => f(b.p) - f(a.p));
   const bestId = live && cs[0] && cs[0].m.pct != null ? cs[0].p.id : null;
   $("cand-grid").innerHTML = '<div class="ctab' + (live ? " m" : "") + '" role="table" aria-label="2027 candidates"><div class="chead" role="row"><span></span><span role="columnheader">Candidate</span>' + (live ? '<span role="columnheader">Match</span>' : '') + '<span role="columnheader">' + lnHead("Taxes and spending", "Higher", "Lower") + '</span><span role="columnheader">' + lnHead("Police", "Reform", "More") + '</span><span role="columnheader">Raised for the mayor race</span><span></span></div>' +
-    (candsAll ? cs : cs.slice(0, 5)).map(({p, m}) => `<div class="crow${p.id === bestId ? " best" : ""}" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources">
+    (candsAll ? cs : cs.slice(0, 12)).map(({p, m}) => `<div class="crow${p.id === bestId ? " best" : ""}" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources">
       <label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label>
-      <span class="cname" role="cell"><span class="mn">${esc(p.name)}</span><span class="cbg" title="${esc(p.background || p.role)}">${esc(p.background || p.role)}</span><span class="cmeta"><span class="chip ${/no challenge/i.test(p.status||"") ? "good" : /did not|withdrew/i.test(p.status||"") ? "weak" : ""}">${esc(p.status || "Status unknown")}</span><span class="cfacts">${p.n} facts</span>${p.site ? `<a class="csite" href="${esc(p.site)}" target="_blank" rel="noopener">Campaign site</a>` : `<span class="csite none">No campaign site</span>`}</span></span>
-      ${live ? `<span class="mcell" role="cell">${m.pct != null ? `<span class="mtop"><b class="mpct tnum">${m.pct}%</b><span class="mon" title="Based on ${m.n} statements you both have answers on">on ${m.n}</span></span><span class="mbar"><i style="width:${m.pct}%"></i></span>${p.id === bestId ? '<span class="mbest">Best match</span>' : ""}` : '<span class="mnone">Too few public positions</span>'}</span>` : ""}
+      <span class="cname" role="cell"><span class="mn" title="${esc(p.background || p.role)}">${esc(p.name)}</span><span class="cmeta"><span class="cstat ${/no challenge/i.test(p.status||"") ? "good" : /did not|withdrew/i.test(p.status||"") ? "weak" : ""}">${esc(p.status || "Status unknown")}</span> · ${p.n} ${p.n === 1 ? "fact" : "facts"}${p.site ? ` · <a class="csite" href="${esc(p.site)}" target="_blank" rel="noopener">Site</a>` : ""}</span></span>
+      ${live ? `<span class="mcell" role="cell">${m.pct != null ? `<span class="mtop"><b class="mpct tnum">${m.pct}%</b><span class="mbar"><i style="width:${m.pct}%"></i></span></span><span class="mon">${p.id === bestId ? "Best match, " : ""}${m.n} statements</span>` : '<span class="mnone">Too few positions</span>'}</span>` : ""}
       <span class="cell" role="cell">${lineCell("x", p.x, p.proof === "thin", p)}</span>
       <span class="cell" role="cell">${lineCell("y", p.y, p.proof === "thin", p)}</span>
       <span class="cfund" role="cell">${fundsCell(p.funds)}</span>

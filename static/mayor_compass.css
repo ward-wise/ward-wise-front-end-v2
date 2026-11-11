@@ -267,19 +267,17 @@
 .mc .drawer .scores{display:grid;gap:20px;margin-top:16px}
 .mc .drawer .scores .proofline{font-size:14px;color:var(--ink-2)}
 .mc .drawer .scores .proofline b{font-size:17px;color:var(--ink);font-family:var(--sfd)}
-/* game show feel (direction C): round chip, milestone banner, 20-segment meter, countdown, podium, burst */
+/* game show feel: 20-segment meter, countdown, podium, burst */
 .mc .rslot{position:relative;height:0;margin:0}
 .mc .rchip{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--link);background:var(--blue-wash);border-radius:980px;padding:5px 12px}
 .mc .rtip{font-size:12.5px;color:var(--ink-3)}
-.mc .mile{position:absolute;left:0;right:0;top:-66px;height:40px;display:grid;place-items:center;background:var(--blue);color:#fff;border-radius:980px;font-family:var(--sfd);font-size:16px;font-weight:700;letter-spacing:-0.01em;pointer-events:none;opacity:0;animation:mc-mile 2s ease-out forwards}
-@keyframes mc-mile{0%{opacity:0;transform:translateY(10px) scale(.94)}12%{opacity:1;transform:translateY(0) scale(1.05)}18%{transform:scale(1)}80%{opacity:1;transform:scale(1)}100%{opacity:0;transform:translateY(-4px) scale(1)}}
+
 .mc .mtr{display:grid;grid-template-columns:1fr;gap:0;margin:10px 0 26px}
 .mc .mgrp{display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:3px}
 .mc .mseg{position:relative;display:block;height:10px;border-radius:5px;background:var(--fill-2);overflow:hidden}
 .mc .mseg b{position:absolute;inset:0;background:var(--blue);border-radius:5px;opacity:0;transform-origin:center}
 .mc .mseg b.on{opacity:1}
-.mc .mseg b.pop{animation:mc-segpop .42s cubic-bezier(.2,1.5,.4,1) .3s both}
-@keyframes mc-segpop{0%{opacity:0;transform:scale(.1)}60%{opacity:1;transform:scale(1.35)}100%{opacity:1;transform:scale(1)}}
+
 .mc .mseg.cur::after{content:"";position:absolute;inset:0;border-radius:5px;background:var(--blue);opacity:.28;transform-origin:left;animation:mc-curpulse 1s ease-in-out infinite alternate}
 @keyframes mc-curpulse{from{transform:scaleX(.35);opacity:.2}to{transform:scaleX(1);opacity:.45}}
 .mc .mtr.wave .mseg b{opacity:1;animation:mc-wave .45s ease-out calc(var(--i) * 22ms) both}
@@ -318,23 +316,13 @@
 .mc .lead2{font-size:13px;color:var(--ink-2)}
 /* ===== Swipe cards (A) ===== */
 .mc #quiz{position:relative}
-.mc #quiz.s2{box-shadow:0 9px 0 -5px var(--fill-2),0 18px 0 -10px var(--line);margin-bottom:20px}
-.mc #quiz.s1{box-shadow:0 9px 0 -5px var(--fill-2);margin-bottom:10px}
-.mc #quiz.rise{animation:mc-cardrise .26s cubic-bezier(.2,.8,.2,1) .07s both}
-.mc #quiz.riseback{animation:mc-cardback .26s cubic-bezier(.2,.8,.2,1) .07s both}
-@keyframes mc-cardrise{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
-@keyframes mc-cardback{from{transform:translateX(-16px);opacity:0}to{transform:none;opacity:1}}
-.mc .flyer{box-sizing:border-box;position:fixed!important;margin:0!important;pointer-events:none;z-index:60;box-shadow:0 14px 36px rgb(0 0 0 / 14%)!important;will-change:transform,opacity}
+
 .mc .keyhint{margin:10px 0 0;text-align:center;font-size:12.5px;color:var(--ink-3)}
 .mc .bmsm{font-size:13px;color:var(--ink-2);margin:10px 0 0}
 @media (prefers-reduced-motion:reduce){.mc *{transition:none!important;animation:none!important}
-.mc #quiz.rise,.mc #quiz.riseback{animation:none!important}
-/* the card box stays put; only the new words fade in, after the old card has faded, so the two never overlap */
-.mc #quiz.rise .qbody,.mc #quiz.riseback .qbody{animation:mc-rmfade .18s ease-out .11s both!important}
-.mc .mile{animation:mc-rmmile 2s linear forwards!important}
 }
 @keyframes mc-rmfade{from{opacity:0}to{opacity:1}}
-@keyframes mc-rmmile{0%{opacity:0}10%{opacity:1}85%{opacity:1}100%{opacity:0}}
+
 .mc .ctab{background:var(--card);border-radius:18px;padding:8px 28px 6px}
 .mc .chead,.mc .crow{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1.15fr) minmax(0,1.15fr) minmax(0,.95fr) 14px;gap:24px;align-items:center}
 .mc .chead{font-size:12px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;padding:16px 0 10px}
@@ -529,16 +517,23 @@ body.mc-lock{overflow:hidden}
   .mc .cmphead,.mc .cmprow{grid-template-columns:minmax(0,1fr)}
 }
 
-/* Tighter candidate rows: name, one line of background, one line of status, facts and site. */
-.mc .crow{padding:8px 10px}
-.mc .crow .mn{font-size:16px}
-.mc .cname{gap:1px}
-.mc .cbg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
-.mc .cmeta{margin-top:2px;gap:6px 10px}
-.mc .cmeta .csite{margin-top:0;font-size:12.5px}
-.mc .mcell{gap:4px}
-.mc .mtop{display:flex;align-items:baseline;gap:6px}
-.mc .mtop .mon{display:inline;margin:0}
-.mc .fd-big{font-size:19px}
+/* Compact candidate rows: two short lines each, so about a dozen fit on one screen. */
+.mc .crow{padding:5px 10px;font-size:14px}
+.mc .crow .mn{font-size:15px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc .cname{gap:0}
+.mc .cmeta{display:block;margin:0;font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc .cstat.good{color:var(--green,#1f7a3a)}
+.mc .cstat.weak{color:var(--ink-3)}
+.mc .cmeta .csite{font-size:inherit;margin:0}
+.mc .mcell{gap:1px}
+.mc .mtop{display:flex;align-items:center;gap:6px}
+.mc .mpct{font-size:16px}
+.mc .mbar{width:44px;height:4px}
+.mc .mon{display:block;margin:0;font-size:11.5px;color:var(--ink-3);white-space:nowrap}
+.mc .crow.best .mon{color:var(--link);font-weight:600}
+.mc .cfund{gap:0}
+.mc .fd-top{white-space:nowrap}
+.mc .fd-big{font-size:15px;font-weight:600}
+.mc .fd-sub{font-size:12px;white-space:nowrap}
 .mc .fd-sub .fd-src{font-size:inherit;margin:0}
-.mc .chead{padding:12px 0 8px}
+.mc .chead{padding:10px 0 6px}
