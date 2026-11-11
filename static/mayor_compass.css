@@ -538,9 +538,9 @@ body.mc-lock{overflow:hidden}
 .mc .fd-sub .fd-src{font-size:inherit;margin:0}
 .mc .chead{padding:10px 0 6px}
 
-/* Card to card: the card clips the two statements while they slide past each other. */
-.mc .qcard{overflow:hidden}
-.mc .qbody{position:relative;display:flex;flex-direction:column}
+/* Flashcard flip: both faces hide their backs, so only one statement shows at any moment. */
+.mc .qcol{position:relative}
+.mc #quiz,.mc .qflip{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.mc .qflip{position:absolute;box-sizing:border-box;margin:0;pointer-events:none;z-index:2;will-change:transform}
+.mc .qbody{display:flex;flex-direction:column}
 .mc .qbody .answers{margin-top:auto}
-.mc .qghost{position:absolute;margin:0;pointer-events:none;will-change:transform}
-.mc .qcard .qbody{will-change:transform}

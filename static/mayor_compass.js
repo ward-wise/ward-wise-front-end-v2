@@ -275,37 +275,33 @@ let riseNext = false;
 const REDUCED = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 // Card slides off toward the answer: left for disagree, right for agree, up for neutral, down for Not sure and Skip. Motion only, no feedback on the answer.
 // Short travel, a small tilt and a fade, so the eye follows one card out and one card in.
-let swapDir = null, oldBody = null;
+let swapDir = null;
 function flyOut(v){ riseNext = true; swapDir = v; }
-// Card to card, like a carousel: the statement you answered slides out to the left while the next
-// one slides in from the right, both at once, inside a card that keeps one fixed size. Back runs
-// it the other way. The answer you picked stays lit as it leaves. A fast key press just starts
-// the next slide.
+// A flashcard flip: the answered card turns over and the next statement is on its back. The old
+// card is copied in place (same box, so nothing re-wraps), then both faces turn together around
+// the vertical axis with their backs hidden. Back flips the other way. A fast key press starts the
+// next flip at once. Same flip with Reduce motion on: Connor has it on and asked for the flip.
 function snapOld(qe){
-  const b = qe.querySelector(".qbody");
-  if (!b) return null;
-  const c = b.cloneNode(true);
-  c.querySelectorAll("[id]").forEach(n => n.removeAttribute("id"));
+  if (!qe.querySelector(".qbody")) return null;
+  const c = qe.cloneNode(true);
+  c.removeAttribute("id"); c.querySelectorAll("[id]").forEach(n => n.removeAttribute("id"));
   if (typeof swapDir === "number") c.querySelectorAll(".ans").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.v === swapDir)));
-  return {node: c, top: b.offsetTop, left: b.offsetLeft, width: b.offsetWidth};
+  return {node: c, top: qe.offsetTop, left: qe.offsetLeft, width: qe.offsetWidth, height: qe.offsetHeight};
 }
 function easeSwap(qe, old, back){
-  const body = qe.querySelector(".qbody");
-  if (!body || !old) { // the top 3 and picks steps: a plain fade in
+  if (!qe.querySelector(".qbody") || !old) { // the top 3 and picks steps: a plain fade in
     Array.from(qe.children).forEach(el => { try { el.animate([{opacity: 0}, {opacity: 1}], {duration: 180, easing: "ease-out"}); } catch (e) { /* no motion */ } });
     return;
   }
-  qe.querySelectorAll(".qghost").forEach(n => n.remove());
-  const g = old.node; g.classList.add("qghost"); g.setAttribute("aria-hidden", "true");
-  Object.assign(g.style, {top: old.top + "px", left: old.left + "px", width: old.width + "px"});
-  qe.appendChild(g);
-  // Same slide with Reduce motion on: Connor (who has it on) asked for one seamless card-to-card
-  // flow, and a short slide with a crossfade left both statements on screen at once.
-  const D = qe.offsetWidth, dir = back ? 1 : -1, ms = 340, ease = "cubic-bezier(.45,0,.2,1)";
-  const fade = false;
+  const host = qe.parentElement;
+  host.querySelectorAll(".qflip").forEach(n => n.remove());
+  const g = old.node; g.classList.add("qflip"); g.setAttribute("aria-hidden", "true");
+  Object.assign(g.style, {top: old.top + "px", left: old.left + "px", width: old.width + "px", height: old.height + "px"});
+  host.appendChild(g);
+  const turn = back ? 180 : -180, ms = 520, ease = "cubic-bezier(.45,.05,.25,1)";
   try {
-    g.animate([{transform: "none", opacity: 1}, {transform: `translateX(${dir * D}px)`, opacity: fade ? 0 : 1}], {duration: ms, easing: ease, fill: "forwards"}).onfinish = () => g.remove();
-    body.animate([{transform: `translateX(${-dir * D}px)`, opacity: fade ? 0 : 1}, {transform: "none", opacity: 1}], {duration: ms, easing: ease});
+    g.animate([{transform: "perspective(1400px) rotateY(0deg)"}, {transform: `perspective(1400px) rotateY(${turn}deg)`}], {duration: ms, easing: ease, fill: "forwards"}).onfinish = () => g.remove();
+    qe.animate([{transform: `perspective(1400px) rotateY(${-turn}deg)`}, {transform: "perspective(1400px) rotateY(0deg)"}], {duration: ms, easing: ease});
   } catch (e) { g.remove(); }
   setTimeout(() => g.remove(), ms + 100);
 }
