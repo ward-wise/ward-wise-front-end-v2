@@ -5,6 +5,7 @@
 // landing, the mini report, the full report and the comparison page scores through this one
 // module, so a rank shown on any of them is the same rank. computeComposite mirrors the server's
 // compute_weighted_scores to the displayed digit (round half-up to 2dp; ties broken by area id).
+// A page that honours the reader's contested directions scores an orientSlice() of the slice.
 window.WardWiseScoring = (function () {
   const round2 = (value) => Math.round(value * 100) / 100;
 
@@ -174,6 +175,86 @@ window.WardWiseScoring = (function () {
     parse: (text) => window.WardWiseGeography.parseMix(text),
   };
 
+  // ---- contested directions (byop v1.4 `direction_contested`) ----
+  // Residents disagree which way is better for some measures (more plate readers: safer, or more
+  // watched?). The catalog's `direction` is the default reading and the one the matrix's `s` was
+  // normalized in; a reader may take the other one. metric.direction holds the reading in force (so
+  // every label, sign and the change view follow it) and metric.default_direction the matrix's.
+  const DIRECTIONS = ["higher", "lower"];
+
+  // The other reading of a matrix score. Min-max normalization is symmetric (the 0-100 clamp, 50 on a
+  // flat domain), so this is exactly the 2 dp value the pipeline would have stored had the metric's
+  // direction been the other one — the same as flip_component_score in shared/civic_data/metrics.py.
+  function flipScore(s) {
+    return round2(100 - Number(s));
+  }
+
+  // The slice with `s` flipped on the given metrics; every other cell is shared, not copied. Memoized
+  // per slice, so re-scoring on each weight change costs nothing until the choices change.
+  const orientedSlices = new WeakMap();
+  function orientSlice(slice, flippedIds) {
+    const ids = [...new Set(flippedIds || [])].sort();
+    if (!slice || !ids.length) return slice || {};
+    const key = ids.join(",");
+    const memo = orientedSlices.get(slice);
+    if (memo && memo.key === key) return memo.slice;
+    const out = {};
+    for (const [areaId, cells] of Object.entries(slice)) {
+      let copy = null;
+      for (const id of ids) {
+        if (cells && id in cells) {
+          copy ||= { ...cells };
+          copy[id] = { ...cells[id], s: flipScore(cells[id].s) };
+        }
+      }
+      out[areaId] = copy || cells;
+    }
+    orientedSlices.set(slice, { key, slice: out });
+    return out;
+  }
+
+  const contested = (metric) => Boolean(metric?.direction_contested) && DIRECTIONS.includes(metric.default_direction);
+
+  const directions = {
+    // dir=metric_id:higher,metric_id:lower -> {metric_id: "higher"|"lower"}; anything else is dropped.
+    parse(text) {
+      const choices = {};
+      for (const token of String(text || "").split(",")) {
+        const [id, direction] = token.split(":").map((part) => (part || "").trim());
+        if (id && DIRECTIONS.includes(direction)) choices[id] = direction;
+      }
+      return choices;
+    },
+    // Remember each metric's default once, then apply the reader's choices to contested metrics only.
+    // Returns the canonical dir= text for the page's links and URL.
+    apply(metrics, choices) {
+      const parsed = typeof choices === "string" || choices == null ? directions.parse(choices) : choices;
+      for (const metric of metrics || []) {
+        if (!("default_direction" in metric)) metric.default_direction = metric.direction || "higher";
+        if (contested(metric) && parsed[metric.metric_id]) metric.direction = parsed[metric.metric_id];
+      }
+      return directions.serialize(metrics);
+    },
+    // One reader's choice; false when the metric isn't contested.
+    set(metric, direction) {
+      if (!contested(metric) || !DIRECTIONS.includes(direction)) return false;
+      metric.direction = direction;
+      return true;
+    },
+    isContested: contested,
+    // The contested metrics read the other way from their default — the ones a slice must flip.
+    flipped(metrics) {
+      return (metrics || []).filter((m) => contested(m) && m.direction !== m.default_direction).map((m) => m.metric_id);
+    },
+    serialize(metrics) {
+      return (metrics || [])
+        .filter((m) => contested(m) && m.direction !== m.default_direction)
+        .map((m) => `${m.metric_id}:${m.direction}`)
+        .sort()
+        .join(",");
+    },
+  };
+
   return {
     computeComposite,
     areaStanding,
@@ -188,5 +269,8 @@ window.WardWiseScoring = (function () {
     medal,
     medalClass,
     basket,
+    flipScore,
+    orientSlice,
+    directions,
   };
 })();

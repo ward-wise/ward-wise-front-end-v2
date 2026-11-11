@@ -156,7 +156,7 @@ function surveyEquationWeights() {
     // Direction overrides are the reader's own call on contested metrics.
     for (const [metricId, direction] of Object.entries(parsed.directions || {})) {
       const metric = explorerState.metrics.find((m) => m.metric_id === metricId);
-      if (metric) metric.direction = direction;
+      if (metric) WardWiseScoring.directions.set(metric, direction);
     }
     const known = Object.fromEntries(explorerState.metrics.map((m) => [m.metric_id, 0]));
     let any = false;
@@ -263,6 +263,8 @@ async function loadManifestAndStart() {
   try {
     const metricData = await WardWiseExplorer.fetchExplorerManifest();
     explorerState.metrics = shuffledMetrics(applyMetricView(metricData.metrics));
+    // A shared link's readings of contested metrics (dir=) apply before anything scores.
+    WardWiseScoring.directions.apply(explorerState.metrics, new URLSearchParams(window.location.search).get("dir"));
     const countEl = document.getElementById("metric-count-total");
     if (countEl) countEl.textContent = `these ${explorerState.metrics.length}`;
     explorerState.metricCoverage = metricData.coverage || {};
@@ -485,14 +487,19 @@ function neededYearKeys() {
 // the comparison page can never disagree on a rank (the module mirrors the server's
 // compute_weighted_scores to the displayed digit).
 function computeScores(weights, yearKey) {
+  return WardWiseScoring.computeComposite(sliceFor(yearKey), weights).rows;
+}
+
+// A year's slice as the reader reads it: contested metrics they flipped have `s` mirrored
+// (WardWiseScoring.orientSlice, memoized). The map, leaderboard and mini report all read through here;
+// the change view needs nothing extra, since it normalizes raw values by metric.direction.
+function sliceFor(yearKey) {
   const matrix = explorerState.scoreMatrices[explorerState.areaType] || {};
-  const slice = matrix[yearKey] || matrix.latest || {};
-  return WardWiseScoring.computeComposite(slice, weights).rows;
+  return WardWiseScoring.orientSlice(matrix[yearKey] || matrix.latest || {}, WardWiseScoring.directions.flipped(explorerState.metrics));
 }
 
 function currentSlice() {
-  const matrix = explorerState.scoreMatrices[explorerState.areaType] || {};
-  return matrix[explorerState.selectedYear || "latest"] || matrix.latest || {};
+  return sliceFor(explorerState.selectedYear || "latest");
 }
 
 // ---- curated lists ----
@@ -593,6 +600,8 @@ function writeLandingUrl() {
   if (mix) params.set("m", mix);
   if (explorerState.activePresetId) params.set("p", explorerState.activePresetId);
   if (explorerState.selectedYear) params.set("y", String(explorerState.selectedYear));
+  const directions = WardWiseScoring.directions.serialize(explorerState.metrics);
+  if (directions) params.set("dir", directions);
   if (explorerState.currentWardId) params.set("sel", String(explorerState.currentWardId));
   const query = params.toString();
   window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
@@ -1032,6 +1041,23 @@ function setMetricWeight(metricId, weight, { refresh = true } = {}) {
   if (refresh) refreshMetricViews();
 }
 
+// Which way is better on a contested metric is the reader's call (byop v1.4 direction_contested):
+// the slices re-orient, every label and sign follows metric.direction, and the URL keeps the choice.
+function setMetricDirection(metricId, direction) {
+  const metric = explorerState.metrics.find((m) => m.metric_id === metricId);
+  if (!metric || metric.direction === direction || !WardWiseScoring.directions.set(metric, direction)) return;
+  explorerState.urlDirty = true;
+  WardWiseExplorer.track("explore_direction", { metric_id: metricId, direction, is_default: direction === metric.default_direction });
+  renderMetricControls();
+  renderWellbeingEquation();
+  refreshMetricViews();
+}
+
+// "Lower is better" / "Higher is better" for a contested metric, in the words the reports use.
+function directionPhrase(direction) {
+  return direction === "lower" ? "lower is better" : "higher is better";
+}
+
 // Update the one control for a metric (tile or list row) in place, without re-rendering the grid.
 function syncMetricControl(metricId) {
   const weight = explorerState.weights[metricId] ?? 0;
@@ -1184,12 +1210,22 @@ function renderMetricControls() {
     const choices = [[0, "Off", "Off"], [1, "1×", "Standard"], [PRIORITY_WEIGHT, "★10×", "Priority"]]
       .map(([w, text, word]) => `<button type="button" class="metric-weight-choice${level === w ? " is-active" : ""}${w === PRIORITY_WEIGHT ? " is-priority" : ""}" data-weight="${w}" aria-pressed="${level === w}" aria-label="${esc(metric.label)}: ${word}">${text}</button>`)
       .join("");
+    const contested = WardWiseScoring.directions.isContested(metric);
+    const inverse = !contested && metric.direction === "lower"
+      ? ` <span class="metric-row-inverse" title="Lower raw values earn higher wellbeing scores">Inverse</span>` : "";
+    const directionControl = contested
+      ? `<span class="metric-direction-control" role="group" aria-label="${esc(metric.label)}: people disagree which way is better">` +
+        `<span class="metric-direction-note" title="People disagree which way is better here, so it is your call">Your call:</span>` +
+        ["lower", "higher"].map((d) => `<button type="button" class="metric-direction-choice${metric.direction === d ? " is-active" : ""}" data-direction="${d}" aria-pressed="${metric.direction === d}">${directionPhrase(d).replace(/^./, (c) => c.toUpperCase())}</button>`).join("") +
+        `</span>`
+      : "";
     return `
       <div class="metric-row${weight > 0 ? "" : " is-off"}" data-metric-id="${esc(metric.metric_id)}">
         <span class="metric-row-icon" aria-hidden="true">${metricIcon(metric)}</span>
         <span class="metric-row-copy">
-          <span class="metric-row-title">${esc(metric.label)}${metric.direction === "lower" ? ` <span class="metric-row-inverse" title="Lower raw values earn higher wellbeing scores">Inverse</span>` : ""}${also}</span>
+          <span class="metric-row-title">${esc(metric.label)}${inverse}${also}</span>
           <span class="metric-row-desc" title="${esc(source)}">${esc(metric.description || source)}</span>
+          ${directionControl}
         </span>
         <span class="metric-weight-control" role="group" aria-label="${esc(metric.label)} weight">${choices}</span>
       </div>`;
@@ -1336,6 +1372,14 @@ function renderDomainCounters() {
 }
 
 function attachMetricRowHandlers() {
+  document.querySelectorAll(".metric-direction-choice").forEach((button) => {
+    button.addEventListener("click", () => {
+      const metricId = button.closest(".metric-row")?.dataset.metricId;
+      if (!metricId) return;
+      setMetricDirection(metricId, button.dataset.direction);
+      document.querySelector(`.metric-row[data-metric-id="${CSS.escape(metricId)}"] .metric-direction-choice[data-direction="${button.dataset.direction}"]`)?.focus({ preventScroll: true });
+    });
+  });
   document.querySelectorAll(".metric-weight-choice").forEach((button) => {
     button.addEventListener("click", () => {
       const row = button.closest(".metric-row");
@@ -1602,9 +1646,13 @@ function renderWellbeingEquation() {
       const high = isHighWeight(weight);
       const sign = metric.direction === "lower" ? "−" : "";
       const badge = `${sign}${high ? "★" : ""}${WardWiseExplorer.formatNumber(weight, { maximumFractionDigits: 1 })}×`;
+      const other = metric.direction === "lower" ? "higher" : "lower";
+      const flip = WardWiseScoring.directions.isContested(metric)
+        ? `<button type="button" class="eq-chip-dir" data-act="direction" data-direction="${other}" title="People disagree which way is better here. Now ${directionPhrase(metric.direction)}; click to count ${directionPhrase(other)}." aria-label="${esc(metric.label)}: ${directionPhrase(metric.direction)}. Switch to ${directionPhrase(other)}">⇅ ${directionPhrase(metric.direction)}</button>`
+        : "";
       return `<span class="eq-chip${high ? " is-high" : ""}" role="listitem" data-metric-id="${esc(metric.metric_id)}">` +
         `<button type="button" class="eq-chip-w num" data-act="weight" aria-pressed="${high}" aria-label="${esc(metric.label)}: ${high ? "Priority weight, set to Standard" : "Standard weight, set to Priority"}">${badge}</button>` +
-        `<span class="eq-chip-label">${esc(metric.label)}</span>` +
+        `<span class="eq-chip-label">${esc(metric.label)}</span>` + flip +
         `<button type="button" class="eq-chip-x" data-act="remove" aria-label="Remove ${esc(metric.label)}">×</button></span>`;
     }).join("");
   }
@@ -1631,6 +1679,9 @@ function initFormulaChips() {
       setMetricWeight(metricId, 0);
       const target = neighbour ? formula.querySelector(`.eq-chip[data-metric-id="${CSS.escape(neighbour)}"] .eq-chip-x`) : null;
       (target || document.getElementById("open-methodology"))?.focus({ preventScroll: true });
+    } else if (button.dataset.act === "direction") {
+      setMetricDirection(metricId, button.dataset.direction);
+      formula.querySelector(`.eq-chip[data-metric-id="${CSS.escape(metricId)}"] .eq-chip-dir`)?.focus({ preventScroll: true });
     } else if (button.dataset.act === "weight") {
       const weight = explorerState.weights[metricId] ?? 0;
       setMetricWeight(metricId, isHighWeight(weight) ? 1 : PRIORITY_WEIGHT);
@@ -2349,8 +2400,7 @@ function wardScoreComponents(wardId) {
     }
     return components;
   }
-  const slice = matrix[explorerState.selectedYear || "latest"] || matrix.latest || {};
-  const cells = slice[String(wardId)] || {};
+  const cells = currentSlice()[String(wardId)] || {};
   const components = [];
   for (const [metricId, weight] of Object.entries(explorerState.weights)) {
     if (Number(weight) > 0 && cells[metricId]) {
@@ -2807,13 +2857,13 @@ function renderMiniReport(areaId, container) {
   // the way onward (the report / compare pages speak peer geographies only; the lens stays here)
   const ctas = [];
   if (MINI_REPORT_LINKS.report && !geo.explorerOnly) {
-    ctas.push(`<a class="ww-cta" href="${esc(WardWiseGeography.reportUrl(explorerState.areaType, areaId, { weights: explorerState.weights, presetId: explorerState.activePresetId, year: explorerState.selectedYear }))}">Open full report →</a>`);
+    ctas.push(`<a class="ww-cta" href="${esc(WardWiseGeography.reportUrl(explorerState.areaType, areaId, { weights: explorerState.weights, presetId: explorerState.activePresetId, year: explorerState.selectedYear, directions: WardWiseScoring.directions.serialize(explorerState.metrics) }))}">Open full report →</a>`);
   }
   if (explorerState.areaType === "ward") {
     ctas.push(`<button type="button" class="ww-cta ghost" data-act="precincts" data-area-id="${esc(areaId)}">See its precincts</button>`);
   }
   if (MINI_REPORT_LINKS.compare && !geo.explorerOnly) {
-    ctas.push(`<a class="ww-cta ghost" href="${esc(WardWiseGeography.compareUrl(explorerState.areaType, areaId, null, { weights: explorerState.weights, year: explorerState.selectedYear }))}">Compare with another ${esc(geo.noun)}</a>`);
+    ctas.push(`<a class="ww-cta ghost" href="${esc(WardWiseGeography.compareUrl(explorerState.areaType, areaId, null, { weights: explorerState.weights, year: explorerState.selectedYear, directions: WardWiseScoring.directions.serialize(explorerState.metrics) }))}">Compare with another ${esc(geo.noun)}</a>`);
   }
   if (lensActive()) {
     ctas.push(`<button type="button" class="ww-cta ghost" data-act="goto" data-area-type="ward" data-area-id="${esc(explorerState.lensWardId)}">Back to ${esc(lensWardLabel())}</button>`);

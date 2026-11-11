@@ -1014,6 +1014,12 @@ select {
 .metric-weight-choice.is-active { background: var(--hue-bright); color: var(--on-accent); }
 .metric-weight-choice.is-priority.is-active { background: var(--gold-ink); }
 .metric-weight-choice:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
+/* Contested direction (byop v1.4): which way is better is the reader's call. */
+.metric-direction-control { align-items: center; display: inline-flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.2rem; }
+.metric-direction-note { color: var(--muted-text); font-size: 0.68rem; font-weight: 700; }
+.metric-direction-choice { background: var(--surface-muted); border: 1px solid var(--border); border-radius: 999px; color: var(--muted-text); cursor: pointer; font: inherit; font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.5rem; }
+.metric-direction-choice.is-active { background: var(--hue-soft); border-color: var(--hue); color: var(--hue); }
+.metric-direction-choice:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
 .metric-search { margin-top: 0.5rem; }
 .metric-search-empty { color: var(--muted-text); font-size: 0.85rem; margin: 0.5rem 0; }
 #metric-weights.is-searching .metric-domain-row:not(.is-expanded) .metric-domain-tiles { grid-auto-rows: auto; overflow: visible; row-gap: 0.25rem; }
@@ -1355,6 +1361,9 @@ select {
 .eq-chip-x:hover, .eq-chip-x:focus-visible { opacity: 1; }
 .eq-chip-w:focus-visible, .eq-chip-x:focus-visible { outline: 2px solid var(--hue-bright); outline-offset: 1px; }
 .eq-chip-label { white-space: nowrap; }
+.eq-chip-dir { background: transparent; border: 1px dashed currentColor; border-radius: 999px; color: inherit; cursor: pointer; font: inherit; font-size: 0.66rem; font-weight: 700; opacity: 0.85; padding: 0 0.4rem; white-space: nowrap; }
+.eq-chip-dir:hover, .eq-chip-dir:focus-visible { opacity: 1; }
+.eq-chip-dir:focus-visible { outline: 2px solid var(--hue-bright); outline-offset: 1px; }
 
 .methodology-equation { border-bottom: 1px solid color-mix(in srgb, var(--shadow-ink) 10%, transparent); padding-bottom: 0.6rem; margin-bottom: 0.6rem; }
 /* per-measure notes in the "?" panel: the short how, the source, and the years behind the number */
@@ -7452,3 +7461,42 @@ html.is-dark .rel-grade-moderate { color: #4cd964; }
 .fd-appendix-entry { margin-top: 20px; }
 .fd-appendix-entry h3 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
 .fd-appendix-entry p + p { margin-top: 4px; }
+
+/* /get-involved: the two-path steer, "how people have helped", and the GitHub idea board. */
+.fd-involved .gi-path { box-shadow: inset 0 0 0 1px var(--hair); color: inherit; display: grid; gap: 12px; text-decoration: none; transition: box-shadow 0.2s ease, transform 0.15s ease; }
+.fd-involved .gi-path:hover { box-shadow: inset 0 0 0 2px var(--link); }
+.fd-involved .gi-path:active { transform: scale(0.99); }
+.fd-involved .gi-path .fd-more { color: var(--link); }
+.fd-involved .gi-path-icon { color: var(--link); }
+.fd-involved .gi-path-examples { color: var(--ink-3); font-size: 15px; line-height: 1.45; }
+.fd-involved .gi-track { scroll-margin-top: 64px; }
+.fd-involved .gi-helped { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); list-style: none; margin: 0; padding: 0; }
+.fd-involved .gi-helped .fd-card { align-content: start; display: grid; font-size: 15px; gap: 8px; line-height: 1.45; padding: 20px; }
+.fd-involved .gi-helped .fd-card p { color: var(--ink-2); }
+.fd-involved .gi-helped strong { color: var(--ink); font-weight: 600; }
+.fd-involved .gi-helped .fd-more { font-size: 15px; white-space: normal; }
+.fd-involved .gi-steps { color: var(--ink-2); display: grid; gap: 10px; line-height: 1.5; margin: 8px 0 0; max-width: 70ch; padding-left: 1.4em; }
+.fd-involved .gi-steps strong { color: var(--ink); font-weight: 600; }
+.fd-involved .gi-steps code, .fd-involved .fd-body code { background: var(--fill); border-radius: 6px; font-size: 0.9em; padding: 1px 6px; }
+.fd-involved .fd-fill .gi-steps code { background: var(--card); }
+.gi-board { display: grid; gap: 18px; }
+.gi-board .fd-loading { padding: 12px 0; }
+.gi-ideas { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); list-style: none; margin: 0; padding: 0; }
+.gi-idea { align-content: start; background: var(--card); border-radius: 14px; box-shadow: inset 0 0 0 1px var(--hair); display: grid; gap: 6px; justify-items: start; padding: 16px 18px; }
+.gi-idea-title { color: var(--ink) !important; font-size: 17px; font-weight: 600; line-height: 1.3; text-decoration: none; }
+.gi-idea-title:hover { text-decoration: underline; }
+.gi-idea-domain { color: var(--ink-3); font-size: 13px; font-weight: 600; }
+.gi-idea-meta { color: var(--ink-3); font-size: 14px; }
+.gi-idea-links { display: flex; flex-wrap: wrap; font-size: 15px; gap: 4px 16px; margin-top: 2px; }
+.gi-status { border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; padding: 2px 9px; }
+.gi-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.gi-status.is-open { background: color-mix(in srgb, var(--link) 14%, transparent); color: var(--link); }
+.gi-status.is-claimed { background: color-mix(in srgb, #1a7f37 16%, transparent); color: #1a7f37; }
+.gi-status.is-data { background: color-mix(in srgb, #b26b00 16%, transparent); color: #9a5b00; }
+.gi-status.is-first { background: var(--fill); color: var(--ink-2); }
+.gi-status.is-muted { background: var(--fill); color: var(--ink-3); }
+html.is-dark .gi-status.is-claimed { color: #4cc26b; }
+html.is-dark .gi-status.is-data { color: #f0a640; }
+.gi-board-note { color: var(--ink-2); max-width: 62ch; }
+.gi-board-foot { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.gi-board-foot .fd-more { font-size: 15px; }

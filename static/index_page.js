@@ -74,7 +74,8 @@
       `/api/metrics/score-matrix?area_type=${encodeURIComponent(areaType)}&year=${encodeURIComponent(yearKey)}`,
       "Unable to load scores.",
     );
-    bucket[yearKey] = (data.matrix || {})[yearKey] || {};
+    // the reader's contested-direction choices (dir=) are fixed for the page, so flip once on arrival
+    bucket[yearKey] = S.orientSlice((data.matrix || {})[yearKey] || {}, S.directions.flipped(state.manifest.metrics));
     return bucket[yearKey];
   }
 
@@ -156,6 +157,7 @@
 
   function readUrl() {
     const params = new URLSearchParams(window.location.search);
+    state.dir = S.directions.apply(state.manifest.metrics, params.get("dir")); // contested readings, see scoring.js
     state.cfg = G.peerByApi(params.get("area") || "ward");
     const year = params.get("y");
     state.year = year && /^\d{4}$/.test(year) ? Number(year) : "latest";
@@ -212,6 +214,7 @@
       params.set("e", equationParam());
     }
     if (state.year !== "latest") params.set("y", String(state.year));
+    if (state.dir) params.set("dir", state.dir);
     if (state.sort !== "number") params.set("sort", state.sort);
     if (state.q) params.set("q", state.q);
     if (state.view === "cards") params.set("view", "cards");
@@ -342,7 +345,7 @@
       .join("");
     const cards = state.view === "cards";
     const sparkOk = sparkFetches() > 0;
-    const back = G.landingUrl(state.cfg.api, null, { weights: state.weights, presetId: state.presetId, year: state.year });
+    const back = G.landingUrl(state.cfg.api, null, { weights: state.weights, presetId: state.presetId, year: state.year, directions: state.dir });
     return `
       <div class="ed-controls">
         <a class="ww-linkbtn" href="${esc(back)}">← Map view</a>
@@ -454,7 +457,7 @@
   }
 
   function reportHref(id) {
-    return G.reportUrl(state.cfg.api, id, { weights: state.weights, presetId: state.presetId, year: state.year });
+    return G.reportUrl(state.cfg.api, id, { weights: state.weights, presetId: state.presetId, year: state.year, directions: state.dir });
   }
 
   function rowHtml(row) {

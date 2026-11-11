@@ -88,7 +88,8 @@ PAGES: tuple[Page, ...] = (
     Page("dictionary", "/dictionary", "dictionary.html", "ui.dictionary_page"),
     Page("data_notes", "/data-notes", "data_notes.html", "ui.data_notes_page"),
     Page("your_city", "/your-city", "your_city.html", "ui.your_city"),
-    Page("about", "/about", "about.html", "ui.about_page", aliases=("/support",)),
+    Page("about", "/about", "about.html", "ui.about_page"),
+    Page("get_involved", "/get-involved", "get_involved.html", "ui.get_involved_page"),
     Page("signifiers", "/signifiers", "signifiers.html", "ui.signifiers_page"),
     Page("suggest_metric", "/suggest-metric", "suggest_metric.html", "ui.suggest_metric"),
     Page("suggest_photo", "/suggest-photo", "suggest_photo.html", "ui.suggest_photo"),
@@ -106,6 +107,10 @@ REDIRECTS: dict[str, str] = {
     "/reports/comparison": "/reports/relationship",
     # the causal report became the driver analysis (2026-10)
     "/reports/causal": "/reports/drivers",
+    # where people ask "how can I help?" (2026-11); /support used to serve the About page
+    "/support": "/get-involved",
+    "/help": "/get-involved",
+    "/contribute": "/get-involved",
 }
 
 # Endpoints that live in the private app (Flask on Lambda). Same host in production — CloudFront
