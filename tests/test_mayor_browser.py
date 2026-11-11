@@ -225,7 +225,7 @@ def test_share_card_download_is_counted_and_saves_a_png(page, mayor_site):
 
 def test_best_match_is_the_closest_answers_not_the_nearest_dot(page, mayor_site):
     # Connor, Nov 11: the match is a count. Statement by statement, the same answer is a full point and
-    # each step apart loses a quarter. Only people with 8 or more sourced answers are ranked.
+    # each step apart earns less (1, .75, .35, .1, 0). Only people with 8 or more sourced answers are ranked.
     run_quiz(page, mayor_site)
     _, ph = sent(page)
     fin = named(ph, "mayor_quiz_finished")[0]
@@ -237,7 +237,7 @@ def test_best_match_is_the_closest_answers_not_the_nearest_dot(page, mayor_site)
     for p in people:
         shared = [(mine[q], v) for q, v in p["answers"] if q in mine]
         if len(p["answers"]) >= 8 and len(shared) >= 5:
-            scores[p["id"]] = sum(1 - abs(u - v) / 4 for u, v in shared) / len(shared)
+            scores[p["id"]] = sum([1, .75, .35, .1, 0][abs(u - v)] for u, v in shared) / len(shared)
     assert scores, "nobody qualified"
     best = max(scores.values())
     assert abs(scores[fin["best_match"]] - best) < 1e-9, (fin["best_match"], scores)

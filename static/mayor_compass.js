@@ -70,6 +70,7 @@ function trackFinished(){
 let answers = store.get("mc-answers", {}), stars = store.get("mc-stars", {}), unsure = store.get("mc-unsure", {}), top3 = store.get("mc-top3", []), profile = store.get("mc-profile", {}), qi = 0;
 // Statement S4 was reworded on Nov 10, 2026 (accept federal help -> turn away federal forces). Drop answers saved before that.
 if (store.get("mc-ver", 0) < 2) { if (answers.S4 != null) delete answers.S4; store.set("mc-answers", answers); store.set("mc-ver", 2); }
+// Nov 11, 2026 (round 9): the up and down line is enforcement only (Tougher enforcement / Lighter touch).
 // Nov 10, 2026 (round 8): the map lines changed to Progressive/Conservative and More city control/More personal freedom,
 // with 24 statements. Answers saved on the old lines would place people wrongly, so they start fresh.
 if (store.get("mc-ver", 0) < 3) { answers = {}; unsure = {}; stars = {}; ["mc-answers", "mc-unsure", "mc-stars"].forEach(k => store.set(k, {})); store.set("mc-done", false); store.set("mc-ver", 3); }
@@ -93,8 +94,8 @@ let pre = false, openId = null;
 const AX = {
   x: {k: "Economy", pos: "conservative", neg: "progressive", posS: "conservative", negS: "progressive",
       mid: "Near the middle on the economy", midS: "Middle on the economy", endNeg: "Progressive", endPos: "Conservative", rot: {pos: 90, neg: -90}},
-  y: {k: "City control", pos: "more city control", neg: "more personal freedom", posS: "more city control", negS: "more personal freedom",
-      mid: "Near the middle on city control", midS: "Middle on city control", endNeg: "More personal freedom", endPos: "More city control", rot: {pos: 0, neg: 180}}
+  y: {k: "Enforcement", pos: "tougher enforcement", neg: "a lighter touch", posS: "tougher enforcement", negS: "a lighter touch",
+      mid: "Near the middle on enforcement", midS: "Middle on enforcement", endNeg: "Lighter touch", endPos: "Tougher enforcement", rot: {pos: 0, neg: 180}}
 };
 const level = v => { const a = Math.abs(v); return a < 1.5 ? 0 : a < 5 ? 1 : 2; };
 function say(ax, v, short){
@@ -106,7 +107,7 @@ function say(ax, v, short){
 function mixedText(p, ax){
   if (!p || !p["mixed_" + ax]) return null;
   const s = p["sides_" + ax] || [0, 0], A = AX[ax];
-  return "Mixed on " + (ax === "x" ? "the economy" : "city control") + ": " + s[1] + " toward " + A.posS + ", " + s[0] + " toward " + A.negS;
+  return "Mixed on " + (ax === "x" ? "the economy" : "enforcement") + ": " + s[1] + " toward " + A.posS + ", " + s[0] + " toward " + A.negS;
 }
 const sayP = (p, ax, short) => mixedText(p, ax) || say(ax, p[ax], short);
 const ARROW = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V3M3.5 7.5L8 3l4.5 4.5"/></svg>';
@@ -132,7 +133,7 @@ let uid = 0;
 function chart(o){
   const id = "c" + (++uid), S = o.S, M = o.M || 0, Mb = o.Mb == null ? M : o.Mb, Ml = o.Ml || 0, k = S / 20, half = S / 2;
   const W = S + 2 * M + Ml, H = S + M + Mb, X = x => M + half + x * k, Y = y => M + half - y * k, rr = 18;
-  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Chart of candidates: progressive to conservative, and more city control to more personal freedom"><g transform="translate(' + Ml + ' 0)"><defs><clipPath id="' + id + '"><rect x="' + M + '" y="' + M + '" width="' + S + '" height="' + S + '" rx="' + rr + '"/></clipPath></defs>';
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Chart of candidates: progressive to conservative, and tougher enforcement to a lighter touch"><g transform="translate(' + Ml + ' 0)"><defs><clipPath id="' + id + '"><rect x="' + M + '" y="' + M + '" width="' + S + '" height="' + S + '" rx="' + rr + '"/></clipPath></defs>';
   s += '<g clip-path="url(#' + id + ')"><rect x="' + M + '" y="' + M + '" width="' + S + '" height="' + S + '" fill="var(--card)"/>';
   s += '<rect x="' + (M + half) + '" y="' + M + '" width="' + half + '" height="' + half + '" fill="var(--q1)"/><rect x="' + M + '" y="' + M + '" width="' + half + '" height="' + half + '" fill="var(--q2)"/>';
   s += '<rect x="' + M + '" y="' + (M + half) + '" width="' + half + '" height="' + half + '" fill="var(--q3)"/><rect x="' + (M + half) + '" y="' + (M + half) + '" width="' + half + '" height="' + half + '" fill="var(--q4)"/></g>';
@@ -145,10 +146,10 @@ function chart(o){
   s += ah(a1 + 3, Y(0), 0) + ah(a0 - 3, Y(0), 180) + ah(X(0), a0 - 3, -90) + ah(X(0), a1 + 3, 90);
   const pad = 14, nm = o.cap || 13.5;
   const corner = (x, y, anc, l1, l2) => '<text x="' + x + '" y="' + y + '" text-anchor="' + anc + '"><tspan class="q-cap" style="font-size:' + nm + 'px">' + l1 + '</tspan><tspan class="q-cap sm" x="' + x + '" dy="15">' + l2 + '</tspan></text>';
-  s += corner(M + S - pad, M + pad + 10, "end", "Conservative, more control", "Less spending, more rules");
-  s += corner(M + pad, M + pad + 10, "start", "Progressive, more control", "More programs, more rules");
-  s += corner(M + pad, M + S - pad - 14, "start", "Progressive, more freedom", "More programs, fewer rules");
-  s += corner(M + S - pad, M + S - pad - 14, "end", "Conservative, more freedom", "Less spending, fewer rules");
+  s += corner(M + S - pad, M + pad + 10, "end", "Conservative, tougher", "Less spending, more policing");
+  s += corner(M + pad, M + pad + 10, "start", "Progressive, tougher", "More programs, more policing");
+  s += corner(M + pad, M + S - pad - 14, "start", "Progressive, lighter touch", "More programs, less policing");
+  s += corner(M + S - pad, M + S - pad - 14, "end", "Conservative, lighter touch", "Less spending, less policing");
   /* obstacles for label placement */
   const boxes = [{x: M + S - pad - 190, y: M + pad, w: 190, h: 32}, {x: M + pad, y: M + pad, w: 190, h: 32}, {x: M + pad, y: M + S - pad - 26, w: 190, h: 30}, {x: M + S - pad - 190, y: M + S - pad - 26, w: 190, h: 30}];
   const hit = b => boxes.some(q => b.x < q.x + q.w + 1.5 && b.x + b.w + 1.5 > q.x && b.y < q.y + q.h + 1.5 && b.y + b.h + 1.5 > q.y);
@@ -212,8 +213,8 @@ function chart(o){
   if (o.you) { const cx = X(o.you.x), cy = Y(o.you.y); s += '<g class="youg"><circle class="you-halo" cx="' + cx + '" cy="' + cy + '" r="17"/><circle class="you-dot" cx="' + cx + '" cy="' + cy + '" r="8"/>' + youLab + '</g>'; }
   if (o.sideLabels) {
     const f = 'font-size="11.5" fill="var(--ink-2)" font-weight="600"';
-    s += '<text x="' + (M + half) + '" y="' + (M - 9) + '" text-anchor="middle" ' + f + '>&#8593; More city control</text>';
-    s += '<text x="' + (M + half) + '" y="' + (H - M + 20) + '" text-anchor="middle" ' + f + '>&#8595; More personal freedom</text>';
+    s += '<text x="' + (M + half) + '" y="' + (M - 9) + '" text-anchor="middle" ' + f + '>&#8593; Tougher enforcement</text>';
+    s += '<text x="' + (M + half) + '" y="' + (H - M + 20) + '" text-anchor="middle" ' + f + '>&#8595; Lighter touch</text>';
     s += '<text transform="translate(' + (M - 9) + ' ' + (M + half) + ') rotate(-90)" text-anchor="middle" ' + f + '>&#8592; Progressive</text>';
     s += '<text transform="translate(' + (M + S + 9) + ' ' + (M + half) + ') rotate(90)" text-anchor="middle" ' + f + '>Conservative &#8594;</text>';
   }
@@ -560,15 +561,16 @@ document.addEventListener("keydown", e => {
 
 /* ---------- scoring ---------- */
 function you(){
-  const ax = {econ: [], control: []};
+  const ax = {econ: [], control: []}; let n = 0;
   // A starred statement ("Matters to me") counts twice in where your dot lands.
-  for (const [qid, v] of Object.entries(answers)) if (v != null && Q[qid]) { const s = v * Q[qid].agree_direction * 5; ax[Q[qid].axis].push(s); if (stars[qid]) ax[Q[qid].axis].push(s); }
+  for (const [qid, v] of Object.entries(answers)) if (v != null && Q[qid]) { n++; const A = ax[Q[qid].axis]; if (!A) continue; // building-rule statements count in the match, not in the dot
+    const s = v * Q[qid].agree_direction * 5; A.push(s); if (stars[qid]) A.push(s); }
   const m = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
-  return {x: m(ax.econ), y: m(ax.control), n: ax.econ.length + ax.control.length};
+  return {x: m(ax.econ), y: m(ax.control), n};
 }
 // The match is a count (Connor, Nov 11: "this should be count"). Statement by statement, how close is
-// your answer to theirs: the same answer is a full point, each step apart on the five-step scale
-// loses a quarter, opposite ends score zero. A starred statement counts twice, as it does in where
+// your answer to theirs: the same answer is a full point, one step apart is three quarters,
+// two steps a third, three steps a tenth, opposite ends zero (STEP). A starred statement counts twice, as it does in where
 // your dot lands. A person needs MIN_ANS sourced answers to be ranked (Connor: 8 or more) and you
 // need MIN_SHARED statements in common. d (map distance) is kept only to explain a nearer dot.
 // How we know: a vote or act, their own words, a press account, or our reading of a related act.
@@ -576,7 +578,7 @@ const basisWord = (a, long) => a.basis === "action" ? (long ? "Based on a vote o
 // Past mayors (round 9): the same question as it stood in their own time, with the year.
 const thenLine = a => a.then ? '<p class="then"><b>The question in ' + esc(String(a.year || "their day")) + ':</b> ' + esc(a.then) + '</p>' : "";
 const MIN_ANS = 8, MIN_SHARED = 5;
-const STEP = [1, .75, .5, .25, 0]; // points for answers 0, 1, 2, 3 or 4 steps apart
+const STEP = [1, .75, .35, .1, 0]; // points for answers 0, 1, 2, 3 or 4 steps apart (Connor, Nov 11: steeper, so opposite sides earn little)
 const nAns = p => p.answers.filter(a => Q[a.qid]).length;
 function match(p, me){
   let w = 0, sum = 0, n = 0, same = 0, sides = 0;
@@ -633,7 +635,7 @@ function updateLive(){
     const lean = profile && profile.lean;
     if (lean && lean !== "Undecided" && lean !== "Prefer not to say" && lean !== top.p.name) h += '<p class="leanline">You said you lean toward ' + esc(lean) + '. Your answers line up most with ' + esc(top.p.name) + '.</p>';
   } else h += '<p class="hint">No candidate has enough public positions to name a match yet.</p>';
-  h += '<p class="resline">' + sent("x", "the economy") + " " + sent("y", "city control") + (ms ? ' <span style="font-weight:400;color:var(--ink-2)">Closest past mayor: ' + esc(ms.p.name) + '.</span>' : "") + '</p>';
+  h += '<p class="resline">' + sent("x", "the economy") + " " + sent("y", "enforcement") + (ms ? ' <span style="font-weight:400;color:var(--ink-2)">Closest past mayor: ' + esc(ms.p.name) + '.</span>' : "") + '</p>';
   $("live").innerHTML = h + REDO.replace('<div class="actions">', '<div class="actions"><button type="button" class="btn" id="qcopy">Copy my results</button><button type="button" class="btn btn-ghost" id="qcard">See my share card</button>');
   $("qredo").onclick = reopen; $("qcard").onclick = openCard; $("qcopy").onclick = () => copyCard($("qcopy"), "result");
   const bm = $("bdmore"); if (bm) bm.onclick = () => { bdAll = !bdAll; updateLive(); };
@@ -690,7 +692,7 @@ function renderCands(){
   if (live) { const r = rankOf(PEOPLE.filter(p => p.cand)), ids = r.map(c => c.p.id); cs = r.concat(cs.filter(c => !ids.includes(c.p.id))); }
   const firm = live ? cs.find(c => c.m.pct != null) : null;
   const bestId = firm ? firm.p.id : null;
-  $("cand-grid").innerHTML = '<div class="ctab' + (live ? " m" : "") + '" role="table" aria-label="2027 candidates"><div class="chead" role="row"><span></span><span role="columnheader">Candidate</span>' + (live ? '<span role="columnheader">Match</span>' : '') + '<span role="columnheader">' + lnHead("Economy", "Progressive", "Conservative") + '</span><span role="columnheader">' + lnHead("City control", "Freedom", "Control") + '</span><span role="columnheader">Raised for the mayor race</span><span></span></div>' +
+  $("cand-grid").innerHTML = '<div class="ctab' + (live ? " m" : "") + '" role="table" aria-label="2027 candidates"><div class="chead" role="row"><span></span><span role="columnheader">Candidate</span>' + (live ? '<span role="columnheader">Match</span>' : '') + '<span role="columnheader">' + lnHead("Economy", "Progressive", "Conservative") + '</span><span role="columnheader">' + lnHead("Enforcement", "Lighter", "Tougher") + '</span><span role="columnheader">Raised for the mayor race</span><span></span></div>' +
     (candsAll ? cs : cs.slice(0, 12)).map(({p, m}) => `<div class="crow${p.id === bestId ? " best" : ""}" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources">
       <label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label>
       <span class="cname" role="cell"><span class="mn" title="${esc(p.background || p.role)}">${esc(p.name)}</span><span class="cmeta"><span class="cstat ${/no challenge/i.test(p.status||"") ? "good" : /did not|withdrew/i.test(p.status||"") ? "weak" : ""}">${esc(p.status || "Status unknown")}</span> · ${p.n} ${p.n === 1 ? "fact" : "facts"}${p.site ? ` · <a class="csite" href="${esc(p.site)}" target="_blank" rel="noopener">Site</a>` : ""}</span></span>
@@ -740,7 +742,7 @@ const quadName = me => {
   const mx = Math.abs(me.x) < 1.5, my = Math.abs(me.y) < 1.5;
   if (mx && my) return "Right in the middle";
   const a = mx ? "Middle on the economy" : me.x > 0 ? "Conservative" : "Progressive";
-  const b = my ? "middle on city control" : me.y > 0 ? "more city control" : "more personal freedom";
+  const b = my ? "middle on enforcement" : me.y > 0 ? "tougher enforcement" : "lighter touch";
   return a + ", " + b;
 };
 function wrapText(g, text, x, y, maxW, lh){
@@ -769,7 +771,7 @@ function drawCard(me, top){
   while (fs > 24 && fit() > 936) fs -= 2;
   g.font = "600 " + fs + "px " + F; g.fillStyle = "#6e6e73"; g.fillText("My spot: ", 72, 152); const w1 = g.measureText("My spot: ").width;
   g.font = "700 " + fs + "px " + F; g.fillStyle = "#0071e3"; g.fillText(qn, 72 + w1, 152);
-  // map: same layout and colors as the page map (right = conservative, up = more city control)
+  // map: same layout and colors as the page map (right = conservative, up = tougher enforcement)
   const S = 840, mx = (1080 - S) / 2, my = 190, h = S / 2, k = S / 20;
   const X = v => mx + h + Math.max(-10, Math.min(10, v)) * k, Y = v => my + h - Math.max(-10, Math.min(10, v)) * k;
   g.save(); g.beginPath(); if (g.roundRect) g.roundRect(mx, my, S, S, 22); else g.rect(mx, my, S, S); g.clip();
@@ -781,7 +783,7 @@ function drawCard(me, top){
   g.strokeStyle = "rgba(29,29,31,0.4)"; g.lineWidth = 2; g.beginPath(); g.moveTo(mx, my + h); g.lineTo(mx + S, my + h); g.moveTo(mx + h, my); g.lineTo(mx + h, my + S); g.stroke();
   const word = (t, x, y, al) => { g.textAlign = al; g.lineWidth = 6; g.strokeStyle = "rgba(255,255,255,0.9)"; g.lineJoin = "round"; g.strokeText(t, x, y); g.fillStyle = "rgba(29,29,31,0.62)"; g.fillText(t, x, y); };
   g.font = "600 21px " + F;
-  word("More city control", mx + h, my + 34, "center"); word("More personal freedom", mx + h, my + S - 18, "center");
+  word("Tougher enforcement", mx + h, my + 34, "center"); word("Lighter touch", mx + h, my + S - 18, "center");
   word("Progressive", mx + 16, my + h - 14, "left"); word("Conservative", mx + S - 16, my + h - 14, "right"); g.textAlign = "left";
   // every 2027 candidate with a spot on both lines (hollow = thin record, like the page map); your top 3 get 1, 2, 3
   const t3 = (window._top3 || []), near = t3.map(t => t.p.id);
@@ -862,7 +864,7 @@ function renderMayors(){
     let rows = placed.filter(p => p.year >= a && p.year < b && (p.n > 0)).sort((x, y) => y.year - x.year);
     total += rows.length; rows = rows.slice(0, left); left -= rows.length;
     if (!rows.length) return "";
-    return `<div class="era"><h3>${t}</h3><div class="mhead"><span></span><span>Mayor</span><span>${lnHead("Economy", "Progressive", "Conservative")}</span><span>${lnHead("City control", "Freedom", "Control")}</span><span class="pf">Record</span><span></span></div>${rows.map(p => `<div class="mrow" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources"><label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label><span><span class="mn">${esc(p.name)}</span><br><span class="yr">${esc(p.years)}</span></span><span class="cell">${lineCell("x", p.x, p.proof === "thin", p)}</span><span class="cell">${lineCell("y", p.y, p.proof === "thin", p)}</span><span class="pf small">${p.proof} record</span><span aria-hidden="true"></span></div>`).join("")}</div>`;
+    return `<div class="era"><h3>${t}</h3><div class="mhead"><span></span><span>Mayor</span><span>${lnHead("Economy", "Progressive", "Conservative")}</span><span>${lnHead("Enforcement", "Lighter", "Tougher")}</span><span class="pf">Record</span><span></span></div>${rows.map(p => `<div class="mrow" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources"><label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label><span><span class="mn">${esc(p.name)}</span><br><span class="yr">${esc(p.years)}</span></span><span class="cell">${lineCell("x", p.x, p.proof === "thin", p)}</span><span class="cell">${lineCell("y", p.y, p.proof === "thin", p)}</span><span class="pf small">${p.proof} record</span><span aria-hidden="true"></span></div>`).join("")}</div>`;
   }).join("");
   document.querySelectorAll("#eras .cmpbox").forEach(b => b.onchange = () => toggleCmp(b.dataset.cid));
   $("mayMore").textContent = maysAll ? "Show fewer" : "Show all " + total + " mayors"; $("norecCard").hidden = !maysAll;
@@ -879,10 +881,10 @@ function openPerson(id){
   const sec = (title, ax) => { const qs = ORDER.filter(q => Q[q].axis === ax && ans[q]); return `<h4>${title}</h4>` + (qs.length ? qs.map(qrow).join("") : `<p class="small">No public position found on these statements.</p>`); };
   $("drawer").innerHTML = `<div class="top"><div><p class="eyebrow" style="margin:0 0 4px;font-size:14px">${esc(p.role)} · ${esc(p.years)}</p><h2 id="dr-name">${esc(p.name)}</h2>${p.party ? `<p class="small" style="margin-top:4px">${esc(p.party)}${p.status ? " · " + esc(p.status) : ""}</p>` : (p.status ? `<p class="small" style="margin-top:4px">${esc(p.status)}</p>` : "")}</div><button type="button" class="iconbtn" id="dr-close" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>
     <div class="scores">${scoreLine("x", p.x, {cls: "big", mixed: mixedText(p, "x")})}${scoreLine("y", p.y, {cls: "big", mixed: mixedText(p, "y")})}<div class="proofline"><b class="tnum">${p.n}</b> sourced facts, ${p.proof} record</div></div>
-    ${p.pulled ? `<p class="small" style="margin-top:10px">Fewer than 4 facts on a line, so the dot is pulled toward the middle. Before the pull: the economy was ${say("x", p.raw_x, true).toLowerCase()}, city control was ${say("y", p.raw_y, true).toLowerCase()}.</p>` : ""}
-    <h4>Summary</h4><p style="font-size:15px"><b>Economy.</b> ${esc(p.summary_econ || "No public record found.")}</p><p style="font-size:15px;margin-top:6px"><b>City control.</b> ${esc(p.summary_control || "No public record found.")}</p>
-    ${sec("Economy statements", "econ")}${sec("City control statements", "control")}
-    ${p.acts.length ? `<h4>Other record</h4>` + p.acts.map(e => `<div class="fact"><div class="row"><span class="chip">${e.axis === "econ" ? (e.direction < 0 ? "Economy: toward progressive" : "Economy: toward conservative") : (e.direction > 0 ? "Toward more city control" : "Toward more personal freedom")}</span>${e.year ? `<span class="small">${esc(e.year)}</span>` : ""}</div><p>${esc(e.action)}</p><p class="src"><a href="${esc(e.source_url)}" target="_blank" rel="noopener">${esc(e.source_name || "Source")}</a> · ${esc(e.source_date || "")}</p></div>`).join("") : ""}
+    ${p.pulled ? `<p class="small" style="margin-top:10px">Fewer than 4 facts on a line, so the dot is pulled toward the middle. Before the pull: the economy was ${say("x", p.raw_x, true).toLowerCase()}, enforcement was ${say("y", p.raw_y, true).toLowerCase()}.</p>` : ""}
+    <h4>Summary</h4><p style="font-size:15px"><b>Economy.</b> ${esc(p.summary_econ || "No public record found.")}</p><p style="font-size:15px;margin-top:6px"><b>Enforcement and city rules.</b> ${esc(p.summary_control || "No public record found.")}</p>
+    ${sec("Economy statements", "econ")}${sec("Enforcement statements", "control")}${sec("Building rule statements (in your match, not on the map)", "rules")}
+    ${p.acts.length ? `<h4>Other record</h4>` + p.acts.map(e => `<div class="fact"><div class="row"><span class="chip">${e.axis === "econ" ? (e.direction < 0 ? "Economy: toward progressive" : "Economy: toward conservative") : (e.axis === "rules" ? "City rule, not on the map" : e.direction > 0 ? "Toward tougher enforcement" : "Toward a lighter touch")}</span>${e.year ? `<span class="small">${esc(e.year)}</span>` : ""}</div><p>${esc(e.action)}</p><p class="src"><a href="${esc(e.source_url)}" target="_blank" rel="noopener">${esc(e.source_name || "Source")}</a> · ${esc(e.source_date || "")}</p></div>`).join("") : ""}
     ${p.issues.length ? `<h4>Positions on 2027 issues</h4>` + p.issues.map(i => `<div class="fact"><div class="st">${esc(i.issue)}</div><p>${esc(i.position)}</p>${i.quote ? `<p style="color:var(--ink-2)">"${esc(i.quote)}"</p>` : ""}<p class="src"><a href="${esc(i.source_url)}" target="_blank" rel="noopener">Source</a> · ${esc(i.source_date || "")}</p></div>`).join("") : ""}
     ${missing.length && p.answers.length ? `<h4>No public position found</h4><ul class="missing">${missing.map(q => `<li>${esc(Q[q].text)}</li>`).join("")}</ul>` : ""}
     ${p.gaps.length ? `<h4>Gaps in the record</h4><ul class="missing">${p.gaps.map(g => `<li>${esc(g)}</li>`).join("")}</ul>` : ""}
