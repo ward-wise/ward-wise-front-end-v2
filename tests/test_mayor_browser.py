@@ -236,3 +236,15 @@ def test_best_match_is_the_nearest_dot_on_the_map(page, mayor_site):
     if nearest[1]["d"] - nearest[0]["d"] > 0.02:  # not a near tie that rounding could flip
         assert fin["best_match"] == nearest[0]["id"], (fin["best_match"], nearest)
     assert [t["pct"] for t in fin["top3"]] == sorted((t["pct"] for t in fin["top3"]), reverse=True)
+
+
+def test_every_drawer_offers_a_correction_email_naming_the_person(page, mayor_site):
+    run_quiz(page, mayor_site)
+    pod = page.locator(".pod").first
+    pod.click()
+    page.wait_for_function("!document.querySelector('#drawer').hidden")
+    name = page.locator("#dr-name").inner_text()
+    href = page.locator("#drawer .fixline a").get_attribute("href")
+    assert href.startswith("mailto:connor@wardwise.org?subject="), href
+    from urllib.parse import unquote
+    assert unquote(href.split("subject=", 1)[1]) == "Mayor quiz correction: " + name

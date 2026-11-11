@@ -91,3 +91,15 @@ def test_no_penlight_in_visible_text(built_site: Path):
         if any("Penlight" in chunk for chunk in found):
             leaks.append(path)
     assert not leaks, 'visible "Penlight" on: ' + ", ".join(leaks)
+
+
+def test_mayor_page_has_disclaimer_and_correction_email(built_site: Path):
+    """Chi Hack Night 11/10: the quiz says it may contain errors, that distance is not a judgment,
+    and where a candidate can send a correction."""
+    html = page_file(built_site, "/mayor").read_text(encoding="utf-8")
+    fix = re.search(r'<p class="small" id="m-fix">(.*?)</p>', html, re.S)
+    assert fix, "no correction paragraph in How this works"
+    text = fix.group(1)
+    assert "may contain errors" in text
+    assert "two issues only" in text and "not wrong for being there" in text
+    assert 'href="mailto:connor@wardwise.org?subject=' in text
