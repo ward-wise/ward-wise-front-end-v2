@@ -54,7 +54,7 @@ function trackFinished(){
   if (DEMO || !window.WardWiseAnalytics) return;
   const me = you(), ans = {};
   ORDER.forEach(q => { if (answers[q] != null) ans[q] = WORDS[answers[q]]; else if (unsure[q]) ans[q] = "not_sure"; else if (q in answers) ans[q] = "skipped"; });
-  const ranked = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)})).filter(c => c.m.pct != null).sort((a, b) => a.m.d - b.m.d);
+  const ranked = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)})).filter(c => c.m.pct != null && c.p.proof !== "thin").sort((a, b) => a.m.d - b.m.d);
   const o = {answers: ans, matters: ORDER.filter(q => stars[q]), issues: top3.slice(), answered: answered(), finished_early: earlyFinish,
     top3: ranked.slice(0, 3).map(c => ({id: c.p.id, pct: c.m.pct})), x: Math.round(me.x * 100) / 100, y: Math.round(me.y * 100) / 100};
   if (profile && profile.ward) o.quiz_ward = profile.ward;
@@ -172,7 +172,7 @@ function chart(o){
     const ux = X(o.you.x), uy = Y(o.you.y), tx = X(o.match.p.x), ty = Y(o.match.p.y);
     under += '<line class="mline" x1="' + ux + '" y1="' + uy + '" x2="' + tx + '" y2="' + ty + '"/>';
     over += '<circle class="mring" cx="' + tx + '" cy="' + ty + '" r="11"/>';
-    const txt = "Closest match: " + o.match.p.name + ", " + o.match.pct + "%", w = txt.length * 6.3 + 6, h = 15;
+    const txt = "Best match: " + o.match.p.name + ", " + o.match.pct + "%", w = txt.length * 6.3 + 6, h = 15;
     let spot = null;
     outer: for (const t of [.5, .4, .6, .3, .7, .2, .8]) for (const oy of [-13, 13, -24, 24]) {
       const b = {x: ux + (tx - ux) * t - w / 2, y: uy + (ty - uy) * t + oy - h / 2, w, h};
@@ -474,7 +474,8 @@ function you(){
 }
 // The match IS the map (Connor: the dot and the match should be the same thing). It is how close
 // a candidate's dot is to yours: on top of each other is 100%, a full map-width (20 points) apart
-// is 0%. So the best match is always the nearest dot. n = statements you both have answers on,
+// is 0%. So the best match is always the nearest dot with a full record (faded, thin-record dots
+// are shown but never ranked: Connor, Nov 10). n = statements you both have answers on,
 // kept for the "You and X" breakdown.
 const MAP_WIDTH = 20;
 function match(p){
@@ -487,7 +488,7 @@ function match(p){
 function updateLive(){
   if (!finished) { window._me = null; window._top = null; $("live").innerHTML = ""; return; }
   const me = you(), cs = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)}));
-  const ranked = cs.filter(c => c.m.pct != null).sort((a, b) => a.m.d - b.m.d);
+  const ranked = cs.filter(c => c.m.pct != null && c.p.proof !== "thin").sort((a, b) => a.m.d - b.m.d);
   const top = ranked[0] || null;
   window._me = me; window._top = top ? {p: top.p, pct: top.m.pct} : null;
   if (me.n < 4) {
@@ -504,8 +505,8 @@ function updateLive(){
   if (top) {
     const pods = ranked.slice(0, 3), go = animPod; animPod = false;
     const burst = go && !reduced() ? '<div class="burst" aria-hidden="true">' + Array.from({length: 18}, (_, i) => { const a = (i / 18) * Math.PI * 2 + .2, d = 70 + (i % 3) * 30; return '<i style="--dx:' + Math.round(Math.cos(a) * d * 1.3) + 'px;--dy:' + Math.round(Math.sin(a) * d - 20) + 'px;--r:' + (i * 47 % 360) + 'deg;--c:' + ["var(--blue)", "var(--good)", "var(--weak)", "var(--ink-3)"][i % 4] + '"></i>'; }).join("") + '</div>' : "";
-    h += '<div class="podium' + (go ? " go" : "") + '" role="group" aria-label="Your top ' + pods.length + ' matches" style="grid-template-columns:repeat(' + pods.length + ',minmax(0,1fr))">' + pods.map((c, i) => '<button type="button" class="pod p' + (i + 1) + '" data-id="' + c.p.id + '" style="--d:' + [360, 180, 0][i] + 'ms"><span class="lift"><span class="pdn">' + esc(c.p.name) + '</span><span class="pdp tnum">' + c.m.pct + '%</span><small class="lead2">' + ["Closest on the map", "2nd closest", "3rd closest"][i] + '</small></span><span class="blk">' + (i + 1) + '</span></button>').join("") + burst + '</div>';
-    h += '<p class="bmsm">Match is how close their dot is to yours on the map: on top of each other is 100%, a full map apart is 0%. Starred statements count double in where your dot lands.</p>';
+    h += '<div class="podium' + (go ? " go" : "") + '" role="group" aria-label="Your top ' + pods.length + ' matches" style="grid-template-columns:repeat(' + pods.length + ',minmax(0,1fr))">' + pods.map((c, i) => '<button type="button" class="pod p' + (i + 1) + '" data-id="' + c.p.id + '" style="--d:' + [360, 180, 0][i] + 'ms"><span class="lift"><span class="pdn">' + esc(c.p.name) + '</span><span class="pdp tnum">' + c.m.pct + '%</span><small class="lead2">' + ["Best match", "2nd", "3rd"][i] + '</small></span><span class="blk">' + (i + 1) + '</span></button>').join("") + burst + '</div>';
+    h += '<p class="bmsm">Match is how close their dot is to yours on the map: on top of each other is 100%, a full map apart is 0%. Starred statements count double in where your dot lands. Faded dots have too few facts to rank, so they stay off the top 3.</p>';
 
     h += breakdownHTML(top.p);
     const lean = profile && profile.lean;
@@ -564,7 +565,9 @@ function renderCands(){
   const cs = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)}));
   if (live) cs.sort((a, b) => ((b.m.pct != null) - (a.m.pct != null)) || (a.m.d - b.m.d) || (f(b.p) - f(a.p)));
   else cs.sort((a, b) => f(b.p) - f(a.p));
-  const bestId = live && cs[0] && cs[0].m.pct != null ? cs[0].p.id : null;
+  // Faded (thin record) dots stay in the table with their %, but never count as the best match.
+  const firm = live ? cs.find(c => c.m.pct != null && c.p.proof !== "thin") : null;
+  const bestId = firm ? firm.p.id : null;
   $("cand-grid").innerHTML = '<div class="ctab' + (live ? " m" : "") + '" role="table" aria-label="2027 candidates"><div class="chead" role="row"><span></span><span role="columnheader">Candidate</span>' + (live ? '<span role="columnheader">Match</span>' : '') + '<span role="columnheader">' + lnHead("Taxes and spending", "Higher", "Lower") + '</span><span role="columnheader">' + lnHead("Police", "Reform", "More") + '</span><span role="columnheader">Raised for the mayor race</span><span></span></div>' +
     (candsAll ? cs : cs.slice(0, 12)).map(({p, m}) => `<div class="crow${p.id === bestId ? " best" : ""}" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources">
       <label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label>
@@ -714,7 +717,7 @@ started = progressN() > 0; // a reload mid-quiz continues the same run
 qi = ORDER.findIndex(q => !isAnswered(q)); if (qi < 0) qi = ORDER.length - 1;
 $("showAnyway").onclick = () => { showField = true; render(); };
 if (DEMO && !MID) { // sample profile leans toward someone who is NOT the best match
-  const r = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)})).filter(c => c.m.pct != null).sort((a, b) => a.m.d - b.m.d);
+  const r = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)})).filter(c => c.m.pct != null && c.p.proof !== "thin").sort((a, b) => a.m.d - b.m.d);
   profile = {ward: "5", age: "25 to 34", lean: (r[1] || r[0]).p.name};
 }
 render();

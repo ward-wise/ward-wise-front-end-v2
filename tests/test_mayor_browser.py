@@ -225,12 +225,12 @@ def test_share_card_download_is_counted_and_saves_a_png(page, mayor_site):
 
 def test_best_match_is_the_nearest_dot_on_the_map(page, mayor_site):
     # Connor: the dot and the match must be the same thing. The finish event's best match must be
-    # the candidate whose dot is nearest the visitor's dot (x, y are rounded to 2 decimals).
+    # the full-record candidate whose dot is nearest the visitor's (x, y are rounded to 2 decimals).
     run_quiz(page, mayor_site)
     _, ph = sent(page)
     fin = named(ph, "mayor_quiz_finished")[0]
     nearest = page.evaluate("""([x, y]) => window.MayorCompassData.people
-        .filter(p => p.cand && p.x != null && p.y != null)
+        .filter(p => p.cand && p.x != null && p.y != null && p.proof !== 'thin')
         .map(p => ({id: p.id, d: Math.hypot(p.x - x, p.y - y)}))
         .sort((a, b) => a.d - b.d).slice(0, 2)""", [fin["x"], fin["y"]])
     if nearest[1]["d"] - nearest[0]["d"] > 0.02:  # not a near tie that rounding could flip
