@@ -571,6 +571,10 @@ function you(){
 // loses a quarter, opposite ends score zero. A starred statement counts twice, as it does in where
 // your dot lands. A person needs MIN_ANS sourced answers to be ranked (Connor: 8 or more) and you
 // need MIN_SHARED statements in common. d (map distance) is kept only to explain a nearer dot.
+// How we know: a vote or act, their own words, a press account, or our reading of a related act.
+const basisWord = (a, long) => a.basis === "action" ? (long ? "Based on a vote or action" : "Vote or action") : a.basis === "stated" ? "Stated publicly" : a.basis === "report" ? "Reported account" : "Judged from a related act";
+// Past mayors (round 9): the same question as it stood in their own time, with the year.
+const thenLine = a => a.then ? '<p class="then"><b>The question in ' + esc(String(a.year || "their day")) + ':</b> ' + esc(a.then) + '</p>' : "";
 const MIN_ANS = 8, MIN_SHARED = 5;
 const STEP = [1, .75, .5, .25, 0]; // points for answers 0, 1, 2, 3 or 4 steps apart
 const nAns = p => p.answers.filter(a => Q[a.qid]).length;
@@ -719,7 +723,7 @@ function openCmp(){
   const ma = mapOf(A), mb = mapOf(B);
   const qs = ORDER.filter(q => ma[q] || mb[q]);
   const both = qs.filter(q => ma[q] && mb[q]), same = both.filter(q => Math.sign(ma[q].value) === Math.sign(mb[q].value));
-  const cell = a => a ? `<div><span class="chip blue">${LABELS[a.value]}</span> <span class="chip">${a.basis === "action" ? "Vote or action" : a.basis === "stated" ? "Stated publicly" : "Judged from a related act"}</span><p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>` : '<div class="none">No public position found.</div>';
+  const cell = a => a ? `<div><span class="chip blue">${LABELS[a.value]}</span> <span class="chip">${basisWord(a)}</span>${thenLine(a)}<p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>` : '<div class="none">No public position found.</div>';
   const head = p => `<div><h3>${esc(p.name)}</h3><p class="small">${sayP(p, "x", true)}. ${sayP(p, "y", true)}.</p><p class="small">${p.n} sourced facts</p></div>`;
   $("cmp-dlg").innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 id="cmp-t" class="h3" style="font-size:15px;color:var(--ink-2);font-weight:600">Side by side, statement by statement</h2><button type="button" class="iconbtn" id="cmp-x" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>
     <p class="cmpsum">${both.length ? `They take the same side on <b>${same.length} of ${both.length}</b> statements where both have a sourced position.` : "They share no statement where both have a sourced position."}</p>
@@ -870,7 +874,7 @@ function openPerson(id){
   const p = BY[id]; if (!p) return; openId = id; track("mayor_quiz_person_opened", {person: id});
   const ans = {}; p.answers.forEach(a => ans[a.qid] = a);
   const qrow = qid => { const a = ans[qid], q = Q[qid]; if (!a) return ""; const u = answers[qid];
-    return `<div class="fact"><div class="st">${esc(q.text)}</div><div class="row"><span class="chip blue">${LABELS[a.value]}</span><span class="chip">${a.basis === "action" ? "Based on a vote or action" : a.basis === "stated" ? "Stated publicly" : "Judged from a related act"}</span>${finished && u != null && u !== undefined ? `<span class="chip ${Math.abs(u - a.value) <= 1 && Math.sign(u) === Math.sign(a.value) ? "good" : "weak"}">You: ${LABELS[u]}</span>` : ""}</div><p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>`; };
+    return `<div class="fact"><div class="st">${esc(q.text)}</div><div class="row"><span class="chip blue">${LABELS[a.value]}</span><span class="chip">${basisWord(a, true)}</span>${finished && u != null && u !== undefined ? `<span class="chip ${Math.abs(u - a.value) <= 1 && Math.sign(u) === Math.sign(a.value) ? "good" : "weak"}">You: ${LABELS[u]}</span>` : ""}</div>${thenLine(a)}<p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>`; };
   const missing = ORDER.filter(q => !ans[q]);
   const sec = (title, ax) => { const qs = ORDER.filter(q => Q[q].axis === ax && ans[q]); return `<h4>${title}</h4>` + (qs.length ? qs.map(qrow).join("") : `<p class="small">No public position found on these statements.</p>`); };
   $("drawer").innerHTML = `<div class="top"><div><p class="eyebrow" style="margin:0 0 4px;font-size:14px">${esc(p.role)} · ${esc(p.years)}</p><h2 id="dr-name">${esc(p.name)}</h2>${p.party ? `<p class="small" style="margin-top:4px">${esc(p.party)}${p.status ? " · " + esc(p.status) : ""}</p>` : (p.status ? `<p class="small" style="margin-top:4px">${esc(p.status)}</p>` : "")}</div><button type="button" class="iconbtn" id="dr-close" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>

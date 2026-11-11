@@ -596,3 +596,4 @@ body.mc-lock{overflow:hidden}
 .mc .legend i.r{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:10px;font-weight:700;font-style:normal;margin-right:5px}
 .mc .pod .pds{font-size:11.5px;color:var(--ink-3);white-space:nowrap}
 .mc .mapnote{margin:10px 0 0;padding:9px 12px;border-radius:10px;background:var(--card);color:var(--ink)}
+.mc .then{font-size:13px;color:var(--ink-2);margin:6px 0 0}
