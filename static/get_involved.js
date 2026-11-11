@@ -93,7 +93,7 @@
     return `
       <li class="gi-idea">
         <span class="gi-chips"><span class="gi-status ${statusClass}">${esc(statusText)}</span>${idea.labels.includes("good first issue") ? '<span class="gi-status is-first">Good first project</span>' : ""}</span>
-        ${showDomain && idea.domain ? `<p class="gi-idea-domain">${esc(capitalize(idea.domain))}</p>` : ""}
+        ${showDomain && idea.domain ? `<p class="gi-idea-domain">${esc(domainName(idea.domain))}</p>` : ""}
         <a class="gi-idea-title" href="${esc(idea.url)}" rel="noopener">${esc(idea.title)}</a>
         ${bits.length ? `<p class="gi-idea-meta">${bits.join(" · ")}</p>` : ""}
         <p class="gi-idea-links">
@@ -107,37 +107,65 @@
     return `<ul class="gi-ideas">${ideas.map((idea) => card(idea, cta, showDomain)).join("")}</ul>`;
   }
 
-  function capitalize(text) {
-    return text.charAt(0).toUpperCase() + text.slice(1);
+  // Label slugs (domain:religion_spiritual) → the names the dictionary uses.
+  const DOMAIN_NAMES = { "religion spiritual": "Religion and spirituality", "lifelong learning": "Lifelong learning" };
+  function domainName(domain) {
+    return DOMAIN_NAMES[domain] || domain.charAt(0).toUpperCase() + domain.slice(1);
   }
 
-  function render(node, ideas) {
+  // One idea per domain in turn, so a short list shows the spread instead of the first domain alphabetically.
+  function interleave(ideas) {
+    const queues = new Map();
+    for (const idea of ideas) {
+      if (!queues.has(idea.domain)) queues.set(idea.domain, []);
+      queues.get(idea.domain).push(idea);
+    }
+    const out = [];
+    while (out.length < ideas.length) {
+      for (const queue of queues.values()) if (queue.length) out.push(queue.shift());
+    }
+    return out;
+  }
+
+  function render(node, ideas, state = {}) {
     const wanted = node.dataset.labels;
     const cta = node.dataset.cta || "Open on GitHub";
-    // Open ideas first, then claimed ones; newest first within each (GitHub's default order).
-    const matching = ideas
-      .filter((idea) => idea.labels.includes(wanted) && !idea.labels.includes("not-feasible"))
-      .sort((a, b) => Number(a.claimed) - Number(b.claimed));
+    const withChips = node.dataset.group === "domain";
+    const all = ideas.filter((idea) => idea.labels.includes(wanted) && !idea.labels.includes("not-feasible"));
     const footer = `<p class="gi-board-foot"><a class="fd-more" href="${BOARD_URL}?q=is%3Aopen+label%3A${encodeURIComponent(`"${wanted}"`)}" rel="noopener">See all on GitHub</a>
       <a class="fd-more" href="${BOARD_URL}/new/choose" rel="noopener">Add an idea</a></p>`;
 
-    if (!matching.length) {
+    if (!all.length) {
       node.innerHTML = `<p class="gi-board-note">${esc(node.dataset.empty || "Nothing here right now.")}</p>${footer}`;
       return;
     }
 
-    // Boards that show a domain (measures) sort by it so related ideas sit together in one grid.
-    const byDomain = node.dataset.group === "domain";
-    if (byDomain) {
-      matching.sort((a, b) => Number(a.claimed) - Number(b.claimed)
-        || (!a.domain) - (!b.domain) || a.domain.localeCompare(b.domain));
+    let chips = "";
+    if (withChips) {
+      const counts = new Map();
+      for (const idea of all) if (idea.domain) counts.set(idea.domain, (counts.get(idea.domain) || 0) + 1);
+      const options = [["", `All ${all.length}`], ...[...counts.entries()]
+        .sort(([a], [b]) => domainName(a).localeCompare(domainName(b)))
+        .map(([domain, count]) => [domain, `${domainName(domain)} ${count}`])];
+      chips = `<div class="fd-chips gi-chips-filter" role="group" aria-label="Filter ideas by domain">${options
+        .map(([value, label]) => `<button type="button" data-domain="${esc(value)}" aria-pressed="${(state.domain || "") === value}">${esc(label)}</button>`)
+        .join("")}</div>`;
     }
-    const shown = matching.slice(0, MAX_PER_BOARD);
-    const body = list(shown, cta, byDomain);
+
+    // Open ideas before claimed ones; within each, spread across domains.
+    const pool = all.filter((idea) => !state.domain || idea.domain === state.domain);
+    const matching = [...interleave(pool.filter((idea) => !idea.claimed)), ...interleave(pool.filter((idea) => idea.claimed))];
+    const shown = state.expanded ? matching : matching.slice(0, MAX_PER_BOARD);
     const more = matching.length > shown.length
-      ? `<p class="gi-board-note">Showing ${shown.length} of ${matching.length}.</p>`
+      ? `<p class="gi-board-foot"><button type="button" class="fd-chip-btn is-quiet" data-expand>Show all ${matching.length}</button></p>`
       : "";
-    node.innerHTML = body + more + footer;
+    node.innerHTML = chips + list(shown, cta, true) + more + footer;
+
+    node.querySelectorAll("[data-domain]").forEach((button) => {
+      button.addEventListener("click", () => render(node, ideas, { domain: button.dataset.domain }));
+    });
+    const expand = node.querySelector("[data-expand]");
+    if (expand) expand.addEventListener("click", () => render(node, ideas, { ...state, expanded: true }));
   }
 
   function renderError(node, error) {
