@@ -304,14 +304,13 @@ function easeSwap(qe, old, back){
   const g = old.node; g.classList.add("qflip"); g.setAttribute("aria-hidden", "true");
   Object.assign(g.style, {top: old.top + "px", left: old.left + "px", width: old.width + "px", height: old.height + "px"});
   host.appendChild(g);
-  // Far enough to clear the card underneath, and solid until it mostly has, so the two
-  // statements never show through each other.
+  // Connor: fade faster. Gone in 0.3 s: solid for the first quarter, then it fades as it glides.
   const W = old.width * 1.05, H = old.height * .7;
   const to = {"-2": [-W, 0], "-1": [-W, 0], "0": [0, -H], "1": [W, 0], "2": [W, 0]}[String(swapDir)] || [0, H];
   try {
-    g.animate([{transform: "none", opacity: 1}, {opacity: 1, offset: .55}, {transform: `translate(${to[0]}px,${to[1]}px)`, opacity: 0}], {duration: 480, easing: ease, fill: "forwards"}).onfinish = () => g.remove();
+    g.animate([{transform: "none", opacity: 1}, {opacity: 1, offset: .25}, {transform: `translate(${to[0]}px,${to[1]}px)`, opacity: 0}], {duration: 300, easing: ease, fill: "forwards"}).onfinish = () => g.remove();
   } catch (e) { g.remove(); }
-  setTimeout(() => g.remove(), 560);
+  setTimeout(() => g.remove(), 380);
 }
 function setAns(v){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, WORDS[v]); flyOut(v); answers[qid] = v; delete unsure[qid]; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }
 function setUnsure(){ const qid = ORDER[qi], b = progressN(); noteAnswer(qid, "not_sure"); flyOut("down"); delete answers[qid]; unsure[qid] = true; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); }
