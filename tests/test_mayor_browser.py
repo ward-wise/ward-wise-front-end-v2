@@ -340,3 +340,18 @@ def test_statement_list_stays_behind_see_why(page, mayor_site):
         assert len(named(pairs, "mayor_quiz_why_opened")) == 1, pairs
     page.click("#bdwhy")
     page.wait_for_function("!document.querySelector('#live .bd')")
+
+
+def test_building_rule_statements_are_compare_only(page, mayor_site):
+    """Connor, Nov 11: the five housing and building rule statements move no dot and no match. The
+    result offers them as a comparison with the top matches, and opening it is counted."""
+    run_quiz(page, mayor_site)
+    assert page.locator("#live .rulestab").count() == 0
+    page.click("#rulesbtn")
+    page.wait_for_selector("#live .rulestab")
+    assert page.locator("#live .rulestab .rq").count() == 5
+    assert page.locator("#live .rulestab .rh").count() == 2 + page.locator(".ranklist .pod").count()
+    ga, ph = sent(page)
+    for pairs in (ga, ph):
+        assert len(named(pairs, "mayor_quiz_rules_opened")) == 1, pairs
+    assert page.errors == []

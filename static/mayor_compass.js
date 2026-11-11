@@ -14,6 +14,7 @@
 //   mayor_quiz_card_copied   {where}                  result picture copied (where: top, result or card)
 //   mayor_quiz_reset         {answered, finished}     Start over, after Yes
 //   mayor_quiz_why_opened    {match}                  "See why" opened under the result (statement list)
+//   mayor_quiz_rules_opened  {}                       "Compare on housing and building rules" opened
 // quiz_ward is the ward typed into the quiz; track() already sets "ward" to the visitor's own saved ward.
 (function () {
 "use strict";
@@ -74,7 +75,7 @@ if (store.get("mc-ver", 0) < 2) { if (answers.S4 != null) delete answers.S4; sto
 // Nov 10, 2026 (round 8): the map lines changed to Progressive/Conservative and More city control/More personal freedom,
 // with 24 statements. Answers saved on the old lines would place people wrongly, so they start fresh.
 if (store.get("mc-ver", 0) < 3) { answers = {}; unsure = {}; stars = {}; ["mc-answers", "mc-unsure", "mc-stars"].forEach(k => store.set(k, {})); store.set("mc-done", false); store.set("mc-ver", 3); }
-let stage = "q", stepsDone = false, animYou = false, bdAll = false, bdOpen = false, pickTop = [], draft = {};
+let stage = "q", stepsDone = false, animYou = false, bdAll = false, bdOpen = false, rulesOpen = false, pickTop = [], draft = {};
 let animPod = false, cdTimers = [], cdLeft = 0;
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (DEMO) {
@@ -205,9 +206,14 @@ function chart(o){
   });
   s += under + lines;
   const rk = {}; (o.you && o.top3 || []).forEach((t, i) => rk[t.p.id] = i + 1); // 1, 2, 3 on your top matches
+  // badges that would cover each other sit side by side, so 1, 2 and 3 all stay readable
+  const rkAt = {}, rkSpots = [];
+  (o.you && o.top3 || []).forEach(t => { if (t.p.x == null || t.p.y == null) return; let bx = X(t.p.x); const by = Y(t.p.y);
+    for (let n = 0; n < 4 && rkSpots.some(q => Math.hypot(q[0] - bx, q[1] - by) < 19); n++) bx += 20;
+    rkSpots.push([bx, by]); rkAt[t.p.id] = bx; });
   order.forEach(p => {
     const cx = X(p.x), cy = Y(p.y), pre = !p.cand && p.year < 1955, cls = p.cand ? "cand" : (pre ? "pre" : "mayor"), r = rad(p), lean = !!p.by_lean, thin = !lean && p.proof === "thin";
-        s += '<g data-id="' + p.id + '" class="pt" tabindex="0" role="button" aria-label="' + esc(p.name) + (lean ? ", placed by leaning" : "") + '"><circle class="hring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 7) + '"/><circle class="dot ' + cls + (lean ? " lean" : thin ? " thin" : "") + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>'  + (thin ? '<circle class="thinring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 3) + '"/>' : '') + (rk[p.id] ? '<circle class="rk" cx="' + cx + '" cy="' + cy + '" r="9.5"/><text class="rkn" x="' + cx + '" y="' + (cy + 4) + '" text-anchor="middle">' + rk[p.id] + '</text>' : '') + '</g>';
+        s += '<g data-id="' + p.id + '" class="pt" tabindex="0" role="button" aria-label="' + esc(p.name) + (lean ? ", placed by leaning" : "") + '"><circle class="hring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 7) + '"/><circle class="dot ' + cls + (lean ? " lean" : thin ? " thin" : "") + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>'  + (thin ? '<circle class="thinring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 3) + '"/>' : '') + (rk[p.id] ? '<circle class="rk" cx="' + rkAt[p.id] + '" cy="' + cy + '" r="9.5"/><text class="rkn" x="' + rkAt[p.id] + '" y="' + (cy + 4) + '" text-anchor="middle">' + rk[p.id] + '</text>' : '') + '</g>';
   });
   s += over + labels;
   if (o.you) { const cx = X(o.you.x), cy = Y(o.you.y); s += '<g class="youg"><circle class="you-halo" cx="' + cx + '" cy="' + cy + '" r="17"/><circle class="you-dot" cx="' + cx + '" cy="' + cy + '" r="8"/>' + youLab + '</g>'; }
@@ -382,7 +388,7 @@ function resetAll(){
   cdTimers.forEach(clearTimeout); cdTimers = [];
   answers = {}; unsure = {}; stars = {}; top3 = []; profile = {}; pickTop = []; draft = {};
   ["mc-answers", "mc-unsure", "mc-stars", "mc-profile"].forEach(k => store.set(k, {})); store.set("mc-top3", []); store.set("mc-done", false);
-  started = false; earlyFinish = false; stepsDone = false; finished = false; stage = "q"; qi = 0; showField = false; animYou = false; bdAll = false; bdOpen = false;
+  started = false; earlyFinish = false; stepsDone = false; finished = false; stage = "q"; qi = 0; showField = false; animYou = false; bdAll = false; bdOpen = false; rulesOpen = false;
   render(); window.scrollTo(0, 0);
 }
 function goBack(){
@@ -494,7 +500,7 @@ function finish(){
   if (!stepsDone) { riseNext = true; stage = "top"; pickTop = top3.slice(); draft = Object.assign({}, profile); showField = false; render(); window.scrollTo(0, 0); return; }
   reveal();
 }
-function doReveal(){ cdTimers.forEach(clearTimeout); cdTimers = []; stepsDone = true; stage = "q"; finished = true; showField = false; bdAll = false; bdOpen = false; animYou = true; animPod = true; store.set("mc-done", true); trackFinished(); render(); window.scrollTo(0, 0); }
+function doReveal(){ cdTimers.forEach(clearTimeout); cdTimers = []; stepsDone = true; stage = "q"; finished = true; showField = false; bdAll = false; bdOpen = false; rulesOpen = false; animYou = true; animPod = true; store.set("mc-done", true); trackFinished(); render(); window.scrollTo(0, 0); }
 /* drumroll: 3, 2, 1 (about 1.35 s), then the result. Click or any key skips it. No result shows until it ends. */
 function reveal(){
   stepsDone = true;
@@ -621,6 +627,7 @@ function updateLive(){
     h += '<p class="bmsm">Your best match is the candidate whose dot is nearest yours on the map. On top of each other is 100%, a full map apart is 0%. Starred statements count double in where your dot lands. A hollow dot is placed by leaning: the candidate\'s own sourced positions on related issues.</p>';
     // The statement list sits behind "See why" (Connor, Nov 11: the open list was too much under the result).
     h += '<div class="why"><button type="button" class="linkbtn" id="bdwhy" aria-expanded="' + bdOpen + '">' + (bdOpen ? "Hide the details" : "See why you match " + esc(top.p.name)) + '</button></div>' + (bdOpen ? breakdownHTML(top.p) : "");
+    if (RULEQ.some(q => answers[q] != null)) h += '<div class="why"><button type="button" class="linkbtn" id="rulesbtn" aria-expanded="' + rulesOpen + '">' + (rulesOpen ? "Hide housing and building rules" : "Compare on housing and building rules") + '</button></div>' + (rulesOpen ? rulesHTML(pods) : "");
     const lean = profile && profile.lean;
     if (lean && lean !== "Undecided" && lean !== "Prefer not to say" && lean !== top.p.name) h += '<p class="leanline">You said you lean toward ' + esc(lean) + '. Your dot sits nearest ' + esc(top.p.name) + '.</p>';
   } else h += '<p class="hint">No candidate has enough public positions to name a match yet.</p>';
@@ -628,6 +635,7 @@ function updateLive(){
   $("live").innerHTML = h + REDO.replace('<span class="resetwrap">', '<button type="button" class="linkbtn" id="qcard">See share card</button><span class="resetwrap">');
   $("qredo").onclick = reopen; $("qcard").onclick = openCard;
   const bm = $("bdmore"); if (bm) bm.onclick = () => { bdAll = !bdAll; updateLive(); };
+  const rb = $("rulesbtn"); if (rb) rb.onclick = () => { rulesOpen = !rulesOpen; if (rulesOpen) track("mayor_quiz_rules_opened", {}); updateLive(); const r2 = $("rulesbtn"); if (r2) r2.focus({preventScroll: true}); };
   const bw = $("bdwhy"); if (bw) bw.onclick = () => { bdOpen = !bdOpen; if (bdOpen) track("mayor_quiz_why_opened", {match: top.p.id}); updateLive(); const b2 = $("bdwhy"); if (b2) b2.focus({preventScroll: true}); };
 }
 /* "See why": where you and the best match sit on each line, then the statements you both answered */
@@ -647,6 +655,15 @@ function breakdownHTML(p){
   h += '<div class="bdlist">' + (bdAll ? rows : rows.slice(0, 5)).map(r => '<div class="bdrow"><div class="bds">' + esc(Q[r.qid].text) + (mine(r.qid) ? ' <span class="chip blue">Your issue</span>' : '') + '</div><div class="bdc"><span class="chip blue">You: ' + LABELS[r.u] + '</span><span class="chip">' + esc(p.short) + ': ' + LABELS[r.a.value] + '</span><span class="chip ' + tag[r.kind][0] + '">' + tag[r.kind][1] + '</span><a href="' + esc(r.a.source_url) + '" target="_blank" rel="noopener">Source</a></div></div>').join("") + '</div>';
   if (rows.length > 5) h += '<div><button type="button" class="linkbtn" id="bdmore">' + (bdAll ? "Show fewer" : "Show all " + rows.length) + '</button></div>';
   return h + '</div>';
+}
+// Five statements on housing and building rules sit on neither line of the map, so they move no dot and
+// no match. They are shown for comparison only: your answer beside each of your top matches, with sources.
+const RULEQ = ORDER.filter(q => Q[q].axis === "rules");
+function rulesHTML(pods){
+  const cell = (p, q) => { const a = p.answers.find(x => x.qid === q); return a ? '<a href="' + esc(a.source_url) + '" target="_blank" rel="noopener">' + LABELS[a.value] + '</a>' : '<span class="rnone">No record</span>'; };
+  return '<div class="rules"><p class="bdsub">These five statements do not move your dot or your match. They show where you and your top matches stand, with a source for each answer.</p>' +
+    '<div class="rulestab" role="table" style="grid-template-columns:minmax(0,2.2fr) repeat(' + (pods.length + 1) + ',minmax(0,1fr))"><span class="rh" role="columnheader">Statement</span><span class="rh" role="columnheader">You</span>' + pods.map(c => '<span class="rh" role="columnheader">' + esc(c.p.short) + '</span>').join("") +
+    RULEQ.filter(q => answers[q] != null).map(q => '<span class="rq" role="cell">' + esc(Q[q].text) + '</span><span class="rc you" role="cell">' + LABELS[answers[q]] + '</span>' + pods.map(c => '<span class="rc" role="cell">' + cell(c.p, q) + '</span>').join("")).join("") + '</div></div>';
 }
 const REDO = '<div class="actions"><button type="button" class="btn btn-ghost" id="qredo">Change my answers</button><span class="resetwrap">' + RESET_BTN + '</span></div>';
 
