@@ -5,7 +5,7 @@
 
 {% block content %}
   <main>
-    <section class="fd-hero">
+    <section class="fd-hero fd-no-print">
       <div class="fd-wrap fd-stack">
         {% include "_org_lens.html" %}
         <h1 class="fd-h1">Take the neighborhood to the bank.</h1>
@@ -20,28 +20,40 @@
           <div class="fd-report-main">
         <div class="fd-report-head">
           <div>
-            <div class="fd-picker">
+            {# On paper the picker gives way to the neighborhood's name. #}
+            <h2 class="fd-h2 print-only" data-fd-title></h2>
+            <div class="fd-picker fd-no-print">
               <label class="fd-sr" for="fd-financing-area">Neighborhood</label>
               <select id="fd-financing-area" data-fd-picker></select>
             </div>
-            <p class="fd-small" data-fd-meta></p>
+            {# One line in place of the shared "Compared with all 77…" meta, which would repeat it. #}
+            <p class="fd-small">
+              Compared with all 77 community areas. Standing is the share with a lower value.
+            </p>
           </div>
           <button type="button" class="fd-btn fd-btn-ghost fd-no-print" data-fd-print>Print snapshot</button>
         </div>
 
-        <h2 class="fd-report-section">Residents</h2>
-        <div class="fd-table-head"><span>Measure</span><span>Value</span><span>Standing</span><span>Among 77 neighborhoods</span></div>
-        <div class="fd-rows" data-fd-rows="demographics"><p class="fd-loading">Loading live data…</p></div>
+        <section class="fd-report-card" aria-labelledby="fd-sec-residents">
+          <div class="fd-report-card-head">
+            <h2 class="fd-report-section" id="fd-sec-residents">Residents</h2>
+            <span class="fd-report-card-count" data-fd-count="demographics"></span>
+          </div>
+          <div class="fd-table-head"><span>Measure</span><span>Value</span><span>Standing</span><span>Among 77 neighborhoods</span></div>
+          <div class="fd-rows" data-fd-rows="demographics"><p class="fd-loading">Loading live data…</p></div>
+        </section>
 
-        <h2 class="fd-report-section">Business climate</h2>
-        <div class="fd-table-head"><span>Measure</span><span>Value</span><span>Standing</span><span>Among 77 neighborhoods</span></div>
-        <div class="fd-rows" data-fd-rows="business"><p class="fd-loading">Loading live data…</p></div>
+        <section class="fd-report-card" aria-labelledby="fd-sec-business">
+          <div class="fd-report-card-head">
+            <h2 class="fd-report-section" id="fd-sec-business">Business climate</h2>
+            <span class="fd-report-card-count" data-fd-count="business"></span>
+          </div>
+          <div class="fd-table-head"><span>Measure</span><span>Value</span><span>Standing</span><span>Among 77 neighborhoods</span></div>
+          <div class="fd-rows" data-fd-rows="business"><p class="fd-loading">Loading live data…</p></div>
+        </section>
           </div>
         </div>
-        <p class="fd-small" style="margin-top: 20px">
-          Standing shows the share of neighborhoods with a lower value. Select any measure for its full
-          method in the metric dictionary.
-        </p>
+        <p class="fd-small print-only fd-printed" data-fd-printed></p>
 
         <div class="fd-appendix">
           <h2 class="fd-report-section">About these measures</h2>

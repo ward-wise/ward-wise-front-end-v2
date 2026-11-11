@@ -344,13 +344,26 @@
     const source = metric.source_url
       ? `<a href="${esc(metric.source_url)}" target="_blank" rel="noopener">${esc(metric.source)}</a>`
       : esc(metric.source || "");
+    // Name on the left, the explanation on the right, like a glossary.
     return `
       <div class="fd-appendix-entry">
-        <h3><a href="/dictionary#metric-entry-${esc(metric.metric_id)}">${esc(name)}</a></h3>
-        ${metric.methodology ? `<p class="fd-small"><strong>How to read it:</strong> ${esc(metric.methodology)}</p>` : ""}
-        ${metric.calculation && metric.calculation !== metric.methodology ? `<p class="fd-small"><strong>How it is calculated:</strong> ${esc(metric.calculation)}</p>` : ""}
-        ${source ? `<p class="fd-small"><strong>Source:</strong> ${source}</p>` : ""}
+        <h4><a href="/dictionary#metric-entry-${esc(metric.metric_id)}">${esc(name)}</a></h4>
+        <div class="fd-appendix-body">
+          ${metric.methodology ? `<p><span>How to read it.</span> ${esc(metric.methodology)}</p>` : ""}
+          ${metric.calculation && metric.calculation !== metric.methodology ? `<p><span>How it's calculated.</span> ${esc(metric.calculation)}</p>` : ""}
+          ${source ? `<p class="fd-appendix-source">Source: ${source}</p>` : ""}
+        </div>
       </div>`;
+  }
+
+  // Sectioned sets list their notes under the same headings as their tables.
+  function appendixGroups(set, metrics, root) {
+    if (!set.sections) return metrics.map(appendixEntry).join("");
+    return Object.entries(set.sections).map(([key, ids]) => {
+      const title = root.querySelector(`[data-fd-rows="${key}"]`)?.closest("section")?.querySelector("h2")?.textContent;
+      const entries = metrics.filter((metric) => ids.includes(metric.metric_id)).map(appendixEntry).join("");
+      return entries ? `<div class="fd-appendix-group">${title ? `<h3>${esc(title)}</h3>` : ""}${entries}</div>` : "";
+    }).join("");
   }
 
   function readHash(key) {
@@ -430,7 +443,11 @@
     const metrics = set.metrics
       .map((id) => data.metrics.find((metric) => metric.metric_id === id))
       .filter(Boolean);
-    if (appendixEl) appendixEl.innerHTML = metrics.map(appendixEntry).join("");
+    if (appendixEl) appendixEl.innerHTML = appendixGroups(set, metrics, root);
+    root.querySelectorAll("[data-fd-count]").forEach((el) => {
+      const n = (set.sections?.[el.dataset.fdCount] || []).filter((id) => metrics.some((m) => m.metric_id === id)).length;
+      el.textContent = n ? `${n} measure${n === 1 ? "" : "s"}` : "";
+    });
     const areas = [...data.rows].sort((a, b) => (isWard
       ? Number(a.area_id) - Number(b.area_id)
       : a.display_name.localeCompare(b.display_name)));
@@ -548,6 +565,14 @@
       api.track("report_shared", { how: "print" });
       window.print();
     });
+    // A printout says when it was made. beforeprint also covers Ctrl+P, not just the button.
+    const printedEl = root.querySelector("[data-fd-printed]");
+    if (printedEl) {
+      window.addEventListener("beforeprint", () => {
+        const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+        printedEl.textContent = `Printed from Ward Wise on ${today}.`;
+      });
+    }
     if (initial) render(initial);
 
     if (mapSlot && window.WardWiseCivicMap) {
