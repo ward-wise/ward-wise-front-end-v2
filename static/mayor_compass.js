@@ -673,7 +673,7 @@ function updateLive(){
     const unplaced = PEOPLE.filter(p => p.cand && (p.x == null || p.y == null)).map(p => p.name);
     // Connor, Nov 11: "We're providing too much detail... This should be somewhere more hidden away."
     // The method notes and the not-placed list sit behind one small link.
-    let how = '<p class="bmsm">Your best match is the candidate whose dot is nearest yours on the map. The percent is closeness on the map, not agreement on every issue: on top of each other is 100%, a full map apart is 0%. Starred statements count double in where your dot lands. A hollow dot is placed by leaning: the candidate\'s own sourced positions on related issues.</p>';
+    let how = '<p class="bmsm">Your best match is the candidate whose dot is nearest yours on the map. The percent is closeness on the map, not agreement on every issue: on top of each other is 100%, a full map apart is 0%. Statements you mark Matters to me count double in where your dot lands. A hollow dot is placed by leaning: the candidate\'s own sourced positions on related issues.</p>';
     if (unplaced.length) how += '<p class="bmsm"><b>Not placed (too few public positions):</b> ' + esc(unplaced.join(", ")) + '.</p>';
     // Connor, Nov 11: link to each top match's campaign site, and to where to vote and how to register.
     const sites = pods.filter(c => c.p.site);
