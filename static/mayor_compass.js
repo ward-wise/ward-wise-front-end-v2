@@ -398,7 +398,7 @@ function resetAll(){
   answers = {}; unsure = {}; stars = {}; top3 = []; profile = {}; pickTop = []; draft = {};
   ["mc-answers", "mc-unsure", "mc-stars", "mc-profile"].forEach(k => store.set(k, {})); store.set("mc-top3", []); store.set("mc-done", false);
   started = false; earlyFinish = false; stepsDone = false; finished = false; stage = "q"; qi = 0; showField = false; animYou = false; bdAll = false; bdOpen = false; howOpen = false; rulesOpen = false;
-  render(); window.scrollTo(0, 0);
+  render(); window.scrollTo(0, 0); focusStep();
 }
 function goBack(){
   if (finished || stage === "count") return;
@@ -698,7 +698,7 @@ function updateLive(){
   } else h += '<p class="hint">No candidate has enough public positions to name a match yet.</p>';
   $("live").innerHTML = h + REDO.replace('<span class="resetwrap">', '<button type="button" class="linkbtn" id="qcard">See share card</button><span class="resetwrap">');
   $("qredo").onclick = reopen; $("qcard").onclick = openCard;
-  const bm = $("bdmore"); if (bm) bm.onclick = () => { bdAll = !bdAll; updateLive(); };
+  const bm = $("bdmore"); if (bm) bm.onclick = () => { bdAll = !bdAll; updateLive(); const b2 = $("bdmore"); if (b2) b2.focus({preventScroll: true}); };
   const hb = $("howbtn"); if (hb) hb.onclick = () => { howOpen = !howOpen; updateLive(); const h2 = $("howbtn"); if (h2) h2.focus({preventScroll: true}); };
   const rb = $("rulesbtn"); if (rb) rb.onclick = () => { rulesOpen = !rulesOpen; if (rulesOpen) track("mayor_quiz_rules_opened", {}); updateLive(); const r2 = $("rulesbtn"); if (r2) r2.focus({preventScroll: true}); };
   const bw = $("bdwhy"); if (bw) bw.onclick = () => { bdOpen = !bdOpen; if (bdOpen) track("mayor_quiz_why_opened", {match: top.p.id}); updateLive(); const b2 = $("bdwhy"); if (b2) b2.focus({preventScroll: true}); };
