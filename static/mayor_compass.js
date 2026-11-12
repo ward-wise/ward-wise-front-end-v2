@@ -626,7 +626,8 @@ function match(p, me){
 // Where to vote and how to register. The Board's site has the voter lookup (polling place, ballot, early
 // voting sites); Illinois's online registration is the state's own page.
 const VOTE_URL = "https://chicagoelections.gov/", REG_URL = "https://ova.elections.il.gov/";
-const VOTE_LINKS = where => '<p class="golinks"><span>Election day is Feb 23, 2027:</span> <a href="' + VOTE_URL + '" target="_blank" rel="noopener" data-mclink="where_to_vote" data-where="' + where + '">Find where to vote</a> · <a href="' + REG_URL + '" target="_blank" rel="noopener" data-mclink="register" data-where="' + where + '">Register to vote</a></p>';
+const VOTE_A = where => '<a href="' + VOTE_URL + '" target="_blank" rel="noopener" data-mclink="where_to_vote" data-where="' + where + '">Find where to vote</a> · <a href="' + REG_URL + '" target="_blank" rel="noopener" data-mclink="register" data-where="' + where + '">Register to vote</a>';
+const VOTE_LINKS = where => '<p class="golinks"><span>Election day is Feb 23, 2027:</span> ' + VOTE_A(where) + '</p>';
 document.addEventListener("click", e => { const a = e.target.closest && e.target.closest("a[data-mclink]"); if (!a) return;
   const o = {link: a.dataset.mclink, where: a.dataset.where || ""}; if (a.dataset.person) o.person = a.dataset.person; track("mayor_quiz_link", o); }, true);
 const closeWord = pct => pct >= 90 ? "Very close" : pct >= 75 ? "Close" : pct >= 55 ? "Somewhat close" : "Far";
@@ -650,7 +651,6 @@ function updateLive(){
     $("qredo").onclick = reopen;
     return;
   }
-  const sent = (ax, lab) => !(ax === "x" ? me.px : me.py) ? "On " + lab + ", you are not placed yet." : "On " + lab + ', you land <em class="' + (ax === "y" ? "t" : "") + '">' + (level(me[ax]) === 0 ? "near the middle" : say(ax, me[ax]).toLowerCase()) + "</em>.";
   const ms = rankOf(PEOPLE.filter(p => !p.cand))[0]; // the nearest past mayor dot
   window._mayor = ms ? ms.p : null;
   const done = true;
@@ -669,15 +669,15 @@ function updateLive(){
     if (unplaced.length) how += '<p class="bmsm"><b>Not placed (too few public positions):</b> ' + esc(unplaced.join(", ")) + '.</p>';
     // Connor, Nov 11: link to each top match's campaign site, and to where to vote and how to register.
     const sites = pods.filter(c => c.p.site);
-    if (sites.length) h += '<p class="golinks"><span>Campaign sites:</span> ' + sites.map(c => '<a href="' + esc(c.p.site) + '" target="_blank" rel="noopener" data-mclink="campaign_site" data-person="' + c.p.id + '" data-where="result">' + esc(c.p.short) + '</a>').join(" · ") + '</p>';
-    h += VOTE_LINKS("result");
-    h += '<div class="why"><button type="button" class="linkbtn small" id="howbtn" aria-expanded="' + howOpen + '">' + (howOpen ? "Hide how the match works" : "How the match works") + '</button></div>' + (howOpen ? how : "");
-    // The statement list sits behind "See why" (Connor, Nov 11: the open list was too much under the result).
-    h += '<div class="why"><button type="button" class="linkbtn" id="bdwhy" aria-expanded="' + bdOpen + '">' + (bdOpen ? "Hide the details" : "See why you match " + esc(top.p.name)) + '</button></div>' + (bdOpen ? breakdownHTML(top.p) : "");
-    if (RULEQ.some(q => answers[q] != null)) h += '<div class="why"><button type="button" class="linkbtn" id="rulesbtn" aria-expanded="' + rulesOpen + '">' + (rulesOpen ? "Hide housing and building rules" : "Compare on housing and building rules") + '</button></div>' + (rulesOpen ? rulesHTML(pods) : "");
-    // Connor, Nov 11: the "You said you lean toward..." line is gone. The leaning answer is still counted in analytics.
+    // Connor, Nov 11: the left card and the map are the same size, so the links sit on one line each.
+    h += '<p class="golinks">' + (sites.length ? '<span>Sites:</span> ' + sites.map(c => '<a href="' + esc(c.p.site) + '" target="_blank" rel="noopener" data-mclink="campaign_site" data-person="' + c.p.id + '" data-where="result">' + esc(c.p.short) + '</a>').join(" · ") + '<span class="sep" aria-hidden="true">|</span>' : "") + VOTE_A("result") + '</p>';
+    // The statement list sits behind "See why"; the housing comparison and the method notes sit beside it.
+    h += '<div class="whyrow"><button type="button" class="linkbtn" id="bdwhy" aria-expanded="' + bdOpen + '">' + (bdOpen ? "Hide why" : "See why") + '</button>'
+      + (RULEQ.some(q => answers[q] != null) ? '<button type="button" class="linkbtn" id="rulesbtn" aria-expanded="' + rulesOpen + '">' + (rulesOpen ? "Hide housing rules" : "Housing and building rules") + '</button>' : "")
+      + '<button type="button" class="linkbtn" id="howbtn" aria-expanded="' + howOpen + '">' + (howOpen ? "Hide how it works" : "How the match works") + '</button></div>'
+      + (bdOpen ? breakdownHTML(top.p) : "") + (rulesOpen ? rulesHTML(pods) : "") + (howOpen ? how : "");
+    // Connor, Nov 11: the "You said you lean toward..." line and the "you land" sentence are gone; the map shows it.
   } else h += '<p class="hint">No candidate has enough public positions to name a match yet.</p>';
-  h += '<p class="resline">' + sent("x", "the economy") + " " + sent("y", "enforcement") + (ms ? ' <span style="font-weight:400;color:var(--ink-2)">Closest past mayor: ' + esc(ms.p.name) + '.</span>' : "") + '</p>';
   $("live").innerHTML = h + REDO.replace('<span class="resetwrap">', '<button type="button" class="linkbtn" id="qcard">See share card</button><span class="resetwrap">');
   $("qredo").onclick = reopen; $("qcard").onclick = openCard;
   const bm = $("bdmore"); if (bm) bm.onclick = () => { bdAll = !bdAll; updateLive(); };

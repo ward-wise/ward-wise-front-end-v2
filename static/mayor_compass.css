@@ -634,7 +634,18 @@ body.mc-lock{overflow:hidden}
 .mc .cw, .cw { font-size: 12px; font-weight: 600; color: var(--ink-2); margin-right: 4px; letter-spacing: 0; }
 .mc .tie, .tie { font-size: 14px; line-height: 1.45; margin: 8px 0; color: var(--ink); }
 /* "How the match works": a quiet link, since the method notes are tucked away (Connor, Nov 11) */
-.mc #howbtn { font-size: 14px; color: var(--ink-2); }
+
 /* Links out: campaign sites, where to vote, register (Connor, Nov 11) */
 .mc .golinks { font-size: 14px; margin: 6px 0; color: var(--ink-2); }
 .mc .golinks span { margin-right: 4px; }
+
+/* Same-size panels (Connor, Nov 11): the left card and the map card stretch to one height */
+.mc .appgrid{align-items:stretch}
+.mc .qcol{display:flex;flex-direction:column;gap:14px}
+.mc .qcol > .qcard:not(:empty), .mc .qcol > .live:not(:empty){flex:1}
+.mc .qcard{display:flex;flex-direction:column}
+.mc .qcard .qfoot{margin-top:auto;padding-top:14px}
+.mc .whyrow{display:flex;flex-wrap:wrap;gap:4px 20px}
+.mc .whyrow .linkbtn{padding:2px 0}
+.mc .golinks .sep{margin:0 8px;color:var(--ink-3)}
+.mc .live{align-content:start}
