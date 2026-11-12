@@ -60,7 +60,7 @@ function trackFinished(){
   ORDER.forEach(q => { if (answers[q] != null) ans[q] = WORDS[answers[q]]; else if (unsure[q]) ans[q] = "not_sure"; else if (q in answers) ans[q] = "skipped"; });
   const ranked = rankOf(PEOPLE.filter(p => p.cand));
   const o = {match_method: "map", answers: ans, matters: ORDER.filter(q => stars[q]), issues: top3.slice(), answered: answered(), finished_early: earlyFinish,
-    top3: ranked.slice(0, 3).map(c => ({id: c.p.id, pct: c.m.pct})), x: Math.round(me.x * 100) / 100, y: Math.round(me.y * 100) / 100};
+    top3: ranked.slice(0, 3).map(c => ({id: c.p.id, pct: c.m.pct})), x: Math.round(me.x * 100) / 100, y: Math.round(me.y * 100) / 100, lines: me.px && me.py ? "both" : me.px ? "economy" : me.py ? "enforcement" : "none"};
   if (profile && profile.ward) o.quiz_ward = profile.ward;
   if (profile && profile.age) o.age_band = profile.age;
   if (profile && profile.lean) o.leaning = profile.lean;
@@ -212,7 +212,7 @@ function chart(o){
     for (let n = 0; n < 4 && rkSpots.some(q => Math.hypot(q[0] - bx, q[1] - by) < 19); n++) bx += 20;
     rkSpots.push([bx, by]); rkAt[t.p.id] = bx; });
   order.forEach(p => {
-    const cx = X(p.x), cy = Y(p.y), pre = !p.cand && p.year < 1955, cls = p.cand ? "cand" : (pre ? "pre" : "mayor"), r = rad(p), lean = !!p.by_lean, thin = !lean && p.proof === "thin";
+    const cx = X(p.x), cy = Y(p.y), pre = !p.cand && p.year < 1955, cls = p.cand ? "cand" : (pre ? "pre" : "mayor"), r = rad(p), lean = !!p.by_lean, thin = thinP(p);
         s += '<g data-id="' + p.id + '" class="pt" tabindex="0" role="button" aria-label="' + esc(p.name) + (lean ? ", placed by leaning" : "") + '"><circle class="hring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 7) + '"/><circle class="dot ' + cls + (lean ? " lean" : thin ? " thin" : "") + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>'  + (thin ? '<circle class="thinring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 3) + '"/>' : '') + (rk[p.id] ? '<circle class="rk" cx="' + rkAt[p.id] + '" cy="' + cy + '" r="9.5"/><text class="rkn" x="' + rkAt[p.id] + '" y="' + (cy + 4) + '" text-anchor="middle">' + rk[p.id] + '</text>' : '') + '</g>';
   });
   s += over + labels;
@@ -242,10 +242,9 @@ function tipHTML(p){
   const who = p.cand && p.mayor ? "Current mayor and 2027 candidate" : p.cand ? "2027 candidate" : "Mayor, " + p.years;
   let h = '<b class="nm">' + esc(p.name) + '</b><span class="sub2">' + esc(who) + '</span>';
   h += '<div class="tl"><em>Economy</em><span>' + sayP(p, "x", true) + '</span></div><div class="tl"><em>Control</em><span>' + sayP(p, "y", true) + '</span></div>';
-  h += '<div class="tl"><em>Record</em><span>' + p.n + ' sourced facts, ' + p.proof + '</span></div>';
+  h += '<div class="tl"><em>Record</em><span>' + factsLine(p) + '</span></div>';
   if (p.by_lean) h += '<div class="warn">Placed by leaning: this dot comes from sourced positions on related issues, not from answers to the quiz statements.</div>';
-  else if (p.proof === "thin") h += '<div class="warn">Thin record: treat this dot as a rough guess.</div>';
-  else if (p.pulled) h += '<div class="warn">One issue has under 4 facts, so this dot is pulled toward the middle.</div>';
+  else if (thinP(p)) h += '<div class="warn">Thin record: one line rests on fewer than 4 facts, so treat this dot as a rough guess.</div>';
   return h + '<div class="go">Click for the sources</div>';
 }
 function tipMove(e){ const w = tip.offsetWidth, h = tip.offsetHeight; let x = e.clientX + 16, y = e.clientY + 16; if (x + w > innerWidth - 10) x = e.clientX - w - 16; if (y + h > innerHeight - 10) y = e.clientY - h - 16; tip.style.left = x + "px"; tip.style.top = y + "px"; }
@@ -270,7 +269,7 @@ const clean = t => t.replace(/\.$/, "");
 const tbHTML = you => '<div class="legend">' + (you ? '<span><i class="y"></i>You</span>' : '') + '<span><i class="c"></i>Candidate</span>' + (you ? '<span><i class="r">1</i>Your top 3</span>' : '') + '<span><i class="m"></i>Mayor since 1955</span><span><i class="l"></i>Placed by leaning</span><span><span class="ring"></span>Thin record</span></div>';
 $("fieldtb").innerHTML = tbHTML(false);
 function drawMaps(){
-  const mm = finished && window._me && window._me.n >= 4;
+  const mm = finished && window._me && window._me.ok;
   $("herotb").innerHTML = tbHTML(mm);
   const mn = $("mapnote"); if (mn) { mn.innerHTML = mm ? (window._note || "") : ""; mn.hidden = !(mm && window._note); }
   $("hero-chart").innerHTML = '<div class="plot">' + chart({S: 448, M: 34, sideLabels: true, cap: 11.5, pre, you: mm ? window._me : null, match: mm ? window._top : null, top3: mm ? window._top3 : null}) + '</div>';
@@ -567,17 +566,25 @@ document.addEventListener("keydown", e => {
 });
 
 /* ---------- scoring ---------- */
+// Round 12 (Connor, Nov 11): the same 2-point rule as candidates. A line places you only with 2 or more
+// answers on it. Neutral counts like Not sure (candidates never get a zero, so it only pulled voters to the
+// middle). Building-rule answers move no dot and do not count toward a result.
+const MAP_QS = ORDER.filter(q => Q[q].axis !== "rules").length;
 function you(){
-  const ax = {econ: [], control: []}; let n = 0;
+  const ax = {econ: [], control: []}, k = {econ: 0, control: 0};
   // A starred statement ("Matters to me") counts twice in where your dot lands.
-  for (const [qid, v] of Object.entries(answers)) if (v != null && Q[qid]) { n++; const A = ax[Q[qid].axis]; if (!A) continue; // building-rule statements count in the match, not in the dot
-    const s = v * Q[qid].agree_direction * 5; A.push(s); if (stars[qid]) A.push(s); }
-  const m = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
-  return {x: m(ax.econ), y: m(ax.control), n};
+  for (const [qid, v] of Object.entries(answers)) if (v != null && v !== 0 && Q[qid]) { const A = ax[Q[qid].axis]; if (!A) continue;
+    k[Q[qid].axis]++; const s = v * Q[qid].agree_direction * 5; A.push(s); if (stars[qid]) A.push(s); }
+  const m = a => a.reduce((s, v) => s + v, 0) / a.length;
+  const px = k.econ >= 2, py = k.control >= 2;
+  return {x: px ? m(ax.econ) : 0, y: py ? m(ax.control) : 0, n: k.econ + k.control, nx: k.econ, ny: k.control, px, py, ok: px || py};
 }
 // How we know: a vote or act, their own words, a press account, or our reading of a related act.
 const basisWord = (a, long) => a.basis === "action" ? (long ? "Based on a vote or action" : "Vote or action") : a.basis === "stated" ? "Stated publicly" : a.basis === "report" ? "Reported account" : "Judged from a related act";
 // Past mayors (round 9): the same question as it stood in their own time, with the year.
+// The year of each fact shows on its chip, so a reader can judge an older stance (Connor, Nov 11).
+const factYear = a => { const y = String(a.year || a.source_date || "").slice(0, 4); return /^\d{4}$/.test(y) ? y : ""; };
+const noteLine = a => a.note ? '<p class="then"><b>Note:</b> ' + esc(a.note) + '</p>' : "";
 const thenLine = a => a.then ? '<p class="then"><b>The question in ' + esc(String(a.year || "their day")) + ':</b> ' + esc(a.then) + '</p>' : "";
 // Which statements belong to each "top issue" a visitor can pick. Used to put their issues first in "See why".
 const QTOPIC = {S1: ["Crime and public safety"], S2: ["Crime and public safety", "Police reform"], S6: ["Police reform"], S12: ["Homelessness"], S5: ["Immigration"], S4: ["Immigration"],
@@ -595,9 +602,17 @@ const nAns = p => p.answers.filter(a => Q[a.qid]).length;
 function match(p, me){
   if (p.x == null || p.y == null) return {pct: null, d: null};
   me = me || you();
-  const d = Math.hypot(p.x - me.x, p.y - me.y);
+  if (!me.ok) return {pct: null, d: null};
+  // With only one line placed, you are matched on that line alone.
+  const d = me.px && me.py ? Math.hypot(p.x - me.x, p.y - me.y) : me.px ? Math.abs(p.x - me.x) : Math.abs(p.y - me.y);
   return {pct: Math.round(100 * Math.max(0, 1 - d / MAP_WIDTH)), d};
 }
+// Words beside the percent (Connor, Nov 11): the percent is map closeness, not agreement.
+const closeWord = pct => pct >= 90 ? "Very close" : pct >= 75 ? "Close" : pct >= 55 ? "Somewhat close" : "Far";
+// Facts behind each line of a person's dot, and whether the thinner line has under 4.
+const lineN = (p, ax) => (p["sides_" + ax] || [0, 0]).reduce((a, b) => a + b, 0);
+const thinP = p => Math.min(lineN(p, "x"), lineN(p, "y")) < 4;
+const factsLine = p => "Economy " + lineN(p, "x") + (lineN(p, "x") === 1 ? " fact" : " facts") + ", enforcement " + lineN(p, "y") + (lineN(p, "y") === 1 ? " fact" : " facts");
 // nearest dot first
 function rankOf(list){
   const me = you();
@@ -608,23 +623,27 @@ function updateLive(){
   const me = you(), ranked = rankOf(PEOPLE.filter(p => p.cand));
   const top = ranked[0] || null;
   window._me = me; window._top = top ? {p: top.p, pct: top.m.pct} : null; window._top3 = ranked.slice(0, 3).map(c => ({p: c.p, pct: c.m.pct})); window._note = "";
-  if ($("copyres")) $("copyres").hidden = me.n < 4;
-  if (me.n < 4) {
-    const need = 4 - me.n;
-    $("live").innerHTML = '<div class="reslabel">Your result</div><p class="hint">You answered too few statements to place you. Answer ' + need + ' more and your match appears here, with your dot on the chart.</p>' + REDO;
+  if ($("copyres")) $("copyres").hidden = !me.ok;
+  if (!me.ok) {
+    $("live").innerHTML = '<div class="reslabel">Your result</div><p class="hint">You answered too few statements to place you. Agree or disagree with at least 2 statements on the economy or on enforcement, and your match appears here, with your dot on the chart. Neutral, Not sure and the housing and building statements do not place you.</p>' + REDO;
     $("qredo").onclick = reopen;
     return;
   }
-  const sent = (ax, lab) => "On " + lab + ', you land <em class="' + (ax === "y" ? "t" : "") + '">' + (level(me[ax]) === 0 ? "near the middle" : say(ax, me[ax]).toLowerCase()) + "</em>.";
+  const sent = (ax, lab) => !(ax === "x" ? me.px : me.py) ? "On " + lab + ", you are not placed yet." : "On " + lab + ', you land <em class="' + (ax === "y" ? "t" : "") + '">' + (level(me[ax]) === 0 ? "near the middle" : say(ax, me[ax]).toLowerCase()) + "</em>.";
   const ms = rankOf(PEOPLE.filter(p => !p.cand))[0]; // the nearest past mayor dot
   window._mayor = ms ? ms.p : null;
   const done = true;
-  let h = '<div class="reslabel">' + (done ? "Your best match" : "Best match so far") + ' <span style="text-transform:none;letter-spacing:0;font-weight:400">(based on ' + me.n + ' of ' + ORDER.length + ' statements)</span></div>';
+  let h = '<div class="reslabel">' + (done ? "Your best match" : "Best match so far") + ' <span style="text-transform:none;letter-spacing:0;font-weight:400">(based on ' + me.n + ' of ' + MAP_QS + ' map statements)</span></div>';
   if (top) {
     const pods = ranked.slice(0, 3); animPod = false;
+    if (!(me.px && me.py)) h += '<p class="hint">Not enough answers on ' + (me.px ? "enforcement" : "the economy") + ' to place you there, so you are matched on ' + (me.px ? "the economy" : "enforcement") + ' alone.</p>';
+    if (pods[1] && pods[0].m.pct - pods[1].m.pct <= 3) h += '<p class="tie"><b>Too close to call:</b> ' + esc(pods[0].p.name) + ' and ' + esc(pods[1].p.name) + ' sit almost the same distance from you.</p>';
+    if (top.p.by_lean) h += '<p class="tie"><b>Your nearest match is placed by leaning.</b> ' + esc(top.p.short) + ' has few answers on the quiz statements, so the dot comes from their sourced positions on related issues.</p>';
     // Plain ranked rows: a near tie reads as a near tie. No podium blocks, no confetti.
-    h += '<div class="ranklist" role="group" aria-label="Your top ' + pods.length + ' matches">' + pods.map((c, i) => '<button type="button" class="pod" data-id="' + c.p.id + '"><span class="rn">' + (i + 1) + '</span><span class="pdn">' + esc(c.p.name) + '</span><b class="pdp tnum">' + c.m.pct + '%</b><span class="rline"><span class="rbar" aria-hidden="true"><i style="width:' + c.m.pct + '%"></i></span>' + (c.p.by_lean ? '<small class="pds">Placed by leaning</small>' : '') + '</span></button>').join("") + '</div>';
-    h += '<p class="bmsm">Your best match is the candidate whose dot is nearest yours on the map. On top of each other is 100%, a full map apart is 0%. Starred statements count double in where your dot lands. A hollow dot is placed by leaning: the candidate\'s own sourced positions on related issues.</p>';
+    h += '<div class="ranklist" role="group" aria-label="Your top ' + pods.length + ' matches">' + pods.map((c, i) => '<button type="button" class="pod" data-id="' + c.p.id + '"><span class="rn">' + (i + 1) + '</span><span class="pdn">' + esc(c.p.name) + '</span><b class="pdp tnum"><small class="cw">' + closeWord(c.m.pct) + '</small> ' + c.m.pct + '%</b><span class="rline"><span class="rbar" aria-hidden="true"><i style="width:' + c.m.pct + '%"></i></span>' + (c.p.by_lean ? '<small class="pds">Placed by leaning</small>' : '') + '</span></button>').join("") + '</div>';
+    const unplaced = PEOPLE.filter(p => p.cand && (p.x == null || p.y == null)).map(p => p.name);
+    if (unplaced.length) h += '<p class="bmsm"><b>Not placed (too few public positions):</b> ' + esc(unplaced.join(", ")) + '.</p>';
+    h += '<p class="bmsm">Your best match is the candidate whose dot is nearest yours on the map. The percent is closeness on the map, not agreement on every issue: on top of each other is 100%, a full map apart is 0%. Starred statements count double in where your dot lands. A hollow dot is placed by leaning: the candidate\'s own sourced positions on related issues.</p>';
     // The statement list sits behind "See why" (Connor, Nov 11: the open list was too much under the result).
     h += '<div class="why"><button type="button" class="linkbtn" id="bdwhy" aria-expanded="' + bdOpen + '">' + (bdOpen ? "Hide the details" : "See why you match " + esc(top.p.name)) + '</button></div>' + (bdOpen ? breakdownHTML(top.p) : "");
     if (RULEQ.some(q => answers[q] != null)) h += '<div class="why"><button type="button" class="linkbtn" id="rulesbtn" aria-expanded="' + rulesOpen + '">' + (rulesOpen ? "Hide housing and building rules" : "Compare on housing and building rules") + '</button></div>' + (rulesOpen ? rulesHTML(pods) : "");
@@ -647,7 +666,7 @@ function breakdownHTML(p){
   rows.sort((a, b) => mine(b.qid) - mine(a.qid)); // the visitor's top issues first, quiz order within each group
   const me = you(), word = (ax, v) => level(v) === 0 ? "near the middle" : say(ax, v).toLowerCase();
   let h = '<div class="bd"><div class="reslabel" style="margin:0">You and ' + esc(p.name) + '</div>';
-  h += '<div class="bdaxis"><p><b>Economy.</b> You: ' + word("x", me.x) + '. ' + esc(p.short) + ': ' + word("x", p.x) + '.</p><p><b>Enforcement.</b> You: ' + word("y", me.y) + '. ' + esc(p.short) + ': ' + word("y", p.y) + '.</p></div>';
+  h += '<div class="bdaxis"><p><b>Economy.</b> You: ' + (me.px ? word("x", me.x) : "not placed") + '. ' + esc(p.short) + ': ' + word("x", p.x) + '.</p><p><b>Enforcement.</b> You: ' + (me.py ? word("y", me.y) : "not placed") + '. ' + esc(p.short) + ': ' + word("y", p.y) + '.</p></div>';
   if (p.by_lean) h += '<p class="bdsub">' + esc(p.short) + ' is placed by leaning: their own sourced positions on related issues. <button type="button" class="linkbtn" data-id="' + p.id + '">Open ' + esc(p.short) + "'s positions and sources</button></p>";
   if (!rows.length) return h + '<p class="bdsub">' + esc(p.name) + ' has no sourced answer yet on a statement you answered.</p></div>';
   h += '<p class="bdsub">Statements you both answered, your top issues first:</p>';
@@ -693,7 +712,7 @@ function fundsCompact(f){
 let cmp = [];
 function renderCands(){
   const f = p => (p.funds && p.funds.raised) || -1;
-  const live = finished && you().n >= 4;
+  const live = finished && you().ok;
   let cs = PEOPLE.filter(p => p.cand).map(p => ({p, m: match(p)}));
   cs.sort((a, b) => f(b.p) - f(a.p));
   // Ranked candidates first, best match on top; the rest (too few answers) follow by money raised.
@@ -704,7 +723,7 @@ function renderCands(){
     (candsAll ? cs : cs.slice(0, 12)).map(({p, m}) => `<div class="crow${p.id === bestId ? " best" : ""}" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources">
       <label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label>
       <span class="cname" role="cell"><span class="mn" title="${esc(p.background || p.role)}">${esc(p.name)}</span><span class="cmeta"><span class="cstat ${/no challenge/i.test(p.status||"") ? "good" : /did not|withdrew/i.test(p.status||"") ? "weak" : ""}">${esc(p.status || "Status unknown")}</span> · ${p.n} ${p.n === 1 ? "fact" : "facts"}${p.site ? ` · <a class="csite" href="${esc(p.site)}" target="_blank" rel="noopener">Site</a>` : ""}</span></span>
-      ${live ? `<span class="mcell" role="cell">${m.pct != null ? `<span class="mtop"><b class="mpct tnum">${m.pct}%</b><span class="mbar"><i style="width:${m.pct}%"></i></span></span><span class="mon">${p.id === bestId ? "Best match" : p.by_lean ? "By leaning" : ""}</span>` : `<span class="mnone">Not enough to place yet</span>`}</span>` : ""}
+      ${live ? `<span class="mcell" role="cell">${m.pct != null ? `<span class="mtop"><b class="mpct tnum"><small class="cw">${closeWord(m.pct)}</small> ${m.pct}%</b><span class="mbar"><i style="width:${m.pct}%"></i></span></span><span class="mon">${p.id === bestId ? "Best match" : p.by_lean ? "By leaning" : ""}</span>` : `<span class="mnone">Not enough to place yet</span>`}</span>` : ""}
       <span class="cell" role="cell">${lineCell("x", p.x, p.proof === "thin", p)}</span>
       <span class="cell" role="cell">${lineCell("y", p.y, p.proof === "thin", p)}</span>
       <span class="cfund" role="cell">${fundsCell(p.funds)}</span>
@@ -720,7 +739,7 @@ function toggleCmp(id){
   const el = document.querySelector('.cmpbox[data-cid="' + id + '"]'); if (el) el.focus();
 }
 function renderCmpBar(){
-  const el = $("cmpbar"), live = finished && you().n >= 4;
+  const el = $("cmpbar"), live = finished && you().ok;
   if (cmp.length === 2) el.innerHTML = `<p class="small">Comparing <b>${esc(BY[cmp[0]].name)}</b> and <b>${esc(BY[cmp[1]].name)}</b>.</p><span class="actions" style="gap:14px"><button type="button" class="linkbtn" id="cmpclr">Clear</button><button type="button" class="btn sm" id="cmpgo">Compare these two</button></span>`;
   else el.innerHTML = `<p class="small">${live ? "Sorted by how close each candidate's dot is to yours on the map. " : ""}Compare 2: tick two rows, candidates or past mayors, to see their answers side by side, with sources.${cmp.length === 1 ? " Pick one more." : ""}</p>`;
   if (cmp.length === 2) { $("cmpgo").onclick = openCmp; $("cmpclr").onclick = () => { cmp = []; renderCands(); renderMayors(); }; }
@@ -733,7 +752,7 @@ function openCmp(){
   const ma = mapOf(A), mb = mapOf(B);
   const qs = ORDER.filter(q => ma[q] || mb[q]);
   const both = qs.filter(q => ma[q] && mb[q]), same = both.filter(q => Math.sign(ma[q].value) === Math.sign(mb[q].value));
-  const cell = a => a ? `<div><span class="chip blue">${LABELS[a.value]}</span> <span class="chip">${basisWord(a)}</span>${thenLine(a)}<p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>` : '<div class="none">No public position found.</div>';
+  const cell = a => a ? `<div><span class="chip blue">${LABELS[a.value]}</span> <span class="chip">${basisWord(a)}</span>${factYear(a) ? ` <span class="chip">${factYear(a)}</span>` : ""}${thenLine(a)}${noteLine(a)}<p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>` : '<div class="none">No public position found.</div>';
   const head = p => `<div><h3>${esc(p.name)}</h3><p class="small">${sayP(p, "x", true)}. ${sayP(p, "y", true)}.</p><p class="small">${p.n} sourced facts</p></div>`;
   $("cmp-dlg").innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 id="cmp-t" class="h3" style="font-size:15px;color:var(--ink-2);font-weight:600">Side by side, statement by statement</h2><button type="button" class="iconbtn" id="cmp-x" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>
     <p class="cmpsum">${both.length ? `They take the same side on <b>${same.length} of ${both.length}</b> statements where both have a sourced position.` : "They share no statement where both have a sourced position."}</p>
@@ -797,7 +816,7 @@ function drawCard(me, top){
   const t3 = (window._top3 || []), near = t3.map(t => t.p.id);
   PEOPLE.filter(p => p.cand && p.x != null && p.y != null && !near.includes(p.id)).forEach(p => {
     g.beginPath(); g.arc(X(p.x), Y(p.y), 9, 0, 7);
-    if (p.proof === "thin" || p.by_lean) { g.strokeStyle = "rgba(29,29,31,0.5)"; g.lineWidth = 3; g.stroke(); }
+    if (thinP(p) || p.by_lean) { g.strokeStyle = "rgba(29,29,31,0.5)"; g.lineWidth = 3; g.stroke(); }
     else { g.fillStyle = "rgba(29,29,31,0.45)"; g.fill(); g.strokeStyle = "#ffffff"; g.lineWidth = 2.5; g.stroke(); } });
   const dx = X(me.x), dy = Y(me.y);
   g.fillStyle = "rgba(0,113,227,0.16)"; g.beginPath(); g.arc(dx, dy, 36, 0, 7); g.fill();
@@ -834,7 +853,7 @@ function drawCard(me, top){
 }
 let cardCanvas = null;
 function openCard(){
-  const me = window._me, top = window._top; if (!me || me.n < 4) return;
+  const me = window._me, top = window._top; if (!me || !me.ok) return;
   cardCanvas = drawCard(me, top); const url = cardCanvas.toDataURL("image/png");
   $("card-dlg").innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 id="card-t" class="h3" style="font-size:15px;color:var(--ink-2);font-weight:600">Your share card</h2><button type="button" class="iconbtn" id="card-x" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>
     <img class="cardimg" id="cardimg" alt="Share card: ${esc(quadName(me))}" src="${url}">
@@ -845,7 +864,7 @@ function openCard(){
 /* Copy the picture to the clipboard in one click. It already carries "Take the quiz at wardwise.org/mayor".
    Where the browser cannot copy a picture, the share card opens with its Download button instead. */
 async function copyCard(btn, where){
-  const me = window._me; if (!me || me.n < 4) return;
+  const me = window._me; if (!me || !me.ok) return;
   const c = drawCard(me, window._top);
   let ok = false;
   try {
@@ -884,15 +903,14 @@ function openPerson(id){
   const p = BY[id]; if (!p) return; openId = id; track("mayor_quiz_person_opened", {person: id});
   const ans = {}; p.answers.forEach(a => ans[a.qid] = a);
   const qrow = qid => { const a = ans[qid], q = Q[qid]; if (!a) return ""; const u = answers[qid];
-    return `<div class="fact"><div class="st">${esc(q.text)}</div><div class="row"><span class="chip blue">${LABELS[a.value]}</span><span class="chip">${basisWord(a, true)}</span>${finished && u != null && u !== undefined ? `<span class="chip ${Math.abs(u - a.value) <= 1 && Math.sign(u) === Math.sign(a.value) ? "good" : "weak"}">You: ${LABELS[u]}</span>` : ""}</div>${thenLine(a)}<p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>`; };
+    return `<div class="fact"><div class="st">${esc(q.text)}</div><div class="row"><span class="chip blue">${LABELS[a.value]}</span><span class="chip">${basisWord(a, true)}</span>${factYear(a) ? `<span class="chip">${factYear(a)}</span>` : ""}${finished && u != null && u !== undefined ? `<span class="chip ${Math.abs(u - a.value) <= 1 && Math.sign(u) === Math.sign(a.value) ? "good" : "weak"}">You: ${LABELS[u]}</span>` : ""}</div>${thenLine(a)}${noteLine(a)}<p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>`; };
   const missing = ORDER.filter(q => !ans[q]);
   const sec = (title, ax) => { const qs = ORDER.filter(q => Q[q].axis === ax && ans[q]); return `<h4>${title}</h4>` + (qs.length ? qs.map(qrow).join("") : `<p class="small">No public position found on these statements.</p>`); };
   $("drawer").innerHTML = `<div class="top"><div><p class="eyebrow" style="margin:0 0 4px;font-size:14px">${esc(p.role)} · ${esc(p.years)}</p><h2 id="dr-name">${esc(p.name)}</h2>${p.party ? `<p class="small" style="margin-top:4px">${esc(p.party)}${p.status ? " · " + esc(p.status) : ""}</p>` : (p.status ? `<p class="small" style="margin-top:4px">${esc(p.status)}</p>` : "")}</div><button type="button" class="iconbtn" id="dr-close" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>
-    <div class="scores">${scoreLine("x", p.x, {cls: "big", mixed: mixedText(p, "x")})}${scoreLine("y", p.y, {cls: "big", mixed: mixedText(p, "y")})}<div class="proofline"><b class="tnum">${p.n}</b> sourced facts, ${p.proof} record</div></div>
-    ${p.pulled ? `<p class="small" style="margin-top:10px">Fewer than 4 facts on a line, so the dot is pulled toward the middle. Before the pull: the economy was ${say("x", p.raw_x, true).toLowerCase()}, enforcement was ${say("y", p.raw_y, true).toLowerCase()}.</p>` : ""}
+    <div class="scores">${scoreLine("x", p.x, {cls: "big", mixed: mixedText(p, "x")})}${scoreLine("y", p.y, {cls: "big", mixed: mixedText(p, "y")})}<div class="proofline">${factsLine(p)}${thinP(p) && p.x != null && p.y != null ? ". One line rests on fewer than 4 facts, so treat this dot as a rough guess" : ""}</div></div>
     <h4>Summary</h4><p style="font-size:15px"><b>Economy.</b> ${esc(p.summary_econ || "No public record found.")}</p><p style="font-size:15px;margin-top:6px"><b>Enforcement and city rules.</b> ${esc(p.summary_control || "No public record found.")}</p>
     ${sec("Economy statements", "econ")}${sec("Enforcement statements", "control")}${sec("Building rule statements (in your match, not on the map)", "rules")}
-    ${p.by_lean ? `<p class="small" style="margin-top:10px"><b>Placed by leaning.</b> ${esc(p.short)} has too few answers on the quiz statements to be scored as a match. The dot comes from the sourced positions below on related issues.</p>` : ""}${p.acts.length ? `<h4>${p.acts.some(e => e.kind === "leaning") ? "Leanings and other record" : "Other record"}</h4>` + p.acts.map(e => `<div class="fact"><div class="row"><span class="chip">${e.axis === "econ" ? (e.direction < 0 ? "Economy: toward progressive" : "Economy: toward conservative") : (e.axis === "rules" ? "City rule, not on the map" : e.direction > 0 ? "Toward tougher enforcement" : "Toward a lighter touch")}</span>${e.year ? `<span class="small">${esc(e.year)}</span>` : ""}</div><p>${esc(e.action)}</p><p class="src"><a href="${esc(e.source_url)}" target="_blank" rel="noopener">${esc(e.source_name || "Source")}</a> · ${esc(e.source_date || "")}</p></div>`).join("") : ""}
+    ${p.by_lean ? `<p class="small" style="margin-top:10px"><b>Placed by leaning.</b> ${esc(p.short)} has few answers on the quiz statements. The dot comes from the sourced positions below on related issues.</p>` : ""}${p.acts.length ? `<h4>${p.acts.some(e => e.kind === "leaning") ? "Leanings and other record" : "Other record"}</h4>` + p.acts.map(e => `<div class="fact"><div class="row"><span class="chip">${e.axis === "econ" ? (e.direction < 0 ? "Economy: toward progressive" : "Economy: toward conservative") : (e.axis === "rules" ? "City rule, not on the map" : e.direction > 0 ? "Toward tougher enforcement" : "Toward a lighter touch")}</span>${e.year ? `<span class="small">${esc(e.year)}</span>` : ""}</div><p>${esc(e.action)}</p><p class="src"><a href="${esc(e.source_url)}" target="_blank" rel="noopener">${esc(e.source_name || "Source")}</a> · ${esc(e.source_date || "")}</p></div>`).join("") : ""}
     ${p.issues.length ? `<h4>Positions on 2027 issues</h4>` + p.issues.map(i => `<div class="fact"><div class="st">${esc(i.issue)}</div><p>${esc(i.position)}</p>${i.quote ? `<p style="color:var(--ink-2)">"${esc(i.quote)}"</p>` : ""}<p class="src"><a href="${esc(i.source_url)}" target="_blank" rel="noopener">Source</a> · ${esc(i.source_date || "")}</p></div>`).join("") : ""}
     ${missing.length && p.answers.length ? `<h4>No public position found</h4><ul class="missing">${missing.map(q => `<li>${esc(Q[q].text)}</li>`).join("")}</ul>` : ""}
     ${p.gaps.length ? `<h4>Gaps in the record</h4><ul class="missing">${p.gaps.map(g => `<li>${esc(g)}</li>`).join("")}</ul>` : ""}

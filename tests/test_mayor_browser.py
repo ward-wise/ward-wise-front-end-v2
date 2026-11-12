@@ -355,3 +355,49 @@ def test_building_rule_statements_are_compare_only(page, mayor_site):
     for pairs in (ga, ph):
         assert len(named(pairs, "mayor_quiz_rules_opened")) == 1, pairs
     assert page.errors == []
+
+
+QUIZ_ORDER = ["E5","C1","E6","S12","E17","S1","E1","C4","E14","S5","E13","S4","E10","C2","E3","S6","E16","C3","E15","C5","E7","S2","E11","E12"]
+RULES = {"C2", "C3", "C4", "C5", "E12"}
+
+
+def finish_to_result(page, site, keys):
+    page.goto(f"{site}/mayor", wait_until="load")
+    answer(page, keys)
+    pass_issues(page)
+    page.wait_for_selector("#pgo")
+    page.click("#pskip")
+    page.wait_for_function("document.querySelector('#cdwn') || document.querySelector('#live .reslabel')")
+    if page.locator("#cdwn").count():
+        page.keyboard.press("Space")
+    page.wait_for_selector("#live .reslabel")
+
+
+def test_building_rules_and_neutral_answers_do_not_place_you(page, mayor_site):
+    """Round 12 (Connor, Nov 11): a line places you only with 2 agree or disagree answers on it. Agreeing
+    with the five building-rule statements and answering Neutral everywhere else gives no match."""
+    keys = ["5" if q in RULES else "3" for q in QUIZ_ORDER]
+    finish_to_result(page, mayor_site, keys)
+    assert page.locator(".ranklist .pod").count() == 0
+    assert "too few statements" in page.locator("#live").inner_text()
+    assert page.locator("#hero-chart .you-dot").count() == 0
+    assert page.errors == []
+
+
+def test_one_placed_line_matches_on_that_line_alone(page, mayor_site):
+    """Economy answers only (enforcement all Neutral): you are matched on the economy alone, and the page
+    says so. Closeness words sit beside each percent, and unplaced candidates are named."""
+    econ = [q for q in QUIZ_ORDER if q.startswith("E") and q not in RULES]
+    keys = [("5" if econ.index(q) % 2 else "4") if q in econ else "3" for q in QUIZ_ORDER]
+    finish_to_result(page, mayor_site, keys)
+    live = page.locator("#live").inner_text()
+    assert "matched on the economy alone" in live
+    assert page.locator(".ranklist .pod").count() == 3
+    words = page.locator(".ranklist .cw").all_text_contents()
+    assert len(words) == 3 and all(w in ("Very close", "Close", "Somewhat close", "Far") for w in words), words
+    assert "Not placed (too few public positions)" in live and "Matt Brewer" in live
+    names = page.evaluate("window.MayorCompassData.people.map(p => p.name)")
+    assert "Toni Brooks" not in names  # did not file (Board list of Nov 9, 2026)
+    _, ph = sent(page)
+    assert named(ph, "mayor_quiz_finished")[0]["lines"] == "economy"
+    assert page.errors == []

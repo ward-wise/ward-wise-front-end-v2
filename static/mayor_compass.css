@@ -631,3 +631,6 @@ body.mc-lock{overflow:hidden}
 .mc .rulestab .rq{font-weight:600}
 .mc .rulestab .rc.you{color:var(--link);font-weight:600}
 .mc .rulestab .rnone{color:var(--ink-3)}
+/* Round 12: closeness words beside the percent, and the "too close to call" and "placed by leaning" lines */
+.mc .cw, .cw { font-size: 12px; font-weight: 600; color: var(--ink-2); margin-right: 4px; letter-spacing: 0; }
+.mc .tie, .tie { font-size: 14px; line-height: 1.45; margin: 8px 0; color: var(--ink); }
