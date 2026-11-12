@@ -103,3 +103,31 @@ def test_mayor_page_has_disclaimer_and_correction_email(built_site: Path):
     assert "may contain errors" in text
     assert "two lines only" in text and "not wrong for being there" in text
     assert 'href="mailto:connor@wardwise.org?subject=' in text
+
+
+def test_mayor_how_this_works_is_short_with_the_method_folded(built_site: Path):
+    """Connor, Nov 11: "How this works" is five plain bullets; the full method folds behind one link."""
+    html = page_file(built_site, "/mayor").read_text(encoding="utf-8")
+    howlist = re.search(r'<ul class="howlist">(.*?)</ul>', html, re.S)
+    assert howlist and howlist.group(1).count("<li>") == 5
+    assert "does not endorse" in howlist.group(1)
+    assert re.search(r'<details class="howmore"><summary>Full method and fact-check history</summary>', html)
+    assert "Side to side is the economy" not in html.split('id="candidates"')[0]  # map explainer gone from the quiz panel
+
+
+def test_mayor_data_rulings_hold():
+    """Round 12 and 13 data rulings (Connor, Nov 11): who is placed, who left, which statements count."""
+    import json
+    raw = (Path(__file__).resolve().parent.parent / "static" / "mayor_compass_data.js").read_text(encoding="utf-8")
+    d = json.loads(raw[raw.index("{"):].rstrip().rstrip(";"))
+    by = {p["name"]: p for p in d["people"]}
+    assert "Toni Brooks" not in by
+    assert by["Susana Mendoza"]["x"] is None and by["Joe Holberg"]["x"] is None  # no fact answers an economy statement directly
+    qids = {q["qid"] for q in d["questions"]}
+    assert not qids & {"E1", "E7", "E10", "E14"} and {"E18", "E19", "E20", "E21"} <= qids
+    wilson = {a["qid"] for a in by["Willie Wilson"]["answers"]}
+    assert "S2" not in wilson
+    assert "E1" not in {a["qid"] for a in by["Harold Washington"]["answers"]}
+    notes = {(p["name"], a["qid"]): a.get("note") for p in d["people"] for a in p["answers"]}
+    assert notes[("Lori Lightfoot", "E11")] and notes[("Richard J. Daley", "S4")]
+    assert d["anchor"]["mid"] == 0

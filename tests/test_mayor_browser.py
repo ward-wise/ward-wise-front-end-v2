@@ -437,3 +437,29 @@ def test_campaign_site_and_voting_links_are_counted(page, mayor_site):
     assert all(e["where"] == "result" for e in named(ph, "mayor_quiz_link"))
     if "campaign_site" in kinds:
         assert any(e.get("person") for e in named(ph, "mayor_quiz_link") if e["link"] == "campaign_site")
+
+
+def test_result_card_layout_and_drawer_links(page, mayor_site):
+    """Connor, Nov 11: the left card and the map are one height; the lean-toward line and the 'you land'
+    sentence are gone; the voter's dot stays within the candidates' range; the drawer links a candidate's
+    campaign site and the voting pages, and those clicks are counted with where=drawer."""
+    page.set_viewport_size({"width": 1440, "height": 1100})
+    run_quiz(page, mayor_site)
+    live = page.locator("#live").inner_text()
+    assert "You said you lean toward" not in live and "you land" not in live
+    h = page.evaluate("[document.querySelector('#live').getBoundingClientRect().height, document.querySelector('.ccol').getBoundingClientRect().height]")
+    assert abs(h[0] - h[1]) <= 2, h
+    me, rng = page.evaluate("""() => { const c = window.MayorCompassData.people.filter(p => p.cand && p.x != null && p.y != null);
+        return [window._me, [Math.min(...c.map(p => p.x)), Math.max(...c.map(p => p.x)), Math.min(...c.map(p => p.y)), Math.max(...c.map(p => p.y))]]; }""")
+    assert min(rng[0], 0) <= me["x"] <= max(rng[1], 0) and min(rng[2], 0) <= me["y"] <= max(rng[3], 0), (me, rng)
+    pid = page.evaluate("window.MayorCompassData.people.find(p => p.cand && p.site).id")
+    page.evaluate(f"document.querySelector('.crow[data-id=\"{pid}\"]').click()")
+    page.wait_for_function("!document.querySelector('#drawer').hidden")
+    page.evaluate("document.addEventListener('click', e => e.preventDefault())")
+    for a in page.locator("#drawer a[data-mclink]").all():
+        a.dispatch_event("click")
+    _, ph = sent(page)
+    got = {(e["link"], e["where"]) for e in named(ph, "mayor_quiz_link")}
+    assert {("campaign_site", "drawer"), ("where_to_vote", "drawer"), ("register", "drawer")} <= got, got
+    years = page.locator("#drawer .fact .chip").all_text_contents()
+    assert any(re.fullmatch(r"\d{4}", y.strip()) for y in years), years
