@@ -439,6 +439,10 @@ window.addEventListener("scroll", updatePin, {passive: true});
 function renderQ(still){
   if (qi >= ORDER.length) qi = ORDER.length - 1;
   const qid = ORDER[qi], q = Q[qid], a = answers[qid];
+  // The card is rebuilt on every answer. Keep a keyboard user in the card: same control on the same
+  // statement (the star), or the new statement text when the statement changed.
+  const qe = $("quiz"), ae = document.activeElement, sameQ = qe.dataset.qid === qid;
+  const had = ae && ae !== qe && qe.contains(ae) ? (ae.id ? "#" + ae.id : ae.dataset.v != null ? `.ans[data-v="${ae.dataset.v}"]` : "x") : null;
   $("quiz").innerHTML = `${headHTML()}
     <div class="qbody">
     <p class="qtext" id="qtext">${esc(q.text)}</p>
@@ -464,6 +468,8 @@ function renderQ(still){
   wireHead($("quiz"), false);
   $("qskip").onclick = () => { noteAnswer(qid, "skipped"); flyOut("down"); const b = progressN(); answers[qid] = null; delete unsure[qid]; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); };
   $("qnext").onclick = () => { flyOut(a == null ? "down" : a); advance(); };
+  qe.dataset.qid = qid;
+  if (had) { const t = (sameQ && had !== "x" && qe.querySelector(had)) || $("qtext"); if (t.id === "qtext") t.tabIndex = -1; t.focus({preventScroll: true}); }
 }
 /* two short steps after the last statement, before the reveal */
 function renderTop(){

@@ -83,6 +83,7 @@
 .mc .qprog{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;color:var(--ink-2)}
 .mc .qbar{height:4px;background:var(--fill-2);border-radius:2px;overflow:hidden;margin:10px 0 28px}
 .mc .qbar i{display:block;height:100%;background:var(--blue)}
+.mc .qtext[tabindex="-1"]:focus{outline:none}
 .mc .qtext{font-family:var(--sfd);font-size:clamp(26px,3.4vw,36px);font-weight:700;letter-spacing:-0.025em;line-height:1.15;min-height:3.5em}
 .mc .answers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:28px}
 @media (max-width:640px){.mc .answers{grid-template-columns:1fr 1fr}

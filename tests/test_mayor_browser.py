@@ -485,3 +485,32 @@ def test_share_card_names_only_the_line_you_were_placed_on(page, mayor_site):
     assert "economy" in alt, alt
     assert "enforcement" not in alt and "Right in the middle" not in alt, alt
     assert page.errors == []
+
+
+def at_statement(page, i):
+    page.wait_for_function(f"document.querySelector('#quiz .qprog')?.textContent.includes('Statement {i} of 24')")
+
+
+def test_keyboard_stays_in_the_card_and_arrows_only_answer_there(page, mayor_site):
+    page.goto(f"{mayor_site}/mayor", wait_until="load")
+    at_statement(page, 1)
+    # The down arrow on the page scrolls; it does not answer Not sure.
+    page.evaluate("document.activeElement && document.activeElement.blur()")
+    page.keyboard.press("ArrowDown")
+    page.wait_for_timeout(200)
+    assert "Statement 1 of 24" in page.locator("#quiz .qprog").inner_text()
+    # Answer with Enter on a focused button: focus lands on the next statement, still in the card.
+    page.focus('#quiz .ans[data-v="1"]')
+    page.keyboard.press("Enter")
+    at_statement(page, 2)
+    assert page.evaluate("document.querySelector('#quiz').contains(document.activeElement)")
+    assert page.evaluate("document.activeElement.id") == "qtext"
+    # From inside the card the arrow keys answer.
+    page.keyboard.press("ArrowRight")
+    at_statement(page, 3)
+    # The star keeps focus on itself.
+    page.focus("#star")
+    page.keyboard.press("Enter")
+    page.wait_for_function("document.querySelector('#star')?.getAttribute('aria-pressed') === 'true'")
+    assert page.evaluate("document.activeElement.id") == "star"
+    assert page.errors == []
