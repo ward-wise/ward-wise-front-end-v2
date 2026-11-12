@@ -657,6 +657,9 @@ const closeWord = pct => pct >= 90 ? "Very close" : pct >= 75 ? "Close" : pct >=
 // Facts behind each line of a person's dot, and whether the thinner line has under 4.
 const lineN = (p, ax) => (p["sides_" + ax] || [0, 0]).reduce((a, b) => a + b, 0);
 const thinP = p => Math.min(lineN(p, "x"), lineN(p, "y")) < 4;
+// Tables use the same thin rule as the map ring and the drawer (Connor, Nov 11). A person the old label
+// called thin who now has 4 or more facts on each line reads as medium.
+const proofWord = p => thinP(p) ? "thin" : p.proof === "thin" ? "medium" : p.proof;
 const factsLine = p => "Economy " + lineN(p, "x") + (lineN(p, "x") === 1 ? " fact" : " facts") + ", enforcement " + lineN(p, "y") + (lineN(p, "y") === 1 ? " fact" : " facts");
 // nearest dot first
 function rankOf(list){
@@ -775,8 +778,8 @@ function renderCands(){
       <label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label>
       <span class="cname" role="cell"><span class="mn" title="${esc(p.background || p.role)}">${esc(p.name)}</span><span class="cmeta"><span class="cstat ${/no challenge/i.test(p.status||"") ? "good" : /did not|withdrew/i.test(p.status||"") ? "weak" : ""}">${esc(p.status || "Status unknown")}</span> · ${p.n} ${p.n === 1 ? "fact" : "facts"}${p.site ? ` · <a class="csite" href="${esc(p.site)}" target="_blank" rel="noopener" data-mclink="campaign_site" data-person="${p.id}" data-where="table">Site</a>` : ""}</span></span>
       ${live ? `<span class="mcell" role="cell">${m.pct != null ? `<span class="mtop"><b class="mpct tnum"><small class="cw">${closeWord(m.pct)}</small> ${m.pct}%</b><span class="mbar"><i style="width:${m.pct}%"></i></span></span><span class="mon">${p.id === bestId ? "Best match" : p.by_lean ? "By leaning" : ""}</span>` : `<span class="mnone">Not enough to place yet</span>`}</span>` : ""}
-      <span class="cell" role="cell">${lineCell("x", p.x, p.proof === "thin", p)}</span>
-      <span class="cell" role="cell">${lineCell("y", p.y, p.proof === "thin", p)}</span>
+      <span class="cell" role="cell">${lineCell("x", p.x, thinP(p), p)}</span>
+      <span class="cell" role="cell">${lineCell("y", p.y, thinP(p), p)}</span>
       <span class="cfund" role="cell">${fundsCell(p.funds)}</span>
       <span aria-hidden="true"></span>
     </div>`).join("") + '</div>' +
@@ -945,7 +948,7 @@ function renderMayors(){
     let rows = placed.filter(p => p.year >= a && p.year < b && (p.n > 0)).sort((x, y) => y.year - x.year);
     total += rows.length; rows = rows.slice(0, left); left -= rows.length;
     if (!rows.length) return "";
-    return `<div class="era"><h3>${t}</h3><div class="mhead"><span></span><span>Mayor</span><span>${lnHead("Economy", "Progressive", "Conservative")}</span><span>${lnHead("Enforcement", "Lighter", "Tougher")}</span><span class="pf">Record</span><span></span></div>${rows.map(p => `<div class="mrow" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources"><label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label><span><span class="mn">${esc(p.name)}</span><br><span class="yr">${esc(p.years)}</span></span><span class="cell">${lineCell("x", p.x, p.proof === "thin", p)}</span><span class="cell">${lineCell("y", p.y, p.proof === "thin", p)}</span><span class="pf small">${p.proof} record</span><span aria-hidden="true"></span></div>`).join("")}</div>`;
+    return `<div class="era"><h3>${t}</h3><div class="mhead"><span></span><span>Mayor</span><span>${lnHead("Economy", "Progressive", "Conservative")}</span><span>${lnHead("Enforcement", "Lighter", "Tougher")}</span><span class="pf">Record</span><span></span></div>${rows.map(p => `<div class="mrow" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources"><label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label><span><span class="mn">${esc(p.name)}</span><br><span class="yr">${esc(p.years)}</span></span><span class="cell">${lineCell("x", p.x, thinP(p), p)}</span><span class="cell">${lineCell("y", p.y, thinP(p), p)}</span><span class="pf small">${proofWord(p)} record</span><span aria-hidden="true"></span></div>`).join("")}</div>`;
   }).join("");
   document.querySelectorAll("#eras .cmpbox").forEach(b => b.onchange = () => toggleCmp(b.dataset.cid));
   $("mayMore").textContent = maysAll ? "Show fewer" : "Show all " + total + " mayors"; $("norecCard").hidden = !maysAll;
