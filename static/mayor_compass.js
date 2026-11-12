@@ -436,13 +436,17 @@ function updatePin(){
   if (show !== pinOn) { pinOn = show; pin.classList.toggle("on", show); }
 }
 window.addEventListener("scroll", updatePin, {passive: true});
+// Keyboard focus that was in the quiz card, or in the strip pinned under the header, goes back to the
+// card's step text when the card is rebuilt.
+const focusInCard = () => { const ae = document.activeElement, pin = $("qpin"); return !!ae && ae !== document.body && ($("quiz").contains(ae) || (!!pin && pin.contains(ae))); };
+const focusStep = () => { const t = $("qtext"); if (t) { t.tabIndex = -1; t.focus({preventScroll: true}); } };
 function renderQ(still){
   if (qi >= ORDER.length) qi = ORDER.length - 1;
   const qid = ORDER[qi], q = Q[qid], a = answers[qid];
   // The card is rebuilt on every answer. Keep a keyboard user in the card: same control on the same
   // statement (the star), or the new statement text when the statement changed.
   const qe = $("quiz"), ae = document.activeElement, sameQ = qe.dataset.qid === qid;
-  const had = ae && ae !== qe && qe.contains(ae) ? (ae.id ? "#" + ae.id : ae.dataset.v != null ? `.ans[data-v="${ae.dataset.v}"]` : "x") : null;
+  const had = ae && ae !== qe && qe.contains(ae) ? (ae.id ? "#" + ae.id : ae.dataset.v != null ? `.ans[data-v="${ae.dataset.v}"]` : "x") : focusInCard() ? "x" : null;
   $("quiz").innerHTML = `${headHTML()}
     <div class="qbody">
     <p class="qtext" id="qtext">${esc(q.text)}</p>
@@ -469,10 +473,11 @@ function renderQ(still){
   $("qskip").onclick = () => { noteAnswer(qid, "skipped"); flyOut("down"); const b = progressN(); answers[qid] = null; delete unsure[qid]; store.set("mc-answers", answers); store.set("mc-unsure", unsure); bump(b); advance(); };
   $("qnext").onclick = () => { flyOut(a == null ? "down" : a); advance(); };
   qe.dataset.qid = qid;
-  if (had) { const t = (sameQ && had !== "x" && qe.querySelector(had)) || $("qtext"); if (t.id === "qtext") t.tabIndex = -1; t.focus({preventScroll: true}); }
+  if (had) { const t = sameQ && had !== "x" && qe.querySelector(had); if (t) t.focus({preventScroll: true}); else focusStep(); }
 }
 /* two short steps after the last statement, before the reveal */
 function renderTop(){
+  const keep = focusInCard();
   $("quiz").innerHTML = `${headHTML()}
     <p class="stepq" id="qtext">Which issues matter most to you? Pick up to 3.</p>
     <div class="chips" role="group" aria-labelledby="qtext">${TOPICS.map(tp => `<button type="button" class="tchip" aria-pressed="${pickTop.includes(tp)}" ${!pickTop.includes(tp) && pickTop.length >= 3 ? "disabled" : ""}>${esc(tp)}</button>`).join("")}</div>
@@ -484,10 +489,12 @@ function renderTop(){
   });
   $("tback").onclick = () => { riseNext = "back"; stage = "q"; qi = ORDER.length - 1; render(); };
   wireHead($("quiz"), false);
+  if (keep) focusStep();
   $("tskip").onclick = () => { flyOut("down"); top3 = []; store.set("mc-top3", top3); track("mayor_quiz_issues", {issues: []}); stage = "prof"; render(); };
   $("tgo").onclick = () => { flyOut(1); top3 = pickTop.slice(); store.set("mc-top3", top3); track("mayor_quiz_issues", {issues: top3.slice()}); stage = "prof"; render(); };
 }
 function renderProf(){
+  const keep = focusInCard();
   const cands = PEOPLE.filter(p => p.cand).map(p => p.name).sort((x, y) => x.localeCompare(y));
   const sel = (v, cur) => cur === v ? " selected" : "";
   $("quiz").innerHTML = `${headHTML()}
@@ -509,6 +516,7 @@ function renderProf(){
   wireHead($("quiz"), false);
   $("pskip").onclick = () => { flyOut("down"); profile = {}; store.set("mc-profile", profile); track("mayor_quiz_profile", {skipped: true}); reveal(); };
   $("pgo").onclick = () => { flyOut(1); grab(); profile = draft; store.set("mc-profile", profile); track("mayor_quiz_profile", profileProps(profile, false)); reveal(); };
+  if (keep) focusStep();
 }
 function advance(){ if (qi >= ORDER.length - 1) { earlyFinish = false; finish(); return; } qi++; render(true); }
 function finish(){
