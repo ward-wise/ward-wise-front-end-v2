@@ -416,3 +416,24 @@ def test_quiz_order_matches_the_data_and_the_economy_line_is_balanced(page, mayo
     assert len(econ) == 12 and econ.count(1) == 6 and econ.count(-1) == 6
     for gone in ("E1", "E7", "E10", "E14"):
         assert gone not in QUIZ_ORDER
+
+
+def test_campaign_site_and_voting_links_are_counted(page, mayor_site):
+    """Connor, Nov 11: the result links to the top matches' campaign sites, where to vote and how to
+    register, and every click is counted."""
+    run_quiz(page, mayor_site)
+    # keep the page here: the counter listens before the click would leave the page
+    page.evaluate("document.addEventListener('click', e => e.preventDefault())")
+    links = page.locator("#live a[data-mclink]")
+    kinds = links.evaluate_all("els => els.map(a => a.dataset.mclink)")
+    assert "where_to_vote" in kinds and "register" in kinds, kinds
+    for k in ("where_to_vote", "register"):
+        page.locator(f'#live a[data-mclink="{k}"]').first.dispatch_event("click")
+    if "campaign_site" in kinds:
+        page.locator('#live a[data-mclink="campaign_site"]').first.dispatch_event("click")
+    _, ph = sent(page)
+    got = [e["link"] for e in named(ph, "mayor_quiz_link")]
+    assert "where_to_vote" in got and "register" in got, got
+    assert all(e["where"] == "result" for e in named(ph, "mayor_quiz_link"))
+    if "campaign_site" in kinds:
+        assert any(e.get("person") for e in named(ph, "mayor_quiz_link") if e["link"] == "campaign_site")

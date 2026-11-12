@@ -635,3 +635,6 @@ body.mc-lock{overflow:hidden}
 .mc .tie, .tie { font-size: 14px; line-height: 1.45; margin: 8px 0; color: var(--ink); }
 /* "How the match works": a quiet link, since the method notes are tucked away (Connor, Nov 11) */
 .mc #howbtn { font-size: 14px; color: var(--ink-2); }
+/* Links out: campaign sites, where to vote, register (Connor, Nov 11) */
+.mc .golinks { font-size: 14px; margin: 6px 0; color: var(--ink-2); }
+.mc .golinks span { margin-right: 4px; }

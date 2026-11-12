@@ -15,6 +15,8 @@
 //   mayor_quiz_reset         {answered, finished}     Start over, after Yes
 //   mayor_quiz_why_opened    {match}                  "See why" opened under the result (statement list)
 //   mayor_quiz_rules_opened  {}                       "Compare on housing and building rules" opened
+//   mayor_quiz_link          {link, person, where}    a link out: link = campaign_site, where_to_vote or register;
+//                                                     person on campaign_site; where = result, drawer or table
 // quiz_ward is the ward typed into the quiz; track() already sets "ward" to the visitor's own saved ward.
 (function () {
 "use strict";
@@ -615,6 +617,12 @@ function match(p, me){
   return {pct: Math.round(100 * Math.max(0, 1 - d / MAP_WIDTH)), d};
 }
 // Words beside the percent (Connor, Nov 11): the percent is map closeness, not agreement.
+// Where to vote and how to register. The Board's site has the voter lookup (polling place, ballot, early
+// voting sites); Illinois's online registration is the state's own page.
+const VOTE_URL = "https://chicagoelections.gov/", REG_URL = "https://ova.elections.il.gov/";
+const VOTE_LINKS = where => '<p class="golinks"><span>Election day is Feb 23, 2027:</span> <a href="' + VOTE_URL + '" target="_blank" rel="noopener" data-mclink="where_to_vote" data-where="' + where + '">Find where to vote</a> · <a href="' + REG_URL + '" target="_blank" rel="noopener" data-mclink="register" data-where="' + where + '">Register to vote</a></p>';
+document.addEventListener("click", e => { const a = e.target.closest && e.target.closest("a[data-mclink]"); if (!a) return;
+  const o = {link: a.dataset.mclink, where: a.dataset.where || ""}; if (a.dataset.person) o.person = a.dataset.person; track("mayor_quiz_link", o); }, true);
 const closeWord = pct => pct >= 90 ? "Very close" : pct >= 75 ? "Close" : pct >= 55 ? "Somewhat close" : "Far";
 // Facts behind each line of a person's dot, and whether the thinner line has under 4.
 const lineN = (p, ax) => (p["sides_" + ax] || [0, 0]).reduce((a, b) => a + b, 0);
@@ -653,6 +661,10 @@ function updateLive(){
     // The method notes and the not-placed list sit behind one small link.
     let how = '<p class="bmsm">Your best match is the candidate whose dot is nearest yours on the map. The percent is closeness on the map, not agreement on every issue: on top of each other is 100%, a full map apart is 0%. Starred statements count double in where your dot lands. A hollow dot is placed by leaning: the candidate\'s own sourced positions on related issues.</p>';
     if (unplaced.length) how += '<p class="bmsm"><b>Not placed (too few public positions):</b> ' + esc(unplaced.join(", ")) + '.</p>';
+    // Connor, Nov 11: link to each top match's campaign site, and to where to vote and how to register.
+    const sites = pods.filter(c => c.p.site);
+    if (sites.length) h += '<p class="golinks"><span>Campaign sites:</span> ' + sites.map(c => '<a href="' + esc(c.p.site) + '" target="_blank" rel="noopener" data-mclink="campaign_site" data-person="' + c.p.id + '" data-where="result">' + esc(c.p.short) + '</a>').join(" · ") + '</p>';
+    h += VOTE_LINKS("result");
     h += '<div class="why"><button type="button" class="linkbtn small" id="howbtn" aria-expanded="' + howOpen + '">' + (howOpen ? "Hide how the match works" : "How the match works") + '</button></div>' + (howOpen ? how : "");
     // The statement list sits behind "See why" (Connor, Nov 11: the open list was too much under the result).
     h += '<div class="why"><button type="button" class="linkbtn" id="bdwhy" aria-expanded="' + bdOpen + '">' + (bdOpen ? "Hide the details" : "See why you match " + esc(top.p.name)) + '</button></div>' + (bdOpen ? breakdownHTML(top.p) : "");
@@ -732,7 +744,7 @@ function renderCands(){
   $("cand-grid").innerHTML = '<div class="ctab' + (live ? " m" : "") + '" role="table" aria-label="2027 candidates"><div class="chead" role="row"><span></span><span role="columnheader">Candidate</span>' + (live ? '<span role="columnheader">Match</span>' : '') + '<span role="columnheader">' + lnHead("Economy", "Progressive", "Conservative") + '</span><span role="columnheader">' + lnHead("Enforcement", "Lighter", "Tougher") + '</span><span role="columnheader">Raised for the mayor race</span><span></span></div>' +
     (candsAll ? cs : cs.slice(0, 12)).map(({p, m}) => `<div class="crow${p.id === bestId ? " best" : ""}" role="row" data-id="${p.id}" tabindex="0" aria-label="${esc(p.name)}: open positions and sources">
       <label class="cmp" title="Tick two to compare"><input type="checkbox" class="cmpbox" data-cid="${p.id}" aria-label="Compare ${esc(p.name)}" ${cmp.includes(p.id) ? "checked" : ""}></label>
-      <span class="cname" role="cell"><span class="mn" title="${esc(p.background || p.role)}">${esc(p.name)}</span><span class="cmeta"><span class="cstat ${/no challenge/i.test(p.status||"") ? "good" : /did not|withdrew/i.test(p.status||"") ? "weak" : ""}">${esc(p.status || "Status unknown")}</span> · ${p.n} ${p.n === 1 ? "fact" : "facts"}${p.site ? ` · <a class="csite" href="${esc(p.site)}" target="_blank" rel="noopener">Site</a>` : ""}</span></span>
+      <span class="cname" role="cell"><span class="mn" title="${esc(p.background || p.role)}">${esc(p.name)}</span><span class="cmeta"><span class="cstat ${/no challenge/i.test(p.status||"") ? "good" : /did not|withdrew/i.test(p.status||"") ? "weak" : ""}">${esc(p.status || "Status unknown")}</span> · ${p.n} ${p.n === 1 ? "fact" : "facts"}${p.site ? ` · <a class="csite" href="${esc(p.site)}" target="_blank" rel="noopener" data-mclink="campaign_site" data-person="${p.id}" data-where="table">Site</a>` : ""}</span></span>
       ${live ? `<span class="mcell" role="cell">${m.pct != null ? `<span class="mtop"><b class="mpct tnum"><small class="cw">${closeWord(m.pct)}</small> ${m.pct}%</b><span class="mbar"><i style="width:${m.pct}%"></i></span></span><span class="mon">${p.id === bestId ? "Best match" : p.by_lean ? "By leaning" : ""}</span>` : `<span class="mnone">Not enough to place yet</span>`}</span>` : ""}
       <span class="cell" role="cell">${lineCell("x", p.x, p.proof === "thin", p)}</span>
       <span class="cell" role="cell">${lineCell("y", p.y, p.proof === "thin", p)}</span>
@@ -917,6 +929,7 @@ function openPerson(id){
   const missing = ORDER.filter(q => !ans[q]);
   const sec = (title, ax) => { const qs = ORDER.filter(q => Q[q].axis === ax && ans[q]); return `<h4>${title}</h4>` + (qs.length ? qs.map(qrow).join("") : `<p class="small">No public position found on these statements.</p>`); };
   $("drawer").innerHTML = `<div class="top"><div><p class="eyebrow" style="margin:0 0 4px;font-size:14px">${esc(p.role)} · ${esc(p.years)}</p><h2 id="dr-name">${esc(p.name)}</h2>${p.party ? `<p class="small" style="margin-top:4px">${esc(p.party)}${p.status ? " · " + esc(p.status) : ""}</p>` : (p.status ? `<p class="small" style="margin-top:4px">${esc(p.status)}</p>` : "")}</div><button type="button" class="iconbtn" id="dr-close" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>
+    ${p.cand && p.site ? `<p class="golinks"><a href="${esc(p.site)}" target="_blank" rel="noopener" data-mclink="campaign_site" data-person="${p.id}" data-where="drawer">${esc(p.short)}'s campaign site</a></p>` : ""}${p.cand ? VOTE_LINKS("drawer") : ""}
     <div class="scores">${scoreLine("x", p.x, {cls: "big", mixed: mixedText(p, "x")})}${scoreLine("y", p.y, {cls: "big", mixed: mixedText(p, "y")})}<div class="proofline">${factsLine(p)}${thinP(p) && p.x != null && p.y != null ? ". One line rests on fewer than 4 facts, so treat this dot as a rough guess" : ""}</div></div>
     <h4>Summary</h4><p style="font-size:15px"><b>Economy.</b> ${esc(p.summary_econ || "No public record found.")}</p><p style="font-size:15px;margin-top:6px"><b>Enforcement and city rules.</b> ${esc(p.summary_control || "No public record found.")}</p>
     ${sec("Economy statements", "econ")}${sec("Enforcement statements", "control")}${sec("Building rule statements (in your match, not on the map)", "rules")}
