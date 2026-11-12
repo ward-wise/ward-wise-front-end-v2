@@ -938,8 +938,9 @@ function renderMayors(){
 }
 
 /* ---------- drawer ---------- */
+let drawerFrom = null;
 function openPerson(id){
-  const p = BY[id]; if (!p) return; openId = id; track("mayor_quiz_person_opened", {person: id});
+  const p = BY[id]; if (!p) return; if ($("drawer").hidden) drawerFrom = document.activeElement; openId = id; track("mayor_quiz_person_opened", {person: id});
   const ans = {}; p.answers.forEach(a => ans[a.qid] = a);
   const qrow = qid => { const a = ans[qid], q = Q[qid]; if (!a) return ""; const u = answers[qid];
     return `<div class="fact"><div class="st">${esc(q.text)}</div><div class="row"><span class="chip blue">${LABELS[a.value]}</span><span class="chip">${basisWord(a, true)}</span>${factYear(a) ? `<span class="chip">${factYear(a)}</span>` : ""}${finished && u != null && u !== undefined ? `<span class="chip ${Math.abs(u - a.value) <= 1 && Math.sign(u) === Math.sign(a.value) ? "good" : "weak"}">You: ${LABELS[u]}</span>` : ""}</div>${thenLine(a)}${noteLine(a)}<p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>`; };
@@ -958,7 +959,12 @@ function openPerson(id){
   $("drawer").hidden = false; $("scrim").hidden = false; $("drawer").scrollTop = 0;
   $("dr-close").onclick = closePerson; $("dr-close").focus();
 }
-function closePerson(){ $("drawer").hidden = true; $("scrim").hidden = true; openId = null; }
+function closePerson(){
+  $("drawer").hidden = true; $("scrim").hidden = true; openId = null;
+  // Back to the row or dot that opened it. A re-render may have replaced that element, so find it again.
+  const f = drawerFrom; drawerFrom = null;
+  if (f && f.isConnected) f.focus(); else if (f && f.dataset && f.dataset.id) { const n = document.querySelector(`[data-id="${f.dataset.id}"]`); if (n) n.focus(); }
+}
 $("scrim").onclick = closePerson;
 
 function refresh(){ render(); }

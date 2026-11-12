@@ -514,3 +514,16 @@ def test_keyboard_stays_in_the_card_and_arrows_only_answer_there(page, mayor_sit
     page.wait_for_function("document.querySelector('#star')?.getAttribute('aria-pressed') === 'true'")
     assert page.evaluate("document.activeElement.id") == "star"
     assert page.errors == []
+
+
+def test_closing_a_candidate_drawer_returns_focus_to_its_row(page, mayor_site):
+    run_quiz(page, mayor_site)
+    row = page.locator("#mc .crow[data-id]").first
+    pid = row.get_attribute("data-id")
+    row.focus()
+    page.keyboard.press("Enter")
+    page.wait_for_selector("#drawer:not([hidden])")
+    page.keyboard.press("Escape")
+    page.wait_for_selector("#drawer", state="hidden")
+    assert page.evaluate("document.activeElement.dataset.id") == pid
+    assert page.errors == []
