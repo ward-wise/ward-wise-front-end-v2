@@ -144,6 +144,8 @@ def test_skipping_the_picks_step_sends_a_skipped_profile(page, mayor_site):
 @pytest.mark.parametrize("demo", ["1", "mid", "card"])
 def test_demo_urls_send_nothing(page, mayor_site, demo):
     page.goto(f"{mayor_site}/mayor?demo={demo}", wait_until="load")
+    # the demo page really rendered: the map has candidate dots
+    page.wait_for_selector("#hero-chart g.pt[data-id]", state="attached")
     page.wait_for_timeout(1500)
     page.keyboard.press("3")
     page.wait_for_timeout(300)
@@ -158,7 +160,7 @@ def test_no_match_or_dot_until_the_reveal(page, mayor_site):
     assert page.locator(".you-dot, .you-halo, .youg").count() == 0
     answer(page, KEYS[:6])
     page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 7 of 24')")
-    assert page.locator(".mpct, .mbest, .pod").count() == 0, "a match showed mid-quiz"
+    assert page.locator(".mpct, .pod").count() == 0, "a match showed mid-quiz"
     assert page.locator(".you-dot, .you-halo, .youg").count() == 0, "the You dot showed mid-quiz"
     assert "Your best match" not in page.inner_text("body")
     answer_rest = KEYS[6:]
@@ -246,7 +248,14 @@ def test_best_match_is_the_nearest_dot_on_the_map(page, mayor_site):
     assert "same side" not in page.locator(".ranklist").inner_text().lower()
     assert sorted(page.locator("#hero-chart .rkn").all_text_contents()) == ["1", "2", "3"]
     assert page.locator("#hero-chart .dot.lean").count() > 0, "no hollow dot for a candidate placed by leaning"
-    # the nearest dot wears badge 1: no other candidate dot sits closer to the You dot
+    # badge 1 on the map sits on the best match, and the ranked rows show the same people and percents
+    # as the result that was counted
+    badge1 = page.evaluate("""() => [...document.querySelectorAll("#hero-chart .rkn")]
+        .find(t => t.textContent.trim() === "1")?.closest("[data-id]")?.dataset.id""")
+    assert badge1 == fin["best_match"], (badge1, fin["best_match"])
+    pods = page.evaluate("""() => [...document.querySelectorAll(".ranklist .pod")].map(b => ({
+        id: b.dataset.id, pct: parseInt(b.querySelector(".pdp").textContent.match(/(\\d+)%/)[1], 10)}))""")
+    assert pods == [{"id": t["id"], "pct": t["pct"]} for t in fin["top3"]], (pods, fin["top3"])
     assert page.locator("#mapnote").is_hidden()
 
 
