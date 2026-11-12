@@ -463,3 +463,25 @@ def test_result_card_layout_and_drawer_links(page, mayor_site):
     assert {("campaign_site", "drawer"), ("where_to_vote", "drawer"), ("register", "drawer")} <= got, got
     years = page.locator("#drawer .fact .chip").all_text_contents()
     assert any(re.fullmatch(r"\d{4}", y.strip()) for y in years), years
+
+
+def test_share_card_names_only_the_line_you_were_placed_on(page, mayor_site):
+    """Agree with every economy statement and stay neutral on the rest: you are placed on the economy line
+    only, so the share card must not call you "middle on enforcement" or "Right in the middle"."""
+    page.goto(f"{mayor_site}/mayor", wait_until="load")
+    for i in range(1, 25):
+        page.wait_for_function(f"document.querySelector('#quiz .qprog')?.textContent.includes('Statement {i} of 24')")
+        axis = page.evaluate("""() => {
+            const t = document.querySelector('#qtext').textContent;
+            return window.MayorCompassData.questions.find((q) => q.text === t).axis;
+        }""")
+        page.keyboard.press("4" if axis == "econ" else "3")
+    pass_issues(page)
+    page.wait_for_selector("#pgo")
+    page.click("#pskip")
+    skip_countdown(page)
+    page.click("#qcard")
+    alt = page.locator("#cardimg").get_attribute("alt")
+    assert "economy" in alt, alt
+    assert "enforcement" not in alt and "Right in the middle" not in alt, alt
+    assert page.errors == []

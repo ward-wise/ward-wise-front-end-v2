@@ -793,8 +793,11 @@ function closeCmp(){ $("cmp-ov").hidden = true; lockOn(false); if (lastFocus && 
 $("cmp-ov").addEventListener("mousedown", e => { if (e.target === $("cmp-ov")) closeCmp(); });
 /* ---------- share card: a 1080x1350 PNG drawn on a canvas, no libraries ---------- */
 // Same words rule as the page: under 1.5 from the middle counts as the middle.
+// A line you were not placed on (under 2 answers) is left out, not called the middle.
 const quadName = me => {
   const mx = Math.abs(me.x) < 1.5, my = Math.abs(me.y) < 1.5;
+  if (me.px === false) return my ? "Middle on enforcement" : me.y > 0 ? "Tougher enforcement" : "Lighter touch";
+  if (me.py === false) return mx ? "Middle on the economy" : me.x > 0 ? "Conservative on the economy" : "Progressive on the economy";
   if (mx && my) return "Right in the middle";
   const a = mx ? "Middle on the economy" : me.x > 0 ? "Conservative" : "Progressive";
   const b = my ? "middle on enforcement" : me.y > 0 ? "tougher enforcement" : "lighter touch";
