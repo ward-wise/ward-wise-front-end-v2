@@ -545,7 +545,9 @@ function lockBody(qe){
   }
   b.style.minHeight = bodyH + "px";
 }
-window.addEventListener("resize", () => { bodyW = 0; const qe = $("quiz"); if (qe && stage === "q" && !finished) lockBody(qe); });
+// Once per frame, and only a width change re-measures (lockBody compares widths).
+let rzTick = 0;
+window.addEventListener("resize", () => { if (rzTick) return; rzTick = requestAnimationFrame(() => { rzTick = 0; const qe = $("quiz"); if (qe && stage === "q" && !finished) lockBody(qe); }); });
 function render(cardOnly){
   // Map and table always show. Your dot, matches and the match sort wait until you finish.
   const fold = false;
