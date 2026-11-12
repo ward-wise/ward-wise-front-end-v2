@@ -183,7 +183,7 @@
 .mc .dot.cand{fill:var(--dot-cand);stroke:var(--card);stroke-width:2}
 .mc .dot.mayor{fill:var(--dot-mayor);stroke:var(--card);stroke-width:1.5}
 .mc .dot.pre{fill:var(--dot-mayor);opacity:.55;stroke:var(--card);stroke-width:1}
-.mc .dot.thin{opacity:.5}
+.mc .dot.mayor.thin{opacity:.5} /* candidates with a thin record stay dark; the dashed ring marks them (Connor, Nov 11) */
 .mc .pt:focus{outline:none}
 /* light 10 by 10 grid on the map */
 .mc .grid line{stroke:var(--ink);stroke-opacity:.07;stroke-width:1;pointer-events:none}

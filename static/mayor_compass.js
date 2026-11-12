@@ -200,6 +200,12 @@ function chart(o){
     if (!spot) { const pl = place(tx, ty, 11, w, h); if (pl) spot = pl.b; }
     if (spot) { boxes.push(spot); labels += '<text class="lab match" x="' + (spot.x + 2) + '" y="' + (spot.y + h - 3) + '">' + esc(txt) + '</text>'; }
   }
+  const rk = {}; (o.you && o.top3 || []).forEach((t, i) => rk[t.p.id] = i + 1); // 1, 2, 3 on your top matches
+  // badges that would cover each other sit side by side, so 1, 2 and 3 all stay readable
+  const rkAt = {}, rkSpots = [];
+  (o.you && o.top3 || []).forEach(t => { if (t.p.x == null || t.p.y == null) return; let bx = X(t.p.x); const by = Y(t.p.y);
+    for (let n = 0; n < 4 && rkSpots.some(q => Math.hypot(q[0] - bx, q[1] - by) < 19); n++) bx += 20;
+    rkSpots.push([bx, by]); rkAt[t.p.id] = bx; boxes.push({x: bx - 11, y: by - 11, w: 22, h: 22}); });
   /* name labels: candidates first, then mayors since 1955 */
   [...shown].filter(p => p.cand || p.year >= 1955).sort((a, b) => (b.cand - a.cand) || (b.n - a.n)).forEach(p => {
     if (o.match && o.match.p.id === p.id && o.you) return;
@@ -213,12 +219,7 @@ function chart(o){
         labels += '<text class="lab ' + (p.cand ? "" : "m") + '" data-for="' + p.id + '" x="'  + (b.x + 2) + '" y="' + (b.y + h - 3) + '">' + esc(t) + '</text>';
   });
   s += under + lines;
-  const rk = {}; (o.you && o.top3 || []).forEach((t, i) => rk[t.p.id] = i + 1); // 1, 2, 3 on your top matches
-  // badges that would cover each other sit side by side, so 1, 2 and 3 all stay readable
-  const rkAt = {}, rkSpots = [];
-  (o.you && o.top3 || []).forEach(t => { if (t.p.x == null || t.p.y == null) return; let bx = X(t.p.x); const by = Y(t.p.y);
-    for (let n = 0; n < 4 && rkSpots.some(q => Math.hypot(q[0] - bx, q[1] - by) < 19); n++) bx += 20;
-    rkSpots.push([bx, by]); rkAt[t.p.id] = bx; });
+
   order.forEach(p => {
     const cx = X(p.x), cy = Y(p.y), pre = !p.cand && p.year < 1955, cls = p.cand ? "cand" : (pre ? "pre" : "mayor"), r = rad(p), lean = !!p.by_lean, thin = thinP(p);
         s += '<g data-id="' + p.id + '" class="pt" tabindex="0" role="button" aria-label="' + esc(p.name) + (lean ? ", placed by leaning" : "") + '"><circle class="hring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 7) + '"/><circle class="dot ' + cls + (lean ? " lean" : thin ? " thin" : "") + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>'  + (thin ? '<circle class="thinring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 3) + '"/>' : '') + (rk[p.id] ? '<circle class="rk" cx="' + rkAt[p.id] + '" cy="' + cy + '" r="9.5"/><text class="rkn" x="' + rkAt[p.id] + '" y="' + (cy + 4) + '" text-anchor="middle">' + rk[p.id] + '</text>' : '') + '</g>';
@@ -579,6 +580,7 @@ document.addEventListener("keydown", e => {
 // answers on it. Neutral counts like Not sure (candidates never get a zero, so it only pulled voters to the
 // middle). Building-rule answers move no dot and do not count toward a result.
 const MAP_QS = ORDER.filter(q => Q[q].axis !== "rules").length;
+const CR = (() => { const c = PEOPLE.filter(p => p.cand && p.x != null && p.y != null), r = k => c.length ? [Math.min(0, ...c.map(p => p[k])), Math.max(0, ...c.map(p => p[k]))] : [-10, 10]; return {x: r("x"), y: r("y")}; })();
 function you(){
   const ax = {econ: [], control: []}, k = {econ: 0, control: 0};
   // A starred statement ("Matters to me") counts twice in where your dot lands.
@@ -586,7 +588,11 @@ function you(){
     k[Q[qid].axis]++; const s = v * Q[qid].agree_direction * 5; A.push(s); if (stars[qid]) A.push(s); }
   const m = a => a.reduce((s, v) => s + v, 0) / a.length;
   const px = k.econ >= 2, py = k.control >= 2;
-  return {x: px ? m(ax.econ) - ANCHOR : 0, y: py ? m(ax.control) : 0, n: k.econ + k.control, nx: k.econ, ny: k.control, px, py, ok: px || py};
+  // Connor, Nov 11: a voter's dot stops at the furthest candidate on each line. Strong answers reach 10, but
+  // candidates' sourced answers are mostly plain agree or disagree, so a perfect match read as only "somewhat
+  // close". Who ranks first does not change; the dot also stays inside the map.
+  const cl = (v, r) => Math.max(r[0], Math.min(r[1], v));
+  return {x: px ? cl(m(ax.econ) - ANCHOR, CR.x) : 0, y: py ? cl(m(ax.control), CR.y) : 0, n: k.econ + k.control, nx: k.econ, ny: k.control, px, py, ok: px || py};
 }
 // How we know: a vote or act, their own words, a press account, or our reading of a related act.
 const basisWord = (a, long) => a.basis === "action" ? (long ? "Based on a vote or action" : "Vote or action") : a.basis === "stated" ? "Stated publicly" : a.basis === "report" ? "Reported account" : "Judged from a related act";
