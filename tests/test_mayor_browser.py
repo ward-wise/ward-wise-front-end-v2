@@ -476,26 +476,37 @@ def test_result_card_layout_and_drawer_links(page, mayor_site):
 
 
 @pytest.mark.parametrize("placed, other", [("econ", "enforcement"), ("control", "economy")])
-def test_share_card_names_only_the_line_you_were_placed_on(page, mayor_site, placed, other):
-    """Agree with every statement on one line and stay neutral on the rest: you are placed on that line
-    only, so the share card must not name the other line or call you "Right in the middle"."""
+@pytest.mark.parametrize("side", [1, -1])
+def test_share_card_names_only_the_line_you_were_placed_on(page, mayor_site, placed, other, side):
+    """Answer every statement on one line strongly toward one side and stay neutral on the rest: you are
+    placed on that line only, so the share card names that side of that line and nothing else."""
     page.goto(f"{mayor_site}/mayor", wait_until="load")
     for i in range(1, 25):
         page.wait_for_function(f"document.querySelector('#quiz .qprog')?.textContent.includes('Statement {i} of 24')")
-        axis = page.evaluate("""() => {
+        q = page.evaluate("""() => {
             const t = document.querySelector('#qtext').textContent;
-            return window.MayorCompassData.questions.find((q) => q.text === t).axis;
+            return window.MayorCompassData.questions.find((q) => q.text === t);
         }""")
-        page.keyboard.press("4" if axis == placed else "3")
+        toward = q["agree_direction"] * side > 0
+        page.keyboard.press(("5" if toward else "1") if q["axis"] == placed else "3")
     pass_issues(page)
     page.wait_for_selector("#pgo")
     page.click("#pskip")
     skip_countdown(page)
     page.click("#qcard")
     alt = page.locator("#cardimg").get_attribute("alt")
-    word = {"econ": "economy", "control": "enforcement"}[placed]
-    assert word in alt.lower() or "touch" in alt.lower(), alt
-    assert other not in alt.lower() and "Right in the middle" not in alt, alt
+    # the exact words for your side of the placed line, from the position that was counted
+    _, ph = sent(page)
+    fin = named(ph, "mayor_quiz_finished")[0]
+    assert fin["lines"] == {"econ": "economy", "control": "enforcement"}[placed], fin
+    v = fin["x"] if placed == "econ" else fin["y"]
+    if placed == "econ":
+        want = "Middle on the economy" if abs(v) < 1.5 else "Conservative on the economy" if v > 0 else "Progressive on the economy"
+    else:
+        want = "Middle on enforcement" if abs(v) < 1.5 else "Tougher enforcement" if v > 0 else "Lighter touch"
+    assert alt == "Share card: " + want, (alt, v)
+    assert (v > 0) == (side > 0) and abs(v) >= 1.5, ("the answers did not reach the side under test", v)
+    assert other not in alt.lower(), alt
     assert page.errors == []
 
 
