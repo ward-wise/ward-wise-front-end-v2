@@ -657,8 +657,7 @@ function updateLive(){
     // The statement list sits behind "See why" (Connor, Nov 11: the open list was too much under the result).
     h += '<div class="why"><button type="button" class="linkbtn" id="bdwhy" aria-expanded="' + bdOpen + '">' + (bdOpen ? "Hide the details" : "See why you match " + esc(top.p.name)) + '</button></div>' + (bdOpen ? breakdownHTML(top.p) : "");
     if (RULEQ.some(q => answers[q] != null)) h += '<div class="why"><button type="button" class="linkbtn" id="rulesbtn" aria-expanded="' + rulesOpen + '">' + (rulesOpen ? "Hide housing and building rules" : "Compare on housing and building rules") + '</button></div>' + (rulesOpen ? rulesHTML(pods) : "");
-    const lean = profile && profile.lean;
-    if (lean && lean !== "Undecided" && lean !== "Prefer not to say" && lean !== top.p.name) h += '<p class="leanline">You said you lean toward ' + esc(lean) + '. Your dot sits nearest ' + esc(top.p.name) + '.</p>';
+    // Connor, Nov 11: the "You said you lean toward..." line is gone. The leaning answer is still counted in analytics.
   } else h += '<p class="hint">No candidate has enough public positions to name a match yet.</p>';
   h += '<p class="resline">' + sent("x", "the economy") + " " + sent("y", "enforcement") + (ms ? ' <span style="font-weight:400;color:var(--ink-2)">Closest past mayor: ' + esc(ms.p.name) + '.</span>' : "") + '</p>';
   $("live").innerHTML = h + REDO.replace('<span class="resetwrap">', '<button type="button" class="linkbtn" id="qcard">See share card</button><span class="resetwrap">');
