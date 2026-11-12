@@ -541,7 +541,6 @@ body.mc-lock{overflow:hidden}
 
 /* The drawer, dialogs and tooltip must cover the site header, which sits at z-index 1100. */
 .mc .scrim{z-index:1300}
-body.mc-lock{overflow:hidden}
 
 /* Phones: the page is desktop-first, but nothing may scroll sideways. */
 @media (max-width:960px){
