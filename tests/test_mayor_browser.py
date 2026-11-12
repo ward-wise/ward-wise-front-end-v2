@@ -124,7 +124,8 @@ def test_full_run_sends_the_whole_story_once(page, mayor_site):
         assert isinstance(pct, int) and not isinstance(pct, bool) and 0 <= pct <= 100, fin
         assert len(fin["top3"]) <= 3 and all({"id", "pct"} <= set(t) for t in fin["top3"]), fin["top3"]
         prof = named(pairs, "mayor_quiz_profile")
-        assert prof and prof[0]["quiz_ward"] == "5" and not prof[0].get("skipped"), prof
+        assert len(prof) == 1 and prof[0]["quiz_ward"] == "5" and not prof[0].get("skipped"), prof
+        assert fin["finished_early"] is False, fin
     assert page.errors == []
 
 
@@ -187,8 +188,8 @@ def test_opening_a_person_after_the_reveal_is_counted(page, mayor_site):
     ga, ph = sent(page)
     for pairs in (ga, ph):
         opened = named(pairs, "mayor_quiz_person_opened")
-        assert opened and opened[-1]["person"] == person, opened
-        assert opened[-1]["page"] == "mayor"
+        assert len(opened) == 1 and opened[0]["person"] == person, opened
+        assert opened[0]["page"] == "mayor"
 
 
 def test_page_loads_without_errors(page, mayor_site):
@@ -474,9 +475,10 @@ def test_result_card_layout_and_drawer_links(page, mayor_site):
     assert any(re.fullmatch(r"\d{4}", y.strip()) for y in years), years
 
 
-def test_share_card_names_only_the_line_you_were_placed_on(page, mayor_site):
-    """Agree with every economy statement and stay neutral on the rest: you are placed on the economy line
-    only, so the share card must not call you "middle on enforcement" or "Right in the middle"."""
+@pytest.mark.parametrize("placed, other", [("econ", "enforcement"), ("control", "economy")])
+def test_share_card_names_only_the_line_you_were_placed_on(page, mayor_site, placed, other):
+    """Agree with every statement on one line and stay neutral on the rest: you are placed on that line
+    only, so the share card must not name the other line or call you "Right in the middle"."""
     page.goto(f"{mayor_site}/mayor", wait_until="load")
     for i in range(1, 25):
         page.wait_for_function(f"document.querySelector('#quiz .qprog')?.textContent.includes('Statement {i} of 24')")
@@ -484,15 +486,16 @@ def test_share_card_names_only_the_line_you_were_placed_on(page, mayor_site):
             const t = document.querySelector('#qtext').textContent;
             return window.MayorCompassData.questions.find((q) => q.text === t).axis;
         }""")
-        page.keyboard.press("4" if axis == "econ" else "3")
+        page.keyboard.press("4" if axis == placed else "3")
     pass_issues(page)
     page.wait_for_selector("#pgo")
     page.click("#pskip")
     skip_countdown(page)
     page.click("#qcard")
     alt = page.locator("#cardimg").get_attribute("alt")
-    assert "economy" in alt, alt
-    assert "enforcement" not in alt and "Right in the middle" not in alt, alt
+    word = {"econ": "economy", "control": "enforcement"}[placed]
+    assert word in alt.lower() or "touch" in alt.lower(), alt
+    assert other not in alt.lower() and "Right in the middle" not in alt, alt
     assert page.errors == []
 
 
@@ -535,4 +538,62 @@ def test_closing_a_candidate_drawer_returns_focus_to_its_row(page, mayor_site):
     page.keyboard.press("Escape")
     page.wait_for_selector("#drawer", state="hidden")
     assert page.evaluate("document.activeElement.dataset.id") == pid
+    assert page.errors == []
+
+
+def test_keyboard_focus_stays_with_the_card_on_the_last_two_steps(page, mayor_site):
+    page.goto(f"{mayor_site}/mayor", wait_until="load")
+    at_statement(page, 1)
+    page.focus('#quiz .ans[data-v="1"]')
+    for i in range(1, 25):
+        at_statement(page, i)
+        page.keyboard.press("4")
+    page.wait_for_selector("#tgo")
+    assert page.evaluate("document.activeElement.id") == "qtext", "focus left the card at the issues step"
+    page.focus("#tskip")
+    page.keyboard.press("Enter")
+    page.wait_for_selector("#pgo")
+    assert page.evaluate("document.activeElement.id") == "qtext", "focus left the card at the picks step"
+    assert page.errors == []
+
+
+def test_a_jump_from_the_pinned_strip_keeps_keyboard_focus_in_the_card(page, mayor_site):
+    page.goto(f"{mayor_site}/mayor", wait_until="load")
+    answer(page, KEYS[:12])
+    at_statement(page, 13)
+    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    page.wait_for_selector("#qpin.on")
+    page.focus('#qpin .mseg[data-k="2"]')
+    page.keyboard.press("Enter")
+    at_statement(page, 3)
+    assert page.evaluate("document.activeElement.id") == "qtext"
+    assert page.errors == []
+
+
+def test_arrows_answer_after_a_click_on_the_card_background(page, mayor_site):
+    page.goto(f"{mayor_site}/mayor", wait_until="load")
+    at_statement(page, 1)
+    page.click("#quiz .qctx")  # not a button: focus stays on the page body
+    assert page.evaluate("document.activeElement === document.body")
+    page.keyboard.press("ArrowRight")
+    at_statement(page, 2)
+    # a click outside the card turns the arrows back into scrolling
+    page.click("h1")
+    page.keyboard.press("ArrowDown")
+    page.wait_for_timeout(200)
+    assert "Statement 2 of 24" in page.locator("#quiz .qprog").inner_text()
+    assert page.errors == []
+
+
+def test_finish_now_is_counted_as_an_early_finish(page, mayor_site):
+    page.goto(f"{mayor_site}/mayor", wait_until="load")
+    answer(page, KEYS[:12])
+    page.click("#qfin")
+    pass_issues(page)
+    page.wait_for_selector("#pgo")
+    page.click("#pskip")
+    skip_countdown(page)
+    _, ph = sent(page)
+    fin = named(ph, "mayor_quiz_finished")
+    assert len(fin) == 1 and fin[0]["finished_early"] is True, fin
     assert page.errors == []
