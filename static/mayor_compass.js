@@ -570,6 +570,8 @@ document.addEventListener("keydown", e => {
   if (!$("cmp-ov").hidden || !$("card-ov").hidden || !$("drawer").hidden) return;
   if (e.key === "Backspace") { if (stage === "q" || stage === "top" || stage === "prof") { e.preventDefault(); goBack(); } return; }
   if (stage !== "q") return;
+  // Connor, Nov 11: arrow keys answer only from inside the quiz card; elsewhere they scroll or move tabs.
+  if (e.key.startsWith("Arrow") && !$("quiz").contains(e.target)) return;
   const map = {"1": -2, "2": -1, "3": 0, "4": 1, "5": 2};
   const ar = {ArrowLeft: e.shiftKey ? -2 : -1, ArrowRight: e.shiftKey ? 2 : 1, ArrowUp: 0};
   if (e.key in map) { e.preventDefault(); setAns(map[e.key]); } else if (e.key in ar) { e.preventDefault(); setAns(ar[e.key]); } else if (e.key === "ArrowDown") { e.preventDefault(); setUnsure(); } else if (e.key === "6") { e.preventDefault(); setUnsure(); }
