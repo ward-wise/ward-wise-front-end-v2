@@ -357,7 +357,7 @@ def test_building_rule_statements_are_compare_only(page, mayor_site):
     assert page.errors == []
 
 
-QUIZ_ORDER = ["E5","C1","E6","S12","E17","S1","E1","C4","E14","S5","E13","S4","E10","C2","E3","S6","E16","C3","E15","C5","E7","S2","E11","E12"]
+QUIZ_ORDER = ["E5","C1","E6","S12","E17","S1","E20","C4","E19","S5","E13","S4","E18","C2","E3","S6","E16","C3","E15","C5","E21","S2","E11","E12"]
 RULES = {"C2", "C3", "C4", "C5", "E12"}
 
 
@@ -401,3 +401,15 @@ def test_one_placed_line_matches_on_that_line_alone(page, mayor_site):
     _, ph = sent(page)
     assert named(ph, "mayor_quiz_finished")[0]["lines"] == "economy"
     assert page.errors == []
+
+
+def test_quiz_order_matches_the_data_and_the_economy_line_is_balanced(page, mayor_site):
+    """Round 13 (Connor, Nov 11): four consensus budget statements left and four where the parties split
+    joined. The economy line stays 6 progressive-agree and 6 conservative-agree."""
+    page.goto(f"{mayor_site}/mayor", wait_until="load")
+    qs = page.evaluate("window.MayorCompassData.questions.map(q => [q.qid, q.axis, q.agree_direction])")
+    assert sorted(q[0] for q in qs) == sorted(QUIZ_ORDER)
+    econ = [d for _, ax, d in qs if ax == "econ"]
+    assert len(econ) == 12 and econ.count(1) == 6 and econ.count(-1) == 6
+    for gone in ("E1", "E7", "E10", "E14"):
+        assert gone not in QUIZ_ORDER

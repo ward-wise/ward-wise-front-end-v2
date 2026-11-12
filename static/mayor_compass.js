@@ -23,7 +23,12 @@ if (!DATA) return;
 const QS = DATA.questions, Q = {}; QS.forEach(q => Q[q.qid] = q);
 const PEOPLE = DATA.people;
 const BY = {}; PEOPLE.forEach(p => BY[p.id] = p);
-const ORDER = ["E5","C1","E6","S12","E17","S1","E1","C4","E14","S5","E13","S4","E10","C2","E3","S6","E16","C3","E15","C5","E7","S2","E11","E12"];
+const ORDER = ["E5","C1","E6","S12","E17","S1","E20","C4","E19","S5","E13","S4","E18","C2","E3","S6","E16","C3","E15","C5","E21","S2","E11","E12"];
+// Round 13 (Connor, Nov 11): the economy line's middle sits halfway between the Illinois Democratic and
+// Republican platforms. Everyone's economy number, voters included, is measured from that middle, so the
+// map widens on the economy line to keep every possible answer on it.
+const ANCHOR = (DATA.anchor && DATA.anchor.mid) || 0;
+const SPX = Math.round((10 + Math.abs(ANCHOR)) * 10) / 10;
 const TOPICS = ["Crime and public safety","Taxes","Housing costs","Schools","City budget and pensions","Public transit (CTA)","Jobs and the economy","Police reform","Homelessness","Immigration"];
 const AGES = ["18 to 24","25 to 34","35 to 49","50 to 64","65+"];
 const LABELS = {"-2":"Strongly disagree","-1":"Disagree","0":"Neutral","1":"Agree","2":"Strongly agree"};
@@ -120,7 +125,7 @@ function icon(ax, v){
 function scoreLine(ax, v, o){
   o = o || {}; const A = AX[ax];
   if (v == null) return '<div class="sl ' + (ax === "y" ? "safe" : "") + ' ' + (o.cls || "") + '">' + (o.nohead ? "" : '<div class="sl-head"><span class="sl-k">' + A.k + '</span></div>') + '<div class="sl-words nodata"><b>No public record yet</b></div></div>';
-  const pct = 50 + v * 5, lo = Math.min(50, pct), w = Math.abs(pct - 50), far = Math.abs(v).toFixed(1) + " of 10 from the middle";
+  const span = ax === "x" ? SPX : 10, pct = 50 + v * 50 / span, lo = Math.min(50, pct), w = Math.abs(pct - 50), far = Math.abs(v).toFixed(1) + " of " + span + " from the middle";
   const gauge = '<div class="gauge" aria-hidden="true"><div class="zone" style="left:35%;width:30%"></div><div class="gf" style="left:' + lo + '%;width:' + w + '%"></div><div class="mid"></div><div class="pin" style="left:' + pct + '%"></div></div>';
   const ends = o.ends === false ? "" : '<div class="ends"><span>' + A.endNeg + '</span><span>' + A.endPos + '</span></div>';
   const head = o.nohead ? "" : '<div class="sl-head"><span class="sl-k">' + A.k + '</span><span class="sl-num">' + far + '</span></div>';
@@ -132,14 +137,15 @@ const nameOf = p => p.id === "richard-j-daley" ? "R. J. Daley" : p.id === "richa
 /* ---------- chart (Signposts) ---------- */
 let uid = 0;
 function chart(o){
-  const id = "c" + (++uid), S = o.S, M = o.M || 0, Mb = o.Mb == null ? M : o.Mb, Ml = o.Ml || 0, k = S / 20, half = S / 2;
-  const W = S + 2 * M + Ml, H = S + M + Mb, X = x => M + half + x * k, Y = y => M + half - y * k, rr = 18;
+  const id = "c" + (++uid), S = o.S, M = o.M || 0, Mb = o.Mb == null ? M : o.Mb, Ml = o.Ml || 0, k = S / 20, kx = S / (2 * SPX), half = S / 2;
+  const W = S + 2 * M + Ml, H = S + M + Mb, X = x => M + half + x * kx, Y = y => M + half - y * k, rr = 18;
   let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Chart of candidates: progressive to conservative, and tougher enforcement to a lighter touch"><g transform="translate(' + Ml + ' 0)"><defs><clipPath id="' + id + '"><rect x="' + M + '" y="' + M + '" width="' + S + '" height="' + S + '" rx="' + rr + '"/></clipPath></defs>';
   s += '<g clip-path="url(#' + id + ')"><rect x="' + M + '" y="' + M + '" width="' + S + '" height="' + S + '" fill="var(--card)"/>';
   s += '<rect x="' + (M + half) + '" y="' + M + '" width="' + half + '" height="' + half + '" fill="var(--q1)"/><rect x="' + M + '" y="' + M + '" width="' + half + '" height="' + half + '" fill="var(--q2)"/>';
   s += '<rect x="' + M + '" y="' + (M + half) + '" width="' + half + '" height="' + half + '" fill="var(--q3)"/><rect x="' + (M + half) + '" y="' + (M + half) + '" width="' + half + '" height="' + half + '" fill="var(--q4)"/></g>';
   // light 10 by 10 grid: a line every 2 points, clipped to the rounded map
-  let grid = ""; for (let v = -8; v <= 8; v += 2) if (v) grid += '<line x1="' + X(v) + '" y1="' + M + '" x2="' + X(v) + '" y2="' + (M + S) + '"/><line x1="' + M + '" y1="' + Y(v) + '" x2="' + (M + S) + '" y2="' + Y(v) + '"/>';
+  let grid = ""; for (let v = -8; v <= 8; v += 2) if (v) grid += '<line x1="' + M + '" y1="' + Y(v) + '" x2="' + (M + S) + '" y2="' + Y(v) + '"/>';
+  for (let v = -2 * Math.floor(SPX / 2); v <= SPX; v += 2) if (v && Math.abs(v) < SPX) grid += '<line x1="' + X(v) + '" y1="' + M + '" x2="' + X(v) + '" y2="' + (M + S) + '"/>';
   s += '<g class="grid" clip-path="url(#' + id + ')">' + grid + '</g>';
   const a0 = M + 10, a1 = M + S - 10;
   s += '<line class="axis" x1="' + a0 + '" y1="' + Y(0) + '" x2="' + a1 + '" y2="' + Y(0) + '"/><line class="axis" x1="' + X(0) + '" y1="' + a0 + '" x2="' + X(0) + '" y2="' + a1 + '"/>';
@@ -226,7 +232,8 @@ function chart(o){
   }
   if (o.strip) {
     const y0 = M + S + 12, seg = [[-10, -5, "strongly"], [-5, -1.5, "somewhat"], [-1.5, 1.5, "near the middle"], [1.5, 5, "somewhat"], [5, 10, "strongly"]];
-    seg.forEach(g => { const x1 = X(g[0]) + 2, x2 = X(g[1]) - 2;
+    const segx = seg.map(g => [g[0] === -10 ? -SPX : g[0], g[1] === 10 ? SPX : g[1], g[2]]);
+    segx.forEach(g => { const x1 = X(g[0]) + 2, x2 = X(g[1]) - 2;
       s += '<path d="M' + x1 + ' ' + y0 + 'v5h' + (x2 - x1) + 'v-5" fill="none" stroke="var(--line)" stroke-width="1.5" stroke-linejoin="round"/><text class="ringlab" x="' + ((x1 + x2) / 2) + '" y="' + (y0 + 20) + '" text-anchor="middle">' + g[2] + '</text>'; });
     const xl = M - 12;
     seg.forEach(g => { const y1 = Y(g[1]) + 2, y2 = Y(g[0]) - 2;
@@ -577,7 +584,7 @@ function you(){
     k[Q[qid].axis]++; const s = v * Q[qid].agree_direction * 5; A.push(s); if (stars[qid]) A.push(s); }
   const m = a => a.reduce((s, v) => s + v, 0) / a.length;
   const px = k.econ >= 2, py = k.control >= 2;
-  return {x: px ? m(ax.econ) : 0, y: py ? m(ax.control) : 0, n: k.econ + k.control, nx: k.econ, ny: k.control, px, py, ok: px || py};
+  return {x: px ? m(ax.econ) - ANCHOR : 0, y: py ? m(ax.control) : 0, n: k.econ + k.control, nx: k.econ, ny: k.control, px, py, ok: px || py};
 }
 // How we know: a vote or act, their own words, a press account, or our reading of a related act.
 const basisWord = (a, long) => a.basis === "action" ? (long ? "Based on a vote or action" : "Vote or action") : a.basis === "stated" ? "Stated publicly" : a.basis === "report" ? "Reported account" : "Judged from a related act";
@@ -588,7 +595,7 @@ const noteLine = a => a.note ? '<p class="then"><b>Note:</b> ' + esc(a.note) + '
 const thenLine = a => a.then ? '<p class="then"><b>The question in ' + esc(String(a.year || "their day")) + ':</b> ' + esc(a.then) + '</p>' : "";
 // Which statements belong to each "top issue" a visitor can pick. Used to put their issues first in "See why".
 const QTOPIC = {S1: ["Crime and public safety"], S2: ["Crime and public safety", "Police reform"], S6: ["Police reform"], S12: ["Homelessness"], S5: ["Immigration"], S4: ["Immigration"],
-  E1: ["Taxes", "Jobs and the economy"], E7: ["Taxes"], E11: ["Taxes", "Homelessness"], E6: ["Taxes", "City budget and pensions"], E10: ["City budget and pensions"], E14: ["City budget and pensions"],
+  E20: ["Jobs and the economy", "Homelessness"], E21: ["Jobs and the economy"], E11: ["Taxes", "Homelessness"], E6: ["Taxes", "City budget and pensions"], E19: ["City budget and pensions"], E18: ["Jobs and the economy"],
   E13: ["Schools", "City budget and pensions"], E17: ["Schools"], E16: ["Public transit (CTA)"], E3: ["Jobs and the economy"],
   E5: ["Housing costs"], E15: ["Housing costs"], E12: ["Housing costs"], C2: ["Housing costs"], C4: ["Housing costs"], C5: ["Housing costs"], C3: ["Housing costs"]};
 const mine = qid => (QTOPIC[qid] || []).some(t => top3.includes(t));
@@ -699,7 +706,7 @@ function fundsCell(f){
 function lineCell(ax, v, thin, p){
   const mx = mixedText(p, ax), words = mx || say(ax, v, false);
   if (v == null) return '<span class="ln none" title="No public record yet"><svg viewBox="0 0 160 16" aria-hidden="true"><line x1="2" y1="8" x2="158" y2="8" class="ln-dash"/></svg><span class="sr">No public record yet</span></span>';
-  const x = 80 + v * 7.6;
+  const x = 80 + v * 76 / (ax === "x" ? SPX : 10);
   return '<span class="ln" title="' + esc(words) + '"><svg viewBox="0 0 160 16" aria-hidden="true"><line x1="2" y1="8" x2="158" y2="8" class="ln-base"/><line x1="80" y1="3" x2="80" y2="13" class="ln-mid"/><circle cx="' + x.toFixed(1) + '" cy="8" r="5.5" class="ln-dot ' + (ax === "y" ? "safe" : "") + (thin ? " thin" : "") + (mx ? " mixed" : "") + '"/></svg><span class="sr">' + esc(words) + '</span></span>';
 }
 const lnHead = (k, a, b) => '<span class="lnh"><span>' + k + '</span><span class="lnh-ends"><i>' + a + '</i><i>' + b + '</i></span></span>';
@@ -800,7 +807,7 @@ function drawCard(me, top){
   g.font = "700 " + fs + "px " + F; g.fillStyle = "#0071e3"; g.fillText(qn, 72 + w1, 152);
   // map: same layout and colors as the page map (right = conservative, up = tougher enforcement)
   const S = 840, mx = (1080 - S) / 2, my = 190, h = S / 2, k = S / 20;
-  const X = v => mx + h + Math.max(-10, Math.min(10, v)) * k, Y = v => my + h - Math.max(-10, Math.min(10, v)) * k;
+  const X = v => mx + h + Math.max(-SPX, Math.min(SPX, v)) * (S / (2 * SPX)), Y = v => my + h - Math.max(-10, Math.min(10, v)) * k;
   g.save(); g.beginPath(); if (g.roundRect) g.roundRect(mx, my, S, S, 22); else g.rect(mx, my, S, S); g.clip();
   const col = ["rgba(240,160,60,0.30)", "rgba(60,180,140,0.30)", "rgba(150,120,220,0.30)", "rgba(90,160,235,0.30)"];
   [[mx + h, my, col[0]], [mx, my, col[1]], [mx, my + h, col[2]], [mx + h, my + h, col[3]]].forEach(q => { g.fillStyle = q[2]; g.fillRect(q[0], q[1], h, h); });
