@@ -608,3 +608,23 @@ def test_finish_now_is_counted_as_an_early_finish(page, mayor_site):
     fin = named(ph, "mayor_quiz_finished")
     assert len(fin) == 1 and fin[0]["finished_early"] is True, fin
     assert page.errors == []
+
+
+def test_drawers_show_no_internal_research_notes(page, mayor_site):
+    """Connor, Nov 11: the 'Gaps in the record' notes used old statement codes and web errors, and some
+    contradicted the answers above them, so the drawer leaves them out."""
+    page.goto(f"{mayor_site}/mayor?demo=1", wait_until="load")
+    page.wait_for_selector("#hero-chart g.pt[data-id]", state="attached")
+    ids = page.evaluate("window.MayorCompassData.people.filter(p => p.gaps && p.gaps.length).map(p => p.id)")
+    assert ids, "no person has research notes, so this test checks nothing"
+    opened = 0
+    for pid in ids[:6]:
+        page.evaluate(f"document.querySelector('[data-id=\"{pid}\"]')?.dispatchEvent(new MouseEvent('click', {{bubbles: true}}))")
+        if page.locator("#drawer:not([hidden])").count() == 0:
+            continue
+        text = page.locator("#drawer").inner_text()
+        assert "Gaps in the record" not in text and "All 20 statements" not in text and "returned 403" not in text, (pid, text[-400:])
+        opened += 1
+        page.keyboard.press("Escape")
+    assert opened >= 3, opened
+    assert page.errors == []
