@@ -634,3 +634,5 @@ body.mc-lock{overflow:hidden}
 /* Round 12: closeness words beside the percent, and the "too close to call" and "placed by leaning" lines */
 .mc .cw, .cw { font-size: 12px; font-weight: 600; color: var(--ink-2); margin-right: 4px; letter-spacing: 0; }
 .mc .tie, .tie { font-size: 14px; line-height: 1.45; margin: 8px 0; color: var(--ink); }
+/* "How the match works": a quiet link, since the method notes are tucked away (Connor, Nov 11) */
+.mc #howbtn { font-size: 14px; color: var(--ink-2); }

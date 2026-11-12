@@ -392,6 +392,9 @@ def test_one_placed_line_matches_on_that_line_alone(page, mayor_site):
     finish_to_result(page, mayor_site, keys)
     live = page.locator("#live").inner_text()
     assert "matched on the economy alone" in live
+    assert "Not placed" not in live  # method notes sit behind a link (Connor, Nov 11)
+    page.click("#howbtn")
+    live = page.locator("#live").inner_text()
     assert page.locator(".ranklist .pod").count() == 3
     words = page.locator(".ranklist .cw").all_text_contents()
     assert len(words) == 3 and all(w in ("Very close", "Close", "Somewhat close", "Far") for w in words), words

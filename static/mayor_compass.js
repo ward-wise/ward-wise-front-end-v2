@@ -80,7 +80,7 @@ if (store.get("mc-ver", 0) < 2) { if (answers.S4 != null) delete answers.S4; sto
 // Nov 10, 2026 (round 8): the map lines changed to Progressive/Conservative and More city control/More personal freedom,
 // with 24 statements. Answers saved on the old lines would place people wrongly, so they start fresh.
 if (store.get("mc-ver", 0) < 3) { answers = {}; unsure = {}; stars = {}; ["mc-answers", "mc-unsure", "mc-stars"].forEach(k => store.set(k, {})); store.set("mc-done", false); store.set("mc-ver", 3); }
-let stage = "q", stepsDone = false, animYou = false, bdAll = false, bdOpen = false, rulesOpen = false, pickTop = [], draft = {};
+let stage = "q", stepsDone = false, animYou = false, bdAll = false, bdOpen = false, rulesOpen = false, howOpen = false, pickTop = [], draft = {};
 let animPod = false, cdTimers = [], cdLeft = 0;
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (DEMO) {
@@ -394,7 +394,7 @@ function resetAll(){
   cdTimers.forEach(clearTimeout); cdTimers = [];
   answers = {}; unsure = {}; stars = {}; top3 = []; profile = {}; pickTop = []; draft = {};
   ["mc-answers", "mc-unsure", "mc-stars", "mc-profile"].forEach(k => store.set(k, {})); store.set("mc-top3", []); store.set("mc-done", false);
-  started = false; earlyFinish = false; stepsDone = false; finished = false; stage = "q"; qi = 0; showField = false; animYou = false; bdAll = false; bdOpen = false; rulesOpen = false;
+  started = false; earlyFinish = false; stepsDone = false; finished = false; stage = "q"; qi = 0; showField = false; animYou = false; bdAll = false; bdOpen = false; howOpen = false; rulesOpen = false;
   render(); window.scrollTo(0, 0);
 }
 function goBack(){
@@ -506,7 +506,7 @@ function finish(){
   if (!stepsDone) { riseNext = true; stage = "top"; pickTop = top3.slice(); draft = Object.assign({}, profile); showField = false; render(); window.scrollTo(0, 0); return; }
   reveal();
 }
-function doReveal(){ cdTimers.forEach(clearTimeout); cdTimers = []; stepsDone = true; stage = "q"; finished = true; showField = false; bdAll = false; bdOpen = false; rulesOpen = false; animYou = true; animPod = true; store.set("mc-done", true); trackFinished(); render(); window.scrollTo(0, 0); }
+function doReveal(){ cdTimers.forEach(clearTimeout); cdTimers = []; stepsDone = true; stage = "q"; finished = true; showField = false; bdAll = false; bdOpen = false; howOpen = false; rulesOpen = false; animYou = true; animPod = true; store.set("mc-done", true); trackFinished(); render(); window.scrollTo(0, 0); }
 /* drumroll: 3, 2, 1 (about 1.35 s), then the result. Click or any key skips it. No result shows until it ends. */
 function reveal(){
   stepsDone = true;
@@ -649,8 +649,11 @@ function updateLive(){
     // Plain ranked rows: a near tie reads as a near tie. No podium blocks, no confetti.
     h += '<div class="ranklist" role="group" aria-label="Your top ' + pods.length + ' matches">' + pods.map((c, i) => '<button type="button" class="pod" data-id="' + c.p.id + '"><span class="rn">' + (i + 1) + '</span><span class="pdn">' + esc(c.p.name) + '</span><b class="pdp tnum"><small class="cw">' + closeWord(c.m.pct) + '</small> ' + c.m.pct + '%</b><span class="rline"><span class="rbar" aria-hidden="true"><i style="width:' + c.m.pct + '%"></i></span>' + (c.p.by_lean ? '<small class="pds">Placed by leaning</small>' : '') + '</span></button>').join("") + '</div>';
     const unplaced = PEOPLE.filter(p => p.cand && (p.x == null || p.y == null)).map(p => p.name);
-    if (unplaced.length) h += '<p class="bmsm"><b>Not placed (too few public positions):</b> ' + esc(unplaced.join(", ")) + '.</p>';
-    h += '<p class="bmsm">Your best match is the candidate whose dot is nearest yours on the map. The percent is closeness on the map, not agreement on every issue: on top of each other is 100%, a full map apart is 0%. Starred statements count double in where your dot lands. A hollow dot is placed by leaning: the candidate\'s own sourced positions on related issues.</p>';
+    // Connor, Nov 11: "We're providing too much detail... This should be somewhere more hidden away."
+    // The method notes and the not-placed list sit behind one small link.
+    let how = '<p class="bmsm">Your best match is the candidate whose dot is nearest yours on the map. The percent is closeness on the map, not agreement on every issue: on top of each other is 100%, a full map apart is 0%. Starred statements count double in where your dot lands. A hollow dot is placed by leaning: the candidate\'s own sourced positions on related issues.</p>';
+    if (unplaced.length) how += '<p class="bmsm"><b>Not placed (too few public positions):</b> ' + esc(unplaced.join(", ")) + '.</p>';
+    h += '<div class="why"><button type="button" class="linkbtn small" id="howbtn" aria-expanded="' + howOpen + '">' + (howOpen ? "Hide how the match works" : "How the match works") + '</button></div>' + (howOpen ? how : "");
     // The statement list sits behind "See why" (Connor, Nov 11: the open list was too much under the result).
     h += '<div class="why"><button type="button" class="linkbtn" id="bdwhy" aria-expanded="' + bdOpen + '">' + (bdOpen ? "Hide the details" : "See why you match " + esc(top.p.name)) + '</button></div>' + (bdOpen ? breakdownHTML(top.p) : "");
     if (RULEQ.some(q => answers[q] != null)) h += '<div class="why"><button type="button" class="linkbtn" id="rulesbtn" aria-expanded="' + rulesOpen + '">' + (rulesOpen ? "Hide housing and building rules" : "Compare on housing and building rules") + '</button></div>' + (rulesOpen ? rulesHTML(pods) : "");
@@ -661,6 +664,7 @@ function updateLive(){
   $("live").innerHTML = h + REDO.replace('<span class="resetwrap">', '<button type="button" class="linkbtn" id="qcard">See share card</button><span class="resetwrap">');
   $("qredo").onclick = reopen; $("qcard").onclick = openCard;
   const bm = $("bdmore"); if (bm) bm.onclick = () => { bdAll = !bdAll; updateLive(); };
+  const hb = $("howbtn"); if (hb) hb.onclick = () => { howOpen = !howOpen; updateLive(); const h2 = $("howbtn"); if (h2) h2.focus({preventScroll: true}); };
   const rb = $("rulesbtn"); if (rb) rb.onclick = () => { rulesOpen = !rulesOpen; if (rulesOpen) track("mayor_quiz_rules_opened", {}); updateLive(); const r2 = $("rulesbtn"); if (r2) r2.focus({preventScroll: true}); };
   const bw = $("bdwhy"); if (bw) bw.onclick = () => { bdOpen = !bdOpen; if (bdOpen) track("mayor_quiz_why_opened", {match: top.p.id}); updateLive(); const b2 = $("bdwhy"); if (b2) b2.focus({preventScroll: true}); };
 }
