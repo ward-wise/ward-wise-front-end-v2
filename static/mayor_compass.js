@@ -732,8 +732,8 @@ const RULEQ = ORDER.filter(q => Q[q].axis === "rules");
 function rulesHTML(pods){
   const cell = (p, q) => { const a = p.answers.find(x => x.qid === q); return a ? '<a href="' + esc(a.source_url) + '" target="_blank" rel="noopener">' + LABELS[a.value] + '</a>' : '<span class="rnone">No record</span>'; };
   return '<div class="rules"><p class="bdsub">These five statements do not move your dot or your match. They show where you and your top matches stand, with a source for each answer.</p>' +
-    '<div class="rulestab" role="table" style="grid-template-columns:minmax(0,2.2fr) repeat(' + (pods.length + 1) + ',minmax(0,1fr))"><span class="rh" role="columnheader">Statement</span><span class="rh" role="columnheader">You</span>' + pods.map(c => '<span class="rh" role="columnheader">' + esc(c.p.short) + '</span>').join("") +
-    RULEQ.filter(q => answers[q] != null).map(q => '<span class="rq" role="cell">' + esc(Q[q].text) + '</span><span class="rc you" role="cell">' + LABELS[answers[q]] + '</span>' + pods.map(c => '<span class="rc" role="cell">' + cell(c.p, q) + '</span>').join("")).join("") + '</div></div>';
+    '<div class="rulescroll"><div class="rulestab" role="table" style="grid-template-columns:minmax(0,2.2fr) repeat(' + (pods.length + 1) + ',minmax(0,1fr))"><span class="rh" role="columnheader">Statement</span><span class="rh" role="columnheader">You</span>' + pods.map(c => '<span class="rh" role="columnheader">' + esc(c.p.short) + '</span>').join("") +
+    RULEQ.filter(q => answers[q] != null).map(q => '<span class="rq" role="cell">' + esc(Q[q].text) + '</span><span class="rc you" role="cell">' + LABELS[answers[q]] + '</span>' + pods.map(c => '<span class="rc" role="cell">' + cell(c.p, q) + '</span>').join("")).join("") + '</div></div></div>';
 }
 const REDO = '<div class="actions"><button type="button" class="btn btn-ghost" id="qredo">Change my answers</button><span class="resetwrap">' + RESET_BTN + '</span></div>';
 
