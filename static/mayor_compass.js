@@ -454,7 +454,7 @@ function renderQ(still){
     <div class="answers five" role="group" aria-labelledby="qtext">${[-2,-1,0,1,2].map(v => `<button type="button" class="ans" data-v="${v}" aria-pressed="${a === v}">${LABELS[v]}</button>`).join("")}</div>
     <div class="unsurerow"><button type="button" class="unsurebtn" id="qunsure" aria-pressed="${!!unsure[qid]}">Not sure</button></div>
     </div>
-    <p class="keyhint">Press 1 to 5, 6 for Not sure, or use the arrow keys. Backspace goes back.</p>
+    <p class="keyhint">Press 1 to 5, or 6 for Not sure. Once you click or tab into this card, the arrow keys work too. Backspace goes back.</p>
     <div class="qfoot">
       <button type="button" class="star" id="star" aria-pressed="${!!stars[qid]}">${stars[qid] ? "★ Matters to me" : "☆ Matters to me"}</button>
       <div class="actions" style="gap:16px">
@@ -578,6 +578,9 @@ function render(cardOnly){
   drawMaps();
 }
 /* keys: 1 to 5 pick an answer, 6 is Not sure */
+let cardActive = false;
+document.addEventListener("pointerdown", e => { cardActive = !!(e.target.closest && e.target.closest("#quiz")); }, true);
+document.addEventListener("focusin", e => { cardActive = $("quiz").contains(e.target); });
 document.addEventListener("keydown", e => {
   if (stage === "count" && !finished) { if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && e.key !== "Shift" && e.key !== "Tab") { e.preventDefault(); doReveal(); } return; }
   if (finished || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -586,8 +589,10 @@ document.addEventListener("keydown", e => {
   if (!$("cmp-ov").hidden || !$("card-ov").hidden || !$("drawer").hidden) return;
   if (e.key === "Backspace") { if (stage === "q" || stage === "top" || stage === "prof") { e.preventDefault(); goBack(); } return; }
   if (stage !== "q") return;
-  // Connor, Nov 11: arrow keys answer only from inside the quiz card; elsewhere they scroll or move tabs.
-  if (e.key.startsWith("Arrow") && !$("quiz").contains(e.target)) return;
+  // Connor, Nov 11: arrow keys answer only once you have clicked or tabbed into the quiz card; elsewhere they
+  // scroll or move tabs. A click on the card's background, or a browser that does not focus buttons on click
+  // (Safari), leaves focus on the page, so the last click or focus decides.
+  if (e.key.startsWith("Arrow") && !$("quiz").contains(e.target) && !(e.target === document.body && cardActive)) return;
   const map = {"1": -2, "2": -1, "3": 0, "4": 1, "5": 2};
   const ar = {ArrowLeft: e.shiftKey ? -2 : -1, ArrowRight: e.shiftKey ? 2 : 1, ArrowUp: 0};
   if (e.key in map) { e.preventDefault(); setAns(map[e.key]); } else if (e.key in ar) { e.preventDefault(); setAns(ar[e.key]); } else if (e.key === "ArrowDown") { e.preventDefault(); setUnsure(); } else if (e.key === "6") { e.preventDefault(); setUnsure(); }
