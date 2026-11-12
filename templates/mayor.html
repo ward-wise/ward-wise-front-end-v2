@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Who do you line up with for mayor? | Ward Wise{% endblock %}
+
+{% block content %}
+{# The quiz keeps its own look. Everything it draws lives under .mc (static/mayor_compass.css), so the
+   site header and footer are untouched. Overlays sit inside .mc so they pick up its colors. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='mayor_compass.css', v=asset_version) }}">
+<div class="mc" id="mc">
+<div class="qpin" id="qpin" role="region" aria-label="Quiz progress"><div class="wrap qpin-in" id="qpin-in"></div></div>
+<main id="mc-main">
+  <section class="app" id="app">
+    <div class="wrap">
+      <div class="apphead">
+        <h1>Where do you stand?</h1>
+        <div class="headside">
+          <p class="factsline tnum">Chicago mayor 2027 &middot; Election day Feb 23 &middot; Early voting Jan 14 &middot; Runoff Apr 6 &middot; About 5 min</p>
+          <button type="button" class="copylink copyres" id="copyres" hidden title="Copy a picture of your result, with a QR code and link so friends can take the quiz"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="5" y="5" width="8.5" height="8.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 10.5h-.3A1.7 1.7 0 0 1 1.5 8.8V3.2c0-.9.8-1.7 1.7-1.7h5.6c.9 0 1.7.8 1.7 1.7v.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="cltext">Copy my results</span></button>
+        </div>
+      </div>
+      <div class="appgrid" id="resview">
+        <div class="qcol"><div class="qcard" id="quiz"></div><div class="live" id="live" aria-live="polite"></div></div>
+        <div class="fcard ccol">
+          <div class="plot" id="hero-chart"></div>
+          <div class="toolbar" id="herotb"></div>
+          <p class="small mapnote" id="mapnote" hidden></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section tight fill" id="candidates">
+    <div class="wrap stack" style="gap:20px">
+      <div class="fieldfold" id="fieldfold" hidden>The map and candidate table appear when you finish, so they do not sway your answers. <button type="button" class="linkbtn" id="showAnyway">Show them anyway</button></div>
+      <div id="fieldbody" class="stack" style="gap:20px">
+        <div class="tabhead">
+          <h2 class="h2">The field</h2>
+          <div class="seg" role="tablist" aria-label="Candidates or past mayors">
+            <button type="button" role="tab" id="tabC" aria-pressed="true">Candidates</button>
+            <button type="button" role="tab" id="tabM" aria-pressed="false">Past mayors</button>
+          </div>
+        </div>
+        <div class="fcard fieldmap" id="fieldmap">
+          <div class="plot" id="field-chart"></div>
+          <div class="toolbar" id="fieldtb"></div>
+          <p class="small" style="margin-top:10px">Side to side is the economy: progressive to conservative. Up and down is enforcement: tougher policing and enforcement up, a lighter touch down. Hover a dot for a plain summary. Click for the sources.</p>
+        </div>
+        <div class="cmpbar" id="cmpbar"></div>
+      <div id="panelC" class="stack" style="gap:14px">
+        <p class="small" style="margin-top:0">Positions come from campaign sites, interviews, debates, questionnaires and past votes. Where we found nothing, we say so. The ballot is set on Dec 17, 2026, after petition challenges.</p>
+        <div id="cand-grid"></div>
+        <div class="morerow"><button type="button" class="btn btn-ghost" id="candMore"></button></div>
+        <div id="cnotes" class="stack" style="gap:6px"></div>
+        <div class="norec" id="norec"></div>
+      </div>
+      <div id="panelM" class="stack" style="gap:14px" hidden>
+        <p class="body">Every Chicago mayor since 1955. Mayors are judged on what they did in office, in their own time. Mayors before 1955 are not placed: their records rarely touch housing, schools, transit or city rules as these statements ask.</p>
+        <div class="eras" id="eras"></div>
+        <div class="morerow"><button type="button" class="btn btn-ghost" id="mayMore"></button></div>
+        <div class="card" id="norecCard" hidden>
+          <h3 class="h3">No public record found</h3>
+          <p class="small" style="margin:6px 0 12px">We could not find enough sourced facts to place these mayors.</p>
+          <div class="norecord" id="norecord"></div>
+        </div>
+      </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section tight" id="method">
+    <div class="wrap stack" style="gap:10px">
+      <h2 class="h3">How this works</h2>
+      <ul class="howlist">
+        <li>You answer 24 statements, and your answers put you on a map with two lines, the economy (progressive to conservative) and enforcement (lighter touch to tougher).</li>
+        <li>Each candidate's dot comes from their own votes, words and campaign pages. Click any dot to see every fact and its source.</li>
+        <li>The candidate whose dot sits closest to yours is your best match.</li>
+        <li>A hollow dot means the candidate answered few of the statements, so their dot comes from their stated positions on related issues.</li>
+        <li>Ward Wise does not endorse candidates.</li>
+      </ul>
+      <p class="small" id="m-fix">This page may contain errors. A match compares you on these two lines only, so a candidate far from you is not wrong for being there. To fix a mistake, or if you are a candidate correcting your record, email <a href="mailto:connor@wardwise.org?subject=Mayor%20quiz%20correction">connor@wardwise.org</a>.</p>
+      <details class="howmore"><summary>Full method and fact-check history</summary>
+      <p class="small">A dot sits at the average of a person's sourced positions on each line, and a line needs at least 2 sourced facts before it places anyone. The same goes for you: 2 agree or disagree answers on a line. Neutral counts like Not sure. The five housing and building statements are for comparison only and do not move any dot. The percent is closeness on the map, not agreement on every issue, and when the top two are within 3 points the result says it is too close to call. The middle of the economy line is zero. Scored on the same statements, the halfway point between the 2024 national Democratic platform and the 2020 Illinois Republican platform sits within 1 point of zero. Nearly every candidate is a Democrat, so conservative here means conservative for Chicago. Each answer is counted as you go, without your name or email, to show how Chicago answered.</p>
+      <p class="small"><span id="m-check"></span></p>
+      </details>
+      <p class="small">Sources: campaign sites, Chicago Board of Election Commissioners, City Clerk records, news reports, Chicago Public Library. Checked Nov 11, 2026.</p>
+    </div>
+  </section>
+</main>
+<div class="scrim" id="scrim" hidden></div>
+<div class="tip" id="tip" role="tooltip"></div>
+<aside class="drawer" id="drawer" hidden aria-modal="true" role="dialog" aria-labelledby="dr-name"></aside>
+<div class="ov" id="card-ov" hidden><div class="dlg" id="card-dlg" role="dialog" aria-modal="true" aria-labelledby="card-t" tabindex="-1"></div></div>
+<div class="ov" id="cmp-ov" hidden><div class="dlg wide" id="cmp-dlg" role="dialog" aria-modal="true" aria-labelledby="cmp-t" tabindex="-1"></div></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='mayor_compass_data.js', v=asset_version) }}"></script>
+<script src="{{ url_for('static', filename='mayor_compass.js', v=asset_version) }}"></script>
+{% endblock %}
