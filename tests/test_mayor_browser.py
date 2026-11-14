@@ -639,5 +639,27 @@ def test_result_shows_at_once_and_cards_say_view_all_positions(page, mayor_site)
     assert cards.count() >= 1
     for i in range(cards.count()):
         assert "View all positions" in cards.nth(i).inner_text()
+    # the link sits on its own row under the bar, at the right edge of the card
+    geo = page.evaluate("""() => [...document.querySelectorAll('.ranklist .pod')].map(c => {
+        const l = c.querySelector('.pva').getBoundingClientRect(), b = c.querySelector('.rbar').getBoundingClientRect(),
+              r = c.getBoundingClientRect();
+        return {below: l.top >= b.bottom - 1, right: Math.abs(r.right - l.right) <= 2};
+    })""")
+    assert all(g["below"] and g["right"] for g in geo), geo
     cards.first.click()
     page.wait_for_function("!document.querySelector('#drawer').hidden")
+
+
+def test_result_shows_at_once_with_reduced_motion(page, mayor_site):
+    """Same as above with reduced motion on: no countdown either way, and a key press after the
+    last step does not skip past anything."""
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{mayor_site}/mayor", wait_until="load")
+    answer(page, KEYS)
+    pass_issues(page)
+    page.wait_for_selector("#pgo")
+    page.click("#pskip")
+    page.wait_for_selector(".pod", timeout=1000)
+    page.keyboard.press("Space")
+    assert page.locator("#cdwn").count() == 0
+    assert page.locator(".ranklist .pod .pva").count() >= 1
