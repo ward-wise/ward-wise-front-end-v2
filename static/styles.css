@@ -7500,3 +7500,13 @@ html.is-dark .gi-status.is-data { color: #f0a640; }
 .gi-board-note { color: var(--ink-2); max-width: 62ch; }
 .gi-board-foot { display: flex; flex-wrap: wrap; gap: 8px 24px; }
 .gi-board-foot .fd-more { font-size: 15px; }
+
+/* Phones (Nov 14): the bar shows three links plus More, so no link is cut off at the edge. The other
+   links move into a "Pages" group at the top of More, which only phones see. */
+.gn .gn-more-phone { display: none; }
+@media (max-width: 640px) {
+  .gn .gn-links a.gn-extra { display: none; }
+  .gn .gn-more-phone { display: block; }
+  .gn-links { overflow: visible; }
+  .gn .gn-more { box-shadow: none; position: relative; }
+}

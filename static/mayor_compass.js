@@ -141,7 +141,9 @@ let uid = 0;
 function chart(o){
   const id = "c" + (++uid), S = o.S, M = o.M || 0, Mb = o.Mb == null ? M : o.Mb, Ml = o.Ml || 0, k = S / 20, kx = S / (2 * SPX), half = S / 2;
   const W = S + 2 * M + Ml, H = S + M + Mb, X = x => M + half + x * kx, Y = y => M + half - y * k, rr = 18;
-  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Chart of candidates: progressive to conservative, and tougher enforcement to a lighter touch"><g transform="translate(' + Ml + ' 0)"><defs><clipPath id="' + id + '"><rect x="' + M + '" y="' + M + '" width="' + S + '" height="' + S + '" rx="' + rr + '"/></clipPath></defs>';
+  /* phones: the map is drawn smaller than its own size, so its words grow by f to stay readable (f = 1 on a computer) */
+  const f = o.f || 1, small = f > 1.25;
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '"' + (f > 1 ? ' style="--f:' + f.toFixed(2) + '"' : '') + ' class="' + (small ? 'small' : '') + '" role="img" aria-label="Chart of candidates: progressive to conservative, and tougher enforcement to a lighter touch"><g transform="translate(' + Ml + ' 0)"><defs><clipPath id="' + id + '"><rect x="' + M + '" y="' + M + '" width="' + S + '" height="' + S + '" rx="' + rr + '"/></clipPath></defs>';
   s += '<g clip-path="url(#' + id + ')"><rect x="' + M + '" y="' + M + '" width="' + S + '" height="' + S + '" fill="var(--card)"/>';
   s += '<rect x="' + (M + half) + '" y="' + M + '" width="' + half + '" height="' + half + '" fill="var(--q1)"/><rect x="' + M + '" y="' + M + '" width="' + half + '" height="' + half + '" fill="var(--q2)"/>';
   s += '<rect x="' + M + '" y="' + (M + half) + '" width="' + half + '" height="' + half + '" fill="var(--q3)"/><rect x="' + (M + half) + '" y="' + (M + half) + '" width="' + half + '" height="' + half + '" fill="var(--q4)"/></g>';
@@ -153,14 +155,18 @@ function chart(o){
   s += '<line class="axis" x1="' + a0 + '" y1="' + Y(0) + '" x2="' + a1 + '" y2="' + Y(0) + '"/><line class="axis" x1="' + X(0) + '" y1="' + a0 + '" x2="' + X(0) + '" y2="' + a1 + '"/>';
   const ah = (x, y, rot) => '<path class="axhead" transform="translate(' + x + ' ' + y + ') rotate(' + rot + ')" d="M0 0L-9 -5V5Z"/>';
   s += ah(a1 + 3, Y(0), 0) + ah(a0 - 3, Y(0), 180) + ah(X(0), a0 - 3, -90) + ah(X(0), a1 + 3, 90);
-  const pad = 14, nm = o.cap || 13.5;
-  const corner = (x, y, anc, l1, l2) => '<text x="' + x + '" y="' + y + '" text-anchor="' + anc + '"><tspan class="q-cap" style="font-size:' + nm + 'px">' + l1 + '</tspan><tspan class="q-cap sm" x="' + x + '" dy="15">' + l2 + '</tspan></text>';
+  const pad = 14, nm = (o.cap || 13.5) * (small ? Math.min(f, 1.55) : 1);
+  /* phones: each corner shows its name on two short lines ("Conservative," / "tougher") and drops the small second line */
+  const corner = (x, y, anc, l1, l2) => small
+    ? '<text x="' + x + '" y="' + (y - 2) + '" text-anchor="' + anc + '"><tspan class="q-cap" style="font-size:' + nm + 'px">' + l1.split(", ")[0] + ',</tspan><tspan class="q-cap" style="font-size:' + nm + 'px" x="' + x + '" dy="' + (nm * 1.15) + '">' + l1.split(", ")[1] + '</tspan></text>'
+    : '<text x="' + x + '" y="' + y + '" text-anchor="' + anc + '"><tspan class="q-cap" style="font-size:' + nm + 'px">' + l1 + '</tspan><tspan class="q-cap sm" x="' + x + '" dy="15">' + l2 + '</tspan></text>';
   s += corner(M + S - pad, M + pad + 10, "end", "Conservative, tougher", "Less spending, more policing");
   s += corner(M + pad, M + pad + 10, "start", "Progressive, tougher", "More programs, more policing");
   s += corner(M + pad, M + S - pad - 14, "start", "Progressive, lighter touch", "More programs, less policing");
   s += corner(M + S - pad, M + S - pad - 14, "end", "Conservative, lighter touch", "Less spending, less policing");
   /* obstacles for label placement */
-  const boxes = [{x: M + S - pad - 190, y: M + pad, w: 190, h: 32}, {x: M + pad, y: M + pad, w: 190, h: 32}, {x: M + pad, y: M + S - pad - 26, w: 190, h: 30}, {x: M + S - pad - 190, y: M + S - pad - 26, w: 190, h: 30}];
+  const cw = small ? nm * 7.2 : 190, ch = small ? nm * 2.5 : 32, cy0 = small ? nm * 1.3 : 26;
+  const boxes = [{x: M + S - pad - cw, y: M + pad, w: cw, h: ch}, {x: M + pad, y: M + pad, w: cw, h: ch}, {x: M + pad, y: M + S - pad - cy0, w: cw, h: ch - 2}, {x: M + S - pad - cw, y: M + S - pad - cy0, w: cw, h: ch - 2}];
   const hit = b => boxes.some(q => b.x < q.x + q.w + 1.5 && b.x + b.w + 1.5 > q.x && b.y < q.y + q.h + 1.5 && b.y + b.h + 1.5 > q.y);
   const inb = b => b.x >= M + 3 && b.x + b.w <= M + S - 3 && b.y >= M + 3 && b.y + b.h <= M + S - 3;
   const shown = PEOPLE.filter(p => p.x != null && p.y != null && (p.cand || o.pre || p.year >= 1955));
@@ -170,8 +176,8 @@ function chart(o){
   let youLab = "";
   if (o.you) {
     const cx = X(o.you.x), cy = Y(o.you.y); boxes.push({x: cx - 18, y: cy - 18, w: 36, h: 36});
-    const left = cx - 22 - 28 > M + 4; const bx = left ? cx - 22 - 28 : cx + 22;
-    boxes.push({x: bx, y: cy - 10, w: 28, h: 15});
+    const yw = 28 * f, left = cx - 22 - yw > M + 4; const bx = left ? cx - 22 - yw : cx + 22;
+    boxes.push({x: bx, y: cy - 10 * f, w: yw, h: 15 * f});
     youLab = '<text class="lab you" x="' + (left ? cx - 22 : cx + 22) + '" y="' + (cy + 5) + '" text-anchor="' + (left ? "end" : "start") + '">You</text>';
   }
   function place(cx, cy, r, w, h){
@@ -191,7 +197,7 @@ function chart(o){
     const ux = X(o.you.x), uy = Y(o.you.y), tx = X(o.match.p.x), ty = Y(o.match.p.y);
     under += '<line class="mline" x1="' + ux + '" y1="' + uy + '" x2="' + tx + '" y2="' + ty + '"/>';
     over += '<circle class="mring" cx="' + tx + '" cy="' + ty + '" r="13.5"/>';
-    const txt = "Best match: " + o.match.p.name + ", " + o.match.pct + "%", w = txt.length * 6.3 + 6, h = 15;
+    const txt = small ? nameOf(o.match.p) + ", " + o.match.pct + "%" : "Best match: " + o.match.p.name + ", " + o.match.pct + "%", w = (txt.length * 6.3 + 6) * f, h = 15 * f;
     let spot = null;
     outer: for (const t of [.5, .4, .6, .3, .7, .2, .8]) for (const oy of [-13, 13, -24, 24]) {
       const b = {x: ux + (tx - ux) * t - w / 2, y: uy + (ty - uy) * t + oy - h / 2, w, h};
@@ -202,14 +208,14 @@ function chart(o){
   }
   const rk = {}; (o.you && o.top3 || []).forEach((t, i) => rk[t.p.id] = i + 1); // 1, 2, 3 on your top matches
   // badges that would cover each other sit side by side, so 1, 2 and 3 all stay readable
-  const rkAt = {}, rkSpots = [];
+  const rkAt = {}, rkSpots = [], rf = Math.min(f, 1.5);
   (o.you && o.top3 || []).forEach(t => { if (t.p.x == null || t.p.y == null) return; let bx = X(t.p.x); const by = Y(t.p.y);
-    for (let n = 0; n < 4 && rkSpots.some(q => Math.hypot(q[0] - bx, q[1] - by) < 19); n++) bx += 20;
-    rkSpots.push([bx, by]); rkAt[t.p.id] = bx; boxes.push({x: bx - 11, y: by - 11, w: 22, h: 22}); });
+    for (let n = 0; n < 4 && rkSpots.some(q => Math.hypot(q[0] - bx, q[1] - by) < 19 * rf); n++) bx += 20 * rf;
+    rkSpots.push([bx, by]); rkAt[t.p.id] = bx; boxes.push({x: bx - 11 * rf, y: by - 11 * rf, w: 22 * rf, h: 22 * rf}); });
   /* name labels: candidates first, then mayors since 1955 */
-  [...shown].filter(p => p.cand || p.year >= 1955).sort((a, b) => (b.cand - a.cand) || (b.n - a.n)).forEach(p => {
+  [...shown].filter(p => p.cand || (small ? rk[p.id] : p.year >= 1955)).sort((a, b) => (b.cand - a.cand) || (b.n - a.n)).forEach(p => {
     if (o.match && o.match.p.id === p.id && o.you) return;
-    const cx = X(p.x), cy = Y(p.y), r = rad(p), t = nameOf(p), w = t.length * (p.cand ? 6.7 : 5.8) + 4, h = 14;
+    const cx = X(p.x), cy = Y(p.y), r = rad(p), t = nameOf(p), w = (t.length * (p.cand ? 6.7 : 5.8) + 4) * f, h = 14 * f;
     const pl = place(cx, cy, r, w, h); if (!pl) return;
     const b = pl.b; boxes.push(b);
     if (pl.lead) {
@@ -222,16 +228,16 @@ function chart(o){
 
   order.forEach(p => {
     const cx = X(p.x), cy = Y(p.y), pre = !p.cand && p.year < 1955, cls = p.cand ? "cand" : (pre ? "pre" : "mayor"), r = rad(p), lean = !!p.by_lean, thin = thinP(p);
-        s += '<g data-id="' + p.id + '" class="pt" tabindex="0" role="button" aria-label="' + esc(p.name) + (lean ? ", placed by leaning" : "") + '"><circle class="hring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 7) + '"/><circle class="dot ' + cls + (lean ? " lean" : thin ? " thin" : "") + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>'  + (thin ? '<circle class="thinring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 3) + '"/>' : '') + (rk[p.id] ? '<circle class="rk" cx="' + rkAt[p.id] + '" cy="' + cy + '" r="9.5"/><text class="rkn" x="' + rkAt[p.id] + '" y="' + (cy + 4) + '" text-anchor="middle">' + rk[p.id] + '</text>' : '') + '</g>';
+        s += '<g data-id="' + p.id + '" class="pt" tabindex="0" role="button" aria-label="' + esc(p.name) + (lean ? ", placed by leaning" : "") + '"><circle class="hring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 7) + '"/><circle class="dot ' + cls + (lean ? " lean" : thin ? " thin" : "") + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>'  + (thin ? '<circle class="thinring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 3) + '"/>' : '') + (rk[p.id] ? '<circle class="rk" cx="' + rkAt[p.id] + '" cy="' + cy + '" r="' + (9.5 * rf) + '"/><text class="rkn" x="' + rkAt[p.id] + '" y="' + (cy + 4 * rf) + '" text-anchor="middle">' + rk[p.id] + '</text>' : '') + '</g>';
   });
   s += over + labels;
   if (o.you) { const cx = X(o.you.x), cy = Y(o.you.y); s += '<g class="youg"><circle class="you-halo" cx="' + cx + '" cy="' + cy + '" r="17"/><circle class="you-dot" cx="' + cx + '" cy="' + cy + '" r="8"/>' + youLab + '</g>'; }
   if (o.sideLabels) {
-    const f = 'font-size="11.5" fill="var(--ink-2)" font-weight="600"';
-    s += '<text x="' + (M + half) + '" y="' + (M - 9) + '" text-anchor="middle" ' + f + '>&#8593; Tougher enforcement</text>';
-    s += '<text x="' + (M + half) + '" y="' + (H - M + 20) + '" text-anchor="middle" ' + f + '>&#8595; Lighter touch</text>';
-    s += '<text transform="translate(' + (M - 9) + ' ' + (M + half) + ') rotate(-90)" text-anchor="middle" ' + f + '>&#8592; Progressive</text>';
-    s += '<text transform="translate(' + (M + S + 9) + ' ' + (M + half) + ') rotate(90)" text-anchor="middle" ' + f + '>Conservative &#8594;</text>';
+    const sf = 'font-size="' + (11.5 * Math.min(f, 1.5)).toFixed(1) + '" fill="var(--ink-2)" font-weight="600"';
+    s += '<text x="' + (M + half) + '" y="' + (M - 9) + '" text-anchor="middle" ' + sf + '>&#8593; Tougher enforcement</text>';
+    s += '<text x="' + (M + half) + '" y="' + (H - M + 20) + '" text-anchor="middle" ' + sf + '>&#8595; Lighter touch</text>';
+    s += '<text transform="translate(' + (M - 9) + ' ' + (M + half) + ') rotate(-90)" text-anchor="middle" ' + sf + '>&#8592; Progressive</text>';
+    s += '<text transform="translate(' + (M + S + 9) + ' ' + (M + half) + ') rotate(90)" text-anchor="middle" ' + sf + '>Conservative &#8594;</text>';
   }
   if (o.strip) {
     const y0 = M + S + 12, seg = [[-10, -5, "strongly"], [-5, -1.5, "somewhat"], [-1.5, 1.5, "near the middle"], [1.5, 5, "somewhat"], [5, 10, "strongly"]];
@@ -278,11 +284,15 @@ document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === 
 const clean = t => t.replace(/\.$/, "");
 const tbHTML = you => '<div class="legend">' + (you ? '<span><i class="y"></i>You</span>' : '') + '<span><i class="c"></i>Candidate</span>' + (you ? '<span><i class="r">1</i>Your top 3</span>' : '') + '<span><i class="m"></i>Mayor since 1955</span><span><i class="l"></i>Placed by leaning</span><span><span class="ring"></span>Thin record</span></div>';
 $("fieldtb").innerHTML = tbHTML(false);
+/* how much the map's words must grow: the map is drawn 516 units wide; on a phone it shows near 300px, so words grow up to 1.8 times */
+function mapF(){ const w = ($("hero-chart") || {}).clientWidth || 516; return Math.round(Math.max(1, Math.min(1.8, 516 / w * .95)) * 20) / 20; }
+let lastF = 0;
 function drawMaps(){
+  lastF = mapF();
   const mm = finished && window._me && window._me.ok;
   $("herotb").innerHTML = tbHTML(mm);
   const mn = $("mapnote"); if (mn) { mn.innerHTML = mm ? (window._note || "") : ""; mn.hidden = !(mm && window._note); }
-  $("hero-chart").innerHTML = '<div class="plot">' + chart({S: 448, M: 34, sideLabels: true, cap: 11.5, pre, you: mm ? window._me : null, match: mm ? window._top : null, top3: mm ? window._top3 : null}) + '</div>';
+  $("hero-chart").innerHTML = '<div class="plot">' + chart({S: 448, M: 34, sideLabels: true, cap: 11.5, f: mapF(), pre, you: mm ? window._me : null, match: mm ? window._top : null, top3: mm ? window._top3 : null}) + '</div>';
   $("field-chart").innerHTML = "";
   if (mm && animYou) { // the You dot drops into place once, right after the reveal (about 600ms); reduced motion places it at once
     animYou = false;
@@ -542,7 +552,7 @@ function lockBody(qe){
 }
 // Once per frame, and only a width change re-measures (lockBody compares widths).
 let rzTick = 0;
-window.addEventListener("resize", () => { if (rzTick) return; rzTick = requestAnimationFrame(() => { rzTick = 0; const qe = $("quiz"); if (qe && stage === "q" && !finished) lockBody(qe); }); });
+window.addEventListener("resize", () => { if (rzTick) return; rzTick = requestAnimationFrame(() => { rzTick = 0; if (lastF && mapF() !== lastF) drawMaps(); const qe = $("quiz"); if (qe && stage === "q" && !finished) lockBody(qe); }); });
 function render(cardOnly){
   // Map and table always show. Your dot, matches and the match sort wait until you finish.
   const fold = false;
@@ -769,7 +779,7 @@ function renderCands(){
       <span class="cfund" role="cell">${fundsCell(p.funds)}</span>
       <span aria-hidden="true"></span>
     </div>`).join("") + '</div>' +
-    '<p class="small ctab-note"><b>How to read the lines:</b> the dot shows where each person sits, the tick is the middle, a hollow dot on these lines means a mixed record with clear views on both sides, a faded dot means a thin record, and a dashed line means no public record. Hover a line for the words.</p><p class="small ctab-note" style="margin-top:6px">Money comes from each candidate\'s campaign committee filings with the Illinois State Board of Elections, from July 2023 (after the last mayor race) through Sep 30, 2026. Raised counts gifts from people and groups, plus money moved in from other political committees. Loans are shown apart. Cash on hand is what the committee had at the end of the latest report. Click a row for positions and sources.</p>';
+    '<p class="small ctab-note ctab-lines"><b>How to read the lines:</b> the dot shows where each person sits, the tick is the middle, a hollow dot on these lines means a mixed record with clear views on both sides, a faded dot means a thin record, and a dashed line means no public record. Hover a line for the words.</p><p class="small ctab-note" style="margin-top:6px">Money comes from each candidate\'s campaign committee filings with the Illinois State Board of Elections, from July 2023 (after the last mayor race) through Sep 30, 2026. Raised counts gifts from people and groups, plus money moved in from other political committees. Loans are shown apart. Cash on hand is what the committee had at the end of the latest report. Click a row for positions and sources.</p>';
   document.querySelectorAll("#cand-grid .cmpbox").forEach(b => b.onchange = () => toggleCmp(b.dataset.cid));
   moveNotes(); renderCmpBar();
 }
