@@ -74,6 +74,7 @@
     if (host === "chicityclerkelms.chicago.gov") return /^\/meeting/i.test(url.pathname) ? "hearing" : "legislation";
     if (host === "gisapps.chicago.gov" && /zoning/i.test(url.pathname)) return "zoning";
     if (host === "ova.elections.il.gov") return "register_to_vote";
+    if (host === "chicagoelections.gov") return "find_where_to_vote";
     if (host === "documenters.org") return "documenters";
     return null;
   }

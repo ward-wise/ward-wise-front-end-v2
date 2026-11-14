@@ -83,6 +83,7 @@
     {# Alerts earn a place in the bar once they send (penlight_site.SITE_FLAGS); until then they sit
        under More, marked "testing". #}
     {% set nav = [
+      ('ui.mayor_page', 'Mayor quiz'),
       ('ui.map_page', 'Map'),
       ('ui.residents', 'Your ward'),
       ('ui.menu_page', 'Menu money'),
@@ -110,7 +111,7 @@
         </a>
         <nav class="gn-links" aria-label="Main navigation">
           {% for endpoint, label in nav %}
-            <a href="{{ url_for(endpoint) }}"{% if request.endpoint == endpoint %} class="is-active" aria-current="page"{% endif %}>{{ label }}</a>
+            <a href="{{ url_for(endpoint) }}"{% if request.endpoint == endpoint %} class="is-active" aria-current="page"{% endif %}>{{ label }}{% if endpoint == 'ui.mayor_page' %} <span class="gn-badge">New</span>{% endif %}</a>
           {% endfor %}
           {# Every other view (reports, comparisons, data years…) from the registry (views.json),
              grouped, behind one "More" menu so the bar keeps five words. #}
