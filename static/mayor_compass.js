@@ -83,7 +83,7 @@ if (store.get("mc-ver", 0) < 2) { if (answers.S4 != null) delete answers.S4; sto
 // with 24 statements. Answers saved on the old lines would place people wrongly, so they start fresh.
 if (store.get("mc-ver", 0) < 3) { answers = {}; unsure = {}; stars = {}; ["mc-answers", "mc-unsure", "mc-stars"].forEach(k => store.set(k, {})); store.set("mc-done", false); store.set("mc-ver", 3); }
 let stage = "q", stepsDone = false, animYou = false, bdAll = false, bdOpen = false, rulesOpen = false, howOpen = false, pickTop = [], draft = {};
-let animPod = false, cdTimers = [], cdLeft = 0;
+let animPod = false;
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (DEMO) {
   answers = {}; stars = {}; unsure = {}; profile = {}; top3 = ["Crime and public safety", "Housing costs", "Taxes"];
@@ -394,20 +394,19 @@ document.addEventListener("click", e => {
 });
 function resetAll(){
   track("mayor_quiz_reset", {answered: answered(), finished});
-  cdTimers.forEach(clearTimeout); cdTimers = [];
   answers = {}; unsure = {}; stars = {}; top3 = []; profile = {}; pickTop = []; draft = {};
   ["mc-answers", "mc-unsure", "mc-stars", "mc-profile"].forEach(k => store.set(k, {})); store.set("mc-top3", []); store.set("mc-done", false);
   started = false; earlyFinish = false; stepsDone = false; finished = false; stage = "q"; qi = 0; showField = false; animYou = false; bdAll = false; bdOpen = false; howOpen = false; rulesOpen = false;
   render(); window.scrollTo(0, 0); focusStep();
 }
 function goBack(){
-  if (finished || stage === "count") return;
+  if (finished) return;
   if (stage === "q") { if (qi > 0) { qi--; riseNext = "back"; render(true); } }
   else if (stage === "top") $("tback").click();
   else if (stage === "prof") $("pback").click();
 }
 function jumpTo(k){
-  if (finished || stage === "count" || (stage === "q" && k === qi)) return;
+  if (finished || (stage === "q" && k === qi)) return;
   if (stage === "prof" && $("pw")) draft = {ward: $("pw").value, age: draft.age || "", lean: $("pl").value};
   const fromQ = stage === "q";
   if (fromQ && k > qi) flyOut("down"); else riseNext = "back";
@@ -523,22 +522,10 @@ function finish(){
   if (!stepsDone) { riseNext = true; stage = "top"; pickTop = top3.slice(); draft = Object.assign({}, profile); showField = false; render(); window.scrollTo(0, 0); return; }
   reveal();
 }
-function doReveal(){ cdTimers.forEach(clearTimeout); cdTimers = []; stepsDone = true; stage = "q"; finished = true; showField = false; bdAll = false; bdOpen = false; howOpen = false; rulesOpen = false; animYou = true; animPod = true; store.set("mc-done", true); trackFinished(); render(); window.scrollTo(0, 0); }
-/* drumroll: 3, 2, 1 (about 1.35 s), then the result. Click or any key skips it. No result shows until it ends. */
-function reveal(){
-  stepsDone = true;
-  if (reduced()) { doReveal(); return; }
-  stage = "count"; cdLeft = 3; render(); window.scrollTo(0, 0);
-  cdTimers = [setTimeout(() => tick(2), 450), setTimeout(() => tick(1), 900), setTimeout(doReveal, 1350)];
-}
-function tick(n){ const e = $("cdnum"); if (e) e.innerHTML = "<span>" + n + "</span>"; }
-function renderCount(){
-  $("quiz").innerHTML = `<div class="cdwn" id="cdwn" role="status"><div class="qprog tnum"><span>All ${ORDER.length} statements in</span><span>${answered()} answered</span></div>
-    ${meterHTML(-1, false)}
-    <div class="cdstage"><p class="cdlab">Tallying your answers</p><div class="cdnum" id="cdnum"><span>3</span></div><p class="small">Click or press any key to skip</p></div></div>`;
-  $("cdwn").onclick = doReveal;
-}
-function reopen(){ track("mayor_quiz_restart", {}); started = false; earlyFinish = false; cdTimers.forEach(clearTimeout); cdTimers = []; finished = false; stage = "q"; showField = false; animYou = false; store.set("mc-done", false); qi = 0; render(); window.scrollTo(0, 0); }
+function doReveal(){ stepsDone = true; stage = "q"; finished = true; showField = false; bdAll = false; bdOpen = false; howOpen = false; rulesOpen = false; animYou = true; animPod = true; store.set("mc-done", true); trackFinished(); render(); window.scrollTo(0, 0); }
+/* Angel (Nov 12): the 3-2-1 drumroll went by too fast to read and was only decoration, so the result shows at once. */
+function reveal(){ stepsDone = true; doReveal(); }
+function reopen(){ track("mayor_quiz_restart", {}); started = false; earlyFinish = false; finished = false; stage = "q"; showField = false; animYou = false; store.set("mc-done", false); qi = 0; render(); window.scrollTo(0, 0); }
 let bodyH = 0, bodyW = 0;
 function lockBody(qe){
   const b = qe.querySelector(".qbody"); if (!b) return;
@@ -564,7 +551,7 @@ function render(cardOnly){
   $("fieldmap").hidden = true;
   $("candMore").textContent = candsAll ? "Show fewer" : "Show all " + PEOPLE.filter(p => p.cand).length + " candidates";
   const old = riseNext && !finished && stage === "q" ? snapOld($("quiz")) : null;
-  if (finished) $("quiz").innerHTML = ""; else if (stage === "count") renderCount(); else if (stage === "top") renderTop(); else if (stage === "prof") renderProf(); else renderQ();
+  if (finished) $("quiz").innerHTML = ""; else if (stage === "top") renderTop(); else if (stage === "prof") renderProf(); else renderQ();
   const qe = $("quiz");
   if (riseNext && !finished) easeSwap(qe, stage === "q" ? old : null, riseNext === "back");
   if (stage === "q" && !finished) lockBody(qe);
@@ -582,7 +569,6 @@ let cardActive = false;
 document.addEventListener("pointerdown", e => { cardActive = !!(e.target.closest && e.target.closest("#quiz")); }, true);
 document.addEventListener("focusin", e => { cardActive = $("quiz").contains(e.target); });
 document.addEventListener("keydown", e => {
-  if (stage === "count" && !finished) { if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && e.key !== "Shift" && e.key !== "Tab") { e.preventDefault(); doReveal(); } return; }
   if (finished || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.target.matches && e.target.matches("input,textarea,select")) return;
   if (e.target.closest && e.target.closest("header, nav, footer")) return; // keys 1 to 6 belong to the quiz, not to the site menu
@@ -687,7 +673,7 @@ function updateLive(){
     if (pods[1] && pods[0].m.pct - pods[1].m.pct <= 3) h += '<p class="tie"><b>Too close to call:</b> ' + esc(pods[0].p.name) + ' and ' + esc(pods[1].p.name) + ' sit almost the same distance from you.</p>';
     if (top.p.by_lean) h += '<p class="tie"><b>Your nearest match is placed by leaning.</b> ' + esc(top.p.short) + ' has few answers on the quiz statements, so the dot comes from their sourced positions on related issues.</p>';
     // Plain ranked rows: a near tie reads as a near tie. No podium blocks, no confetti.
-    h += '<div class="ranklist" role="group" aria-label="Your top ' + pods.length + ' matches">' + pods.map((c, i) => '<button type="button" class="pod" data-id="' + c.p.id + '"><span class="rn">' + (i + 1) + '</span><span class="pdn">' + esc(c.p.name) + '</span><b class="pdp tnum"><small class="cw">' + closeWord(c.m.pct) + '</small> ' + c.m.pct + '%</b><span class="rline"><span class="rbar" aria-hidden="true"><i style="width:' + c.m.pct + '%"></i></span>' + (c.p.by_lean ? '<small class="pds">Placed by leaning</small>' : '') + '</span></button>').join("") + '</div>';
+    h += '<div class="ranklist" role="group" aria-label="Your top ' + pods.length + ' matches">' + pods.map((c, i) => '<button type="button" class="pod" data-id="' + c.p.id + '"><span class="rn">' + (i + 1) + '</span><span class="pdn">' + esc(c.p.name) + '</span><b class="pdp tnum"><small class="cw">' + closeWord(c.m.pct) + '</small> ' + c.m.pct + '%</b><span class="rline"><span class="rbar" aria-hidden="true"><i style="width:' + c.m.pct + '%"></i></span>' + (c.p.by_lean ? '<small class="pds">Placed by leaning</small>' : '') + '</span><span class="pva">View all positions <span aria-hidden="true">&rarr;</span></span></button>').join("") + '</div>';
     const unplaced = PEOPLE.filter(p => p.cand && (p.x == null || p.y == null)).map(p => p.name);
     // Connor, Nov 11: "We're providing too much detail... This should be somewhere more hidden away."
     // The method notes and the not-placed list sit behind one small link.

@@ -79,10 +79,7 @@ def pass_issues(page, pick=2):
 
 
 def skip_countdown(page):
-    """Click or any key skips the 3-2-1. With reduced motion there is none, so wait for either."""
-    page.wait_for_function("document.querySelector('#cdwn') || document.querySelector('.pod')")
-    if page.locator("#cdwn").count():
-        page.keyboard.press("Space")
+    """The result shows at once: no 3-2-1 countdown (Angel, Nov 12)."""
     page.wait_for_selector(".pod")
 
 
@@ -377,9 +374,6 @@ def finish_to_result(page, site, keys):
     pass_issues(page)
     page.wait_for_selector("#pgo")
     page.click("#pskip")
-    page.wait_for_function("document.querySelector('#cdwn') || document.querySelector('#live .reslabel')")
-    if page.locator("#cdwn").count():
-        page.keyboard.press("Space")
     page.wait_for_selector("#live .reslabel")
 
 
@@ -628,3 +622,22 @@ def test_drawers_show_no_internal_research_notes(page, mayor_site):
         page.keyboard.press("Escape")
     assert opened >= 3, opened
     assert page.errors == []
+
+
+def test_result_shows_at_once_and_cards_say_view_all_positions(page, mayor_site):
+    """Angel (Nov 12): no 3-2-1 countdown before the result, and each top-match card says
+    "View all positions" so people know it opens the candidate's positions."""
+    page.emulate_media(reduced_motion="no-preference")
+    page.goto(f"{mayor_site}/mayor", wait_until="load")
+    answer(page, KEYS)
+    pass_issues(page)
+    page.wait_for_selector("#pgo")
+    page.click("#pskip")
+    page.wait_for_selector(".pod", timeout=1000)
+    assert page.locator("#cdwn").count() == 0
+    cards = page.locator(".ranklist .pod")
+    assert cards.count() >= 1
+    for i in range(cards.count()):
+        assert "View all positions" in cards.nth(i).inner_text()
+    cards.first.click()
+    page.wait_for_function("!document.querySelector('#drawer').hidden")

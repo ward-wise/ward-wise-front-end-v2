@@ -280,7 +280,7 @@
 .mc .drawer .scores{display:grid;gap:20px;margin-top:16px}
 .mc .drawer .scores .proofline{font-size:14px;color:var(--ink-2)}
 .mc .drawer .scores .proofline b{font-size:17px;color:var(--ink);font-family:var(--sfd)}
-/* game show feel: 20-segment meter, countdown, podium, burst */
+/* game show feel: 20-segment meter, podium, burst */
 .mc .rslot{position:relative;height:0;margin:0}
 .mc .rchip{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--link);background:var(--blue-wash);border-radius:980px;padding:5px 12px}
 .mc .rtip{font-size:12.5px;color:var(--ink-3)}
@@ -331,14 +331,6 @@
 @keyframes mc-qin{from{opacity:.3;transform:translateY(14px)}to{opacity:1;transform:none}}
 .mc .fxring{position:fixed;z-index:2500;pointer-events:none;border:3px solid var(--blue);border-radius:14px}
 .mc .fxdot{position:fixed;z-index:2500;pointer-events:none;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--blue)}
-.mc .cdwn{cursor:pointer;display:grid;gap:4px}
-.mc .cdstage{position:relative;display:grid;justify-items:center;align-content:center;gap:6px;min-height:240px;overflow:hidden}
-.mc .cdlab{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
-.mc .cdnum{position:relative;font-family:var(--sfd);font-size:120px;font-weight:700;letter-spacing:-0.04em;line-height:1;color:var(--blue);height:128px;display:grid;place-items:center;min-width:120px}
-.mc .cdnum span{display:block;animation:mc-slam .45s cubic-bezier(.2,1.3,.4,1) both}
-.mc .cdnum::before{content:"";position:absolute;left:50%;top:50%;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:4px solid var(--blue);opacity:0;animation:mc-ringout .45s ease-out}
-@keyframes mc-slam{from{opacity:0;transform:scale(1.9)}to{opacity:1;transform:scale(1)}}
-@keyframes mc-ringout{from{opacity:.7;transform:scale(.6)}to{opacity:0;transform:scale(1.7)}}
 .mc .podium{position:relative;display:grid;gap:10px;align-items:end;padding-top:4px}
 .mc .pod{display:grid;justify-items:center;gap:4px;text-align:center;background:none;border:0;padding:0;cursor:pointer;min-width:0;color:inherit}
 .mc .pod .lift{display:grid;justify-items:center;gap:2px;padding:0 4px}
@@ -615,6 +607,8 @@ body.mc-lock{overflow:hidden}
 .mc .ranklist .rbar{display:block;width:100%;height:6px;border-radius:3px;background:var(--fill-2);overflow:hidden}
 .mc .ranklist .rbar i{display:block;height:100%;border-radius:3px;background:color-mix(in srgb,var(--blue) 55%,var(--card))}
 .mc .ranklist .pod:first-child .rbar i{background:var(--blue)}
+.mc .ranklist .pva{grid-column:2 / 4;justify-self:end;font-size:13px;font-weight:600;color:var(--link)}
+.mc .ranklist .pod:hover .pva{text-decoration:underline}
 .mc .ranklist .pod .pds{font-size:12.5px;color:var(--ink-2)}
 .mc .live .actions .linkbtn{font-size:14px;padding:0}
 .mc .bds .chip{font-size:11px;vertical-align:1px;margin-left:4px}
