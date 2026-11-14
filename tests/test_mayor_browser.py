@@ -663,3 +663,48 @@ def test_result_shows_at_once_with_reduced_motion(page, mayor_site):
     page.keyboard.press("Space")
     assert page.locator("#cdwn").count() == 0
     assert page.locator(".ranklist .pod .pva").count() >= 1
+
+
+def test_phone_text_fits_and_map_words_are_readable(browser, mayor_site):
+    """A friend said the quiz text looked off on a phone (Nov 14). On a 390px screen: nothing runs past
+    the edge, the counter sits on one line, the 24 progress marks fit one row, the keyboard tip is hidden,
+    every map word renders at 10px or more, past mayors lose their names (their dots stay tappable), and
+    the result table drops the two line columns but keeps name and match."""
+    context = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+    page = context.new_page()
+    page.set_default_timeout(10_000)
+    page.goto(f"{mayor_site}/mayor", wait_until="load")
+    page.wait_for_selector("#quiz .qprog")
+    smallest_map_word = """() => { const s = document.querySelector('#hero-chart svg'), k = s.getBoundingClientRect().width / s.viewBox.baseVal.width;
+        return Math.min(...[...s.querySelectorAll('text:not(:has(tspan)), tspan')].filter(t => t.textContent.trim() && t.getComputedTextLength()).map(t => parseFloat(getComputedStyle(t).fontSize) * k)); }"""
+    q = page.evaluate("""() => ({
+        scrollW: document.documentElement.scrollWidth,
+        counterLines: Math.round(document.querySelector('#quiz .qprog').getBoundingClientRect().height / 22),
+        markRows: new Set([...document.querySelectorAll('#quiz .mseg')].map(e => Math.round(e.getBoundingClientRect().top))).size,
+        hint: !!document.querySelector('#quiz .keyhint')?.offsetParent,
+        mayorNames: [...document.querySelectorAll('#hero-chart .lab.m')].length,
+        mayorDots: [...document.querySelectorAll('#hero-chart .dot.mayor')].length,
+    })""")
+    assert q["scrollW"] == 390, q
+    assert q["counterLines"] <= 1, q
+    assert q["markRows"] == 1, q
+    assert not q["hint"], q
+    assert q["mayorNames"] == 0 and q["mayorDots"] > 0, q
+    assert page.evaluate(smallest_map_word) >= 10, page.evaluate(smallest_map_word)
+    for i, key in enumerate(KEYS, start=1):
+        page.wait_for_function(f"document.querySelector('#quiz .qprog')?.textContent.includes('Statement {i} of 24')")
+        page.keyboard.press(key)
+    pass_issues(page)
+    page.wait_for_selector("#pgo")
+    page.click("#pskip")
+    skip_countdown(page)
+    page.wait_for_selector("#hero-chart .lab.match")
+    r = page.evaluate("""() => { const row = document.querySelector('#cand-grid .crow');
+        return {scrollW: document.documentElement.scrollWidth,
+                cells: [...row.children].filter(c => c.offsetParent).map(c => c.className),
+                rowRight: row.getBoundingClientRect().right}; }""")
+    assert r["scrollW"] == 390 and r["rowRight"] <= 390, r
+    assert any("cname" in c for c in r["cells"]) and any("mcell" in c for c in r["cells"]), r
+    assert not any(c.startswith("ln") or "money" in c for c in r["cells"] if c not in ("cname", "mcell", "cmp")), r
+    assert page.evaluate(smallest_map_word) >= 10, page.evaluate(smallest_map_word)
+    context.close()

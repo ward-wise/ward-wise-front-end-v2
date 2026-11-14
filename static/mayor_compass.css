@@ -205,10 +205,10 @@
 .mc .mline{stroke:var(--blue);stroke-width:1.5;fill:none;pointer-events:none}
 .mc .mring{fill:none;stroke:var(--blue);stroke-width:2;pointer-events:none}
 .mc .lead{stroke:var(--ink-3);stroke-width:1;fill:none;pointer-events:none}
-.mc .lab{font-size:12px;fill:var(--ink);font-weight:600;pointer-events:none;paint-order:stroke;stroke:var(--card);stroke-width:3.5px;stroke-linejoin:round}
-.mc .lab.m{font-size:11px;font-weight:400;fill:var(--ink-2)}
-.mc .lab.you{fill:var(--link);font-size:13px;font-weight:700}
-.mc .lab.match{fill:var(--link);font-size:11.5px;font-weight:700}
+.mc .lab{font-size:calc(12px * var(--f,1));fill:var(--ink);font-weight:600;pointer-events:none;paint-order:stroke;stroke:var(--card);stroke-width:3.5px;stroke-linejoin:round}
+.mc .lab.m{font-size:calc(11px * var(--f,1));font-weight:400;fill:var(--ink-2)}
+.mc .lab.you{fill:var(--link);font-size:calc(13px * var(--f,1));font-weight:700}
+.mc .lab.match{fill:var(--link);font-size:calc(11.5px * var(--f,1));font-weight:700}
 .mc .fcard .toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:16px}
 .mc .fcard .legend{margin:0;gap:18px}
 .mc .legend .ring{display:inline-block;width:11px;height:11px;border-radius:50%;border:1.5px dashed var(--ink-3);margin-right:5px;vertical-align:-2px;background:transparent}
@@ -582,7 +582,7 @@ body.mc-lock{overflow:hidden}
 
 /* round 9: the match is a count; top 3 wear 1, 2, 3 on the map */
 .mc .rk{fill:var(--ink);stroke:var(--card);stroke-width:2;pointer-events:none}
-.mc .rkn{fill:var(--bg);font-size:11px;font-weight:700;pointer-events:none}
+.mc .rkn{fill:var(--bg);font-size:calc(11px * min(var(--f,1), 1.5));font-weight:700;pointer-events:none}
 .mc .pt.hot .rk{transform-box:fill-box;transform-origin:center;transform:scale(1.2)}
 .mc .legend i.r{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:10px;font-weight:700;font-style:normal;margin-right:5px}
 .mc .pod .pds{font-size:11.5px;color:var(--ink-3);white-space:nowrap}
@@ -653,3 +653,26 @@ body.mc-lock{overflow:hidden}
 .mc .howmore summary{cursor:pointer;color:var(--link);font-size:14px}
 .mc .howmore[open] summary{margin-bottom:8px}
 .mc .howmore p{max-width:80ch;margin:0 0 8px}
+
+/* Phones (Nov 14): a friend said the text looked off on a phone. The counter stays on one line, the answer
+   words fit their buttons, the keyboard tip is hidden, and the candidate table drops the two line columns
+   (the name and match stay; a tap still opens every position). */
+@media (max-width:760px){
+  .mc .qprog{font-size:13px;gap:8px}
+  .mc .qprog .qwhere,.mc .qprog .qright{gap:10px;white-space:nowrap}
+  .mc .qprog .qbk{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  .mc .keyhint{display:none}
+  .mc .qcard .answers.five{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+  .mc .qcard .answers.five .ans{grid-column:span 2;font-size:14px;padding:10px 6px;min-height:52px;hyphens:none;overflow-wrap:normal}
+  .mc .qcard .answers.five .ans:nth-child(4){grid-column:2 / span 2}
+  .mc .qcard .answers.five .ans:nth-child(5){grid-column:4 / span 2}
+  .mc .qfoot{flex-wrap:wrap;gap:12px}
+  .mc .ctab{overflow-x:visible}
+  .mc .ctab .chead,.mc .ctab .crow{min-width:0}
+  .mc .ctab.m .chead,.mc .ctab.m .crow{grid-template-columns:22px minmax(0,1fr) 120px 14px;gap:12px}
+  .mc .ctab .mpct .cw{display:block;margin-bottom:3px}
+  .mc .ctab-lines{display:none}
+  .mc .mgrp{grid-template-columns:repeat(24,minmax(0,1fr));gap:3px}
+  .mc .ctab:not(.m) .chead,.mc .ctab:not(.m) .crow{grid-template-columns:22px minmax(0,1fr) 14px;gap:12px}
+  .mc .ctab .chead > :nth-last-child(-n+4):not(:last-child),.mc .ctab .crow > :nth-last-child(-n+4):not(:last-child){display:none}
+}
