@@ -757,6 +757,9 @@ body.mc-lock{overflow:hidden}
   .mc .qcard .answers.five .ans[aria-pressed="true"]::before{color:#fff;background:transparent;border-color:rgb(255 255 255 / 50%)}
   .mc .qcard .answers.five .ans[data-v="1"],.mc .qcard .answers.five .ans[data-v="2"]{border-color:color-mix(in srgb,var(--blue) 45%,var(--line))}
   .mc .qcard .answers.five .ans[data-v="-1"],.mc .qcard .answers.five .ans[data-v="-2"]{border-color:color-mix(in srgb,#c2410c 45%,var(--line))}
+  /* pointing at a row lights it up (the tinted borders above must not cancel the hover) */
+  .mc .qcard .answers.five .ans:hover{border-color:var(--blue);background:var(--blue-wash)}
+  .mc .qcard .answers.five .ans[aria-pressed="true"]:hover{background:var(--blue)}
   .mc .unsurerow{justify-content:flex-start;max-width:520px}
   .mc .keyhint{text-align:left}
   /* one quiet footer row, as on the phone: one Back (the top one goes), plain Matters to me, Skip before you

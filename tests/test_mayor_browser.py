@@ -760,3 +760,10 @@ def test_computer_card_stacks_answers_and_sends_screen(page, mayor_site):
     assert not page.locator("#qwhy").is_visible() and page.locator("#hero-chart").is_visible()
     tops = page.evaluate("[...document.querySelectorAll('#quiz .ans')].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top).map(b => b.dataset.k + ' ' + b.textContent)")
     assert tops == ["5 Strongly agree", "4 Agree", "3 Neutral", "2 Disagree", "1 Strongly disagree"], tops
+    # pointing at a row lights it up, including the tinted agree and disagree rows (Connor, Nov 15)
+    for v in ("2", "-2", "0"):
+        row = page.locator(f'#quiz .ans[data-v="{v}"]')
+        before = row.evaluate("e => getComputedStyle(e).backgroundColor")
+        row.hover()
+        page.wait_for_timeout(250)
+        assert row.evaluate("e => getComputedStyle(e).backgroundColor") != before, v
