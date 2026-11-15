@@ -698,7 +698,10 @@ def test_phone_text_fits_and_map_words_are_readable(browser, mayor_site):
     page.wait_for_selector("#pgo")
     page.click("#pskip")
     skip_countdown(page)
-    page.wait_for_selector("#hero-chart .lab.match")
+    page.wait_for_selector("#hero-chart .youg")
+    # phones name only your top 3 after the reveal (Connor, Nov 15), with no corner labels
+    names = page.evaluate("[...document.querySelectorAll('#hero-chart .lab:not(.you)')].map(t => t.textContent)")
+    assert 1 <= len(names) <= 3 and page.locator("#hero-chart .q-cap").count() == 0, names
     r = page.evaluate("""() => { const row = document.querySelector('#cand-grid .crow');
         return {scrollW: document.documentElement.scrollWidth,
                 cells: [...row.children].filter(c => c.offsetParent).map(c => c.className),

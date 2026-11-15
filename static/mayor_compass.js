@@ -744,7 +744,7 @@ const RULEQ = ORDER.filter(q => Q[q].axis === "rules");
 function rulesHTML(pods){
   const cell = (p, q) => { const a = p.answers.find(x => x.qid === q); return a ? '<a href="' + esc(a.source_url) + '" target="_blank" rel="noopener">' + LABELS[a.value] + '</a>' : '<span class="rnone">No record</span>'; };
   return '<div class="rules"><p class="bdsub">These five statements do not move your dot or your match. They show where you and your top matches stand, with a source for each answer.</p>' +
-    '<div class="rulescroll"><div class="rulestab" role="table" style="grid-template-columns:minmax(0,2.2fr) repeat(' + (pods.length + 1) + ',minmax(0,1fr))"><span class="rh" role="columnheader">Statement</span><span class="rh" role="columnheader">You</span>' + pods.map(c => '<span class="rh" role="columnheader">' + esc(c.p.short) + '</span>').join("") +
+    '<div class="rulescroll"><div class="rulestab" role="table" style="--n:' + (pods.length + 1) + ';grid-template-columns:minmax(0,2.2fr) repeat(' + (pods.length + 1) + ',minmax(0,1fr))"><span class="rh" role="columnheader">Statement</span><span class="rh" role="columnheader">You</span>' + pods.map(c => '<span class="rh" role="columnheader">' + esc(c.p.short) + '</span>').join("") +
     RULEQ.filter(q => answers[q] != null).map(q => '<span class="rq" role="cell">' + esc(Q[q].text) + '</span><span class="rc you" role="cell">' + LABELS[answers[q]] + '</span>' + pods.map(c => '<span class="rc" role="cell">' + cell(c.p, q) + '</span>').join("")).join("") + '</div></div></div>';
 }
 const REDO = '<div class="actions"><button type="button" class="btn btn-ghost" id="qredo">Change my answers</button><span class="resetwrap">' + RESET_BTN + '</span></div>';
@@ -792,7 +792,7 @@ function renderCands(){
       <span class="cfund" role="cell">${fundsCell(p.funds)}</span>
       <span aria-hidden="true"></span>
     </div>`).join("") + '</div>' +
-    '<p class="small ctab-note ctab-lines"><b>How to read the lines:</b> the dot shows where each person sits, the tick is the middle, a hollow dot on these lines means a mixed record with clear views on both sides, a faded dot means a thin record, and a dashed line means no public record. Hover a line for the words.</p><p class="small ctab-note" style="margin-top:6px">Money comes from each candidate\'s campaign committee filings with the Illinois State Board of Elections, from July 2023 (after the last mayor race) through Sep 30, 2026. Raised counts gifts from people and groups, plus money moved in from other political committees. Loans are shown apart. Cash on hand is what the committee had at the end of the latest report. Click a row for positions and sources.</p>';
+    '<p class="small ctab-note ctab-lines"><b>How to read the lines:</b> the dot shows where each person sits, the tick is the middle, a hollow dot on these lines means a mixed record with clear views on both sides, a faded dot means a thin record, and a dashed line means no public record. Hover a line for the words.</p><p class="small ctab-note" style="margin-top:6px">Money comes from each candidate\'s campaign committee filings with the Illinois State Board of Elections, from July 2023 (after the last mayor race) through Sep 30, 2026. Raised counts gifts from people and groups, plus money moved in from other political committees. Loans are shown apart. Cash on hand is what the committee had at the end of the latest report. Tap or click a row for positions and sources.</p>';
   document.querySelectorAll("#cand-grid .cmpbox").forEach(b => b.onchange = () => toggleCmp(b.dataset.cid));
   moveNotes(); renderCmpBar();
 }
@@ -803,6 +803,7 @@ function toggleCmp(id){
 }
 function renderCmpBar(){
   const el = $("cmpbar"), live = finished && you().ok;
+  el.classList.toggle("two", cmp.length === 2);
   if (cmp.length === 2) el.innerHTML = `<p class="small">Comparing <b>${esc(BY[cmp[0]].name)}</b> and <b>${esc(BY[cmp[1]].name)}</b>.</p><span class="actions" style="gap:14px"><button type="button" class="linkbtn" id="cmpclr">Clear</button><button type="button" class="btn sm" id="cmpgo">Compare these two</button></span>`;
   else el.innerHTML = `<p class="small">${live ? "Sorted by how close each candidate's dot is to yours on the map. " : ""}Compare 2: tick two rows, candidates or past mayors, to see their answers side by side, with sources.${cmp.length === 1 ? " Pick one more." : ""}</p>`;
   if (cmp.length === 2) { $("cmpgo").onclick = openCmp; $("cmpclr").onclick = () => { cmp = []; renderCands(); renderMayors(); }; }
@@ -815,12 +816,12 @@ function openCmp(){
   const ma = mapOf(A), mb = mapOf(B);
   const qs = ORDER.filter(q => ma[q] || mb[q]);
   const both = qs.filter(q => ma[q] && mb[q]), same = both.filter(q => Math.sign(ma[q].value) === Math.sign(mb[q].value));
-  const cell = a => a ? `<div><span class="chip blue">${LABELS[a.value]}</span> <span class="chip">${basisWord(a)}</span>${factYear(a) ? ` <span class="chip">${factYear(a)}</span>` : ""}${thenLine(a)}${noteLine(a)}<p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>` : '<div class="none">No public position found.</div>';
+  const cell = (a, p) => a ? `<div><b class="cmpwho">${esc(p.short)}</b><span class="chip blue">${LABELS[a.value]}</span> <span class="chip">${basisWord(a)}</span>${factYear(a) ? ` <span class="chip">${factYear(a)}</span>` : ""}${thenLine(a)}${noteLine(a)}<p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>` : `<div class="none"><b class="cmpwho">${esc(p.short)}</b>No public position found.</div>`;
   const head = p => `<div><h3>${esc(p.name)}</h3><p class="small">${sayP(p, "x", true)}. ${sayP(p, "y", true)}.</p><p class="small">${p.n} sourced facts</p></div>`;
   $("cmp-dlg").innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 id="cmp-t" class="h3" style="font-size:15px;color:var(--ink-2);font-weight:600">Side by side, statement by statement</h2><button type="button" class="iconbtn" id="cmp-x" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>
     <p class="cmpsum">${both.length ? `They take the same side on <b>${same.length} of ${both.length}</b> statements where both have a sourced position.` : "They share no statement where both have a sourced position."}</p>
     <div class="cmphead"><div class="small" style="padding-top:4px">Statement</div>${head(A)}${head(B)}</div>
-    ${qs.map(q => `<div class="cmprow"><div class="st">${esc(Q[q].text)}</div>${cell(ma[q])}${cell(mb[q])}</div>`).join("") || '<p class="small">Neither has a sourced answer to the quiz statements yet.</p>'}`;
+    ${qs.map(q => `<div class="cmprow"><div class="st">${esc(Q[q].text)}</div>${cell(ma[q], A)}${cell(mb[q], B)}</div>`).join("") || '<p class="small">Neither has a sourced answer to the quiz statements yet.</p>'}`;
   lastFocus = document.activeElement; $("cmp-ov").hidden = false; lockOn(true); $("cmp-dlg").scrollTop = 0; $("cmp-dlg").focus();
   $("cmp-x").onclick = closeCmp;
 }
@@ -982,11 +983,12 @@ function openPerson(id){
     ${p.issues.length ? `<h4>Positions on 2027 issues</h4>` + p.issues.map(i => `<div class="fact"><div class="st">${esc(i.issue)}</div><p>${esc(i.position)}</p>${i.quote ? `<p style="color:var(--ink-2)">"${esc(i.quote)}"</p>` : ""}<p class="src"><a href="${esc(i.source_url)}" target="_blank" rel="noopener">Source</a> · ${esc(i.source_date || "")}</p></div>`).join("") : ""}
     ${missing.length && p.answers.length ? `<h4>No public position found</h4><ul class="missing">${missing.map(q => `<li>${esc(Q[q].text)}</li>`).join("")}</ul>` : ""}
     <p class="small fixline" style="margin-top:16px">See a mistake in this record? <a href="mailto:connor@wardwise.org?subject=${encodeURIComponent("Mayor quiz correction: " + p.name)}">Email connor@wardwise.org</a>.</p>`;
-  $("drawer").hidden = false; $("scrim").hidden = false; $("drawer").scrollTop = 0;
+  $("drawer").hidden = false; $("scrim").hidden = false; $("drawer").scrollTop = 0; lockOn(true);
   $("dr-close").onclick = closePerson; $("dr-close").focus();
 }
 function closePerson(){
   $("drawer").hidden = true; $("scrim").hidden = true; openId = null;
+  if ($("cmp-ov").hidden && $("card-ov").hidden) lockOn(false);
   // Back to the row or dot that opened it. A re-render may have replaced that element, so find it again.
   const f = drawerFrom; drawerFrom = null;
   if (f && f.isConnected) f.focus(); else if (f && f.dataset && f.dataset.id) { const n = document.querySelector(`[data-id="${f.dataset.id}"]`); if (n) n.focus(); }
