@@ -658,9 +658,20 @@ body.mc-lock{overflow:hidden}
    words fit their buttons, the keyboard tip is hidden, and the candidate table drops the two line columns
    (the name and match stay; a tap still opens every position). */
 @media (max-width:760px){
-  .mc .qprog{font-size:13px;gap:8px}
-  .mc .qprog .qwhere,.mc .qprog .qright{gap:10px;white-space:nowrap}
-  .mc .qprog .qbk{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  /* the counter: the card's own Back button stays at the bottom, so the top one goes; the two halves keep
+     their words together and the right half drops under the left one when there is no room (Nov 15: a fixed
+     single line ran past the edge once "Start over" appeared) */
+  .mc .qprog{font-size:13px;gap:4px 12px;flex-wrap:wrap}
+  .mc .qprog .qwhere,.mc .qprog .qright{gap:10px;white-space:nowrap;flex-wrap:wrap}
+  .mc .qprog .qbk{display:none}
+  /* the pinned strip: words on one row, the 24 marks on their own full-width row below */
+  .mc .qpin-in{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;font-size:13px}
+  .mc .qpin-in .qbk{display:none}
+  .mc .qpin-in .mtr{grid-column:1 / -1;grid-row:2}
+  .mc .qpin-in .pinright{grid-column:2;grid-row:1}
+  /* taller tap areas for the small text buttons */
+  .mc .qfoot .linkbtn,.mc .qfoot .btn,.mc .unsurebtn{min-height:44px}
+  .mc .rsbtn,.mc .rsyes,.mc .resetwrap .linkbtn,.mc .finnow .linkbtn{min-height:40px}
   .mc .keyhint{display:none}
   .mc .qcard .answers.five{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
   .mc .qcard .answers.five .ans{grid-column:span 2;font-size:14px;padding:10px 6px;min-height:52px;hyphens:none;overflow-wrap:normal}
@@ -675,4 +686,86 @@ body.mc-lock{overflow:hidden}
   .mc .mgrp{grid-template-columns:repeat(24,minmax(0,1fr));gap:3px}
   .mc .ctab:not(.m) .chead,.mc .ctab:not(.m) .crow{grid-template-columns:22px minmax(0,1fr) 14px;gap:12px}
   .mc .ctab .chead > :nth-last-child(-n+4):not(:last-child),.mc .ctab .crow > :nth-last-child(-n+4):not(:last-child){display:none}
+}
+
+/* Phones, round 2 (Nov 15 phone review): every answer in Compare 2 names its person, past mayors match the
+   candidate table (name and years; tap for positions), the housing rules table stacks each statement over its
+   answers, names wrap instead of being cut off, the Compare bar pins to the bottom once two are ticked, and
+   the small text buttons get finger-sized tap areas. */
+.mc .cmpwho{display:none}
+@media (max-width:760px){
+  .mc .cmpwho{display:block;font-size:13px;color:var(--ink);margin-bottom:4px}
+  .mc .cmprow > div + div{padding-top:10px;border-top:1px dashed var(--hair)}
+  .mc .cmphead > div:first-child{display:none}
+  .mc .era{overflow-x:visible}
+  .mc .era .mhead,.mc .era .mrow{min-width:0;grid-template-columns:22px minmax(0,1fr) 14px;gap:12px}
+  .mc .era .mhead > :nth-child(n+3):not(:last-child),.mc .era .mrow > :nth-child(n+3):not(:last-child){display:none}
+  .mc .rulestab{grid-template-columns:repeat(var(--n,4),minmax(0,1fr))!important;gap:0 8px;min-width:0!important}
+  .mc .rulestab .rh:first-child{display:none}
+  .mc .rulestab .rq{grid-column:1 / -1;padding-bottom:2px}
+  .mc .rulestab .rc{border-top:0;padding-top:2px}
+  .mc .rulestab .rh{font-size:12px}
+  .mc .crow .mn,.mc .cmeta{white-space:normal;overflow:visible;text-overflow:clip}
+  .mc .cmpbar.two{position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom,0px));z-index:40;margin:0;padding:10px 14px;border-radius:16px;background:var(--card);box-shadow:var(--shadow-pop);flex-wrap:wrap}
+  .mc .whyrow{flex-direction:column;align-items:flex-start;gap:0}
+  .mc .whyrow .linkbtn,.mc .resbelow .linkbtn,#candMore,#mayMore,.mc .copyres{min-height:44px}
+  .mc .iconbtn{width:44px;height:44px;margin:-7px -7px 0 0}
+  .mc .src a,.mc .golinks a,.mc .vlinks a{display:inline-block;padding:10px 0;margin:-10px 0}
+  .mc .cmp{height:44px}
+  .mc .seg button,.mc [role="tab"]{min-height:40px}
+  .mc .mseg{padding:14px 0;margin:-14px 0}
+  .mc .mon,.mc .rulestab .rh{font-size:12px}
+  .mc .drawer h2{line-height:1.1}
+  .mc .tchip:disabled{opacity:.6}
+  .mc .pform select{appearance:none;-webkit-appearance:none;padding-right:34px;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='m1 1.5 5 5 5-5' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center/12px 8px}
+}
+
+/* Phones, round 3 (Connor, Nov 15, version A of five mockups): one statement card fills the screen with five
+   full-width answer rows (Strongly agree at the top), the explanation sits behind "Why this matters", the
+   footer is one quiet row, and the map waits until you finish ("See the map" opens it early). Computers
+   keep the grid of answer buttons and the map beside the card. */
+.mc .qwhy,.mc .qmap{display:none}
+@media (max-width:760px){
+  .mc .app:not(.isdone):not(.peek) .ccol{display:none}
+  .mc .qcard{display:flex;flex-direction:column;min-height:min(640px,72svh)}
+  .mc .qcard .qbody{flex:1;min-height:0!important}
+  .mc .qcard .qtext,.mc .qsolo .qcard .qtext{font-size:23px;line-height:1.22;height:auto;margin-top:6px}
+  .mc .qctx{display:none;min-height:0}
+  .mc .qctx.open{display:block;margin-top:8px}
+  .mc .qwhy{display:inline-flex;align-items:center;align-self:flex-start;min-height:40px;font-size:14px;padding:0}
+  .mc .qcard .answers.five{display:flex;flex-direction:column-reverse;gap:8px;margin-top:auto;padding-top:16px}
+  .mc .qcard .answers.five .ans{min-height:50px;width:100%;text-align:left;padding:0 18px;font-size:16px;border-radius:14px;place-items:initial;display:flex;align-items:center}
+  .mc .qcard .answers.five .ans:nth-child(4),.mc .qcard .answers.five .ans:nth-child(5){grid-column:auto}
+  .mc .qcard .answers.five .ans[data-v="1"],.mc .qcard .answers.five .ans[data-v="2"]{border-color:color-mix(in srgb,var(--blue) 45%,var(--line))}
+  .mc .qcard .answers.five .ans[data-v="-1"],.mc .qcard .answers.five .ans[data-v="-2"]{border-color:color-mix(in srgb,#c2410c 45%,var(--line))}
+  .mc .unsurerow{margin-top:6px}
+  .mc .unsurebtn{border:0;min-height:40px;font-size:14px}
+  .mc .qcard .qfoot{margin-top:4px;justify-content:space-between;flex-wrap:nowrap;gap:8px}
+  .mc .qcard .qfoot .star{border:0;padding:0 4px;font-size:14px;min-height:44px;background:none}
+  .mc .qcard .qfoot .actions{gap:14px!important}
+  .mc .qcard .qfoot[data-answered="false"] #qnext,.mc .qcard .qfoot[data-answered="true"] #qskip{display:none}
+  .mc .qcard .qfoot #qnext{background:none;color:var(--link);padding:0 4px;font-size:15px;font-weight:600;min-height:44px}
+  .mc .qmap{display:inline-flex;align-items:center;align-self:center;min-height:40px;font-size:14px;color:var(--ink-2)}
+}
+
+/* Computers, round 3 (Connor, Nov 15, version A for computers too): the same five stacked answer rows as the
+   phone card, Strongly agree on top, each row showing its number key; the map stays beside the card. */
+@media (min-width:761px){
+  .mc .qcard .answers.five{display:flex;flex-direction:column-reverse;gap:8px;max-width:520px;margin-top:auto;padding-top:14px}
+  .mc .qcard .answers.five .ans{display:flex;align-items:center;gap:12px;min-height:46px;width:100%;text-align:left;padding:0 14px;font-size:15.5px;border-radius:14px;line-height:1.2}
+  .mc .qcard .answers.five .ans::before{content:attr(data-k);font:600 11px/1 var(--sf);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:3px 6px;color:var(--ink-2);background:var(--bg)}
+  .mc .qcard .answers.five .ans[aria-pressed="true"]::before{color:#fff;background:transparent;border-color:rgb(255 255 255 / 50%)}
+  .mc .qcard .answers.five .ans[data-v="1"],.mc .qcard .answers.five .ans[data-v="2"]{border-color:color-mix(in srgb,var(--blue) 45%,var(--line))}
+  .mc .qcard .answers.five .ans[data-v="-1"],.mc .qcard .answers.five .ans[data-v="-2"]{border-color:color-mix(in srgb,#c2410c 45%,var(--line))}
+  /* pointing at a row lights it up (the tinted borders above must not cancel the hover) */
+  .mc .qcard .answers.five .ans:hover{border-color:var(--blue);background:var(--blue-wash)}
+  .mc .qcard .answers.five .ans[aria-pressed="true"]:hover{background:var(--blue)}
+  .mc .unsurerow{justify-content:flex-start;max-width:520px}
+  .mc .keyhint{text-align:left}
+  /* one quiet footer row, as on the phone: one Back (the top one goes), plain Matters to me, Skip before you
+     answer and Next after */
+  .mc .qprog .qbk{display:none}
+  .mc .qcard .qfoot .star{border:0;padding:0 2px;background:none;font-size:14px}
+  .mc .qcard .qfoot[data-answered="false"] #qnext,.mc .qcard .qfoot[data-answered="true"] #qskip{display:none}
+  .mc .qcard .qfoot #qnext{background:none;color:var(--link);padding:0 2px;font-size:15px;font-weight:600}
 }

@@ -573,6 +573,11 @@ body[data-page="k3_dictionary"] .dict-empty b { color: var(--k3-ink); }
     gap: 16px;
     overflow-x: auto;
     scrollbar-width: none;
+    /* The right edge fades out so a half-visible "Show" pill reads as "swipe for more" instead of
+       a cut-off word, and the end padding lets the last pill scroll fully clear of the fade. */
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+    padding-right: 36px;
   }
 
   body[data-page="k3_dictionary"] .dict-knobs::-webkit-scrollbar { display: none; }

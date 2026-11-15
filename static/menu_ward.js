@@ -92,14 +92,14 @@
     const heading = state.category ? `${esc(state.category)}: ${list.length} project lines` : `All ${list.length} project lines, largest first`;
     return `
       <p class="ed-section-label">${heading}${state.category ? ' <button type="button" class="ww-linkbtn" data-clear>show all</button>' : ""}</p>
-      <div class="mh-table-wrap"><table class="mh-table">
-        <thead><tr><th>Item</th><th>Location</th><th>Category</th><th class="num">Cost</th><th>Source</th></tr></thead>
+      <div class="mh-table-wrap"><table class="mh-table mh-items">
+        <thead><tr><th>Item</th><th>Location</th><th class="mh-opt">Category</th><th class="num">Cost</th><th class="mh-opt">Source</th></tr></thead>
         <tbody>${list.map((r) => `<tr>
           <td>${esc(r.item)}</td>
           <td>${esc(r.location)}${r.lat != null ? ` <a class="mh-maplink" href="/menu/map?year=${state.year}&ward=${state.ward}&focus=${esc(r.id)}" title="Show on map">map</a>` : ""}</td>
-          <td><span class="mh-chip tone-${M.tone(r.category)}">${esc(M.shortName(r.category))}</span></td>
+          <td class="mh-opt"><span class="mh-chip tone-${M.tone(r.category)}">${esc(M.shortName(r.category))}</span></td>
           <td class="num">${M.moneyExact(r.cost)}</td>
-          <td>${r.source_url ? `<a href="${esc(r.source_url)}" rel="noopener">PDF</a>` : "—"}</td>
+          <td class="mh-opt">${r.source_url ? `<a href="${esc(r.source_url)}" rel="noopener">PDF</a>` : "—"}</td>
         </tr>`).join("")}</tbody>
       </table></div>`;
   }

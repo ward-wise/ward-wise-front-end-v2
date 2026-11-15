@@ -487,7 +487,11 @@
       });
     }
     if (points.length < 5) return "<p>Not enough wards have both measures for this term.</p>";
-    const W = 900, H = 620, m = { l: 70, r: 28, t: 30, b: 62 };
+    // On a phone, draw the chart on a narrow canvas (about the screen's own width) instead of
+    // shrinking a 900-wide picture to a third, which made every label about 4px tall.
+    const narrow = window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+    const W = narrow ? 400 : 900, H = narrow ? 540 : 620;
+    const m = narrow ? { l: 40, r: 12, t: 28, b: 52 } : { l: 70, r: 28, t: 30, b: 62 };
     const pad = (lo, hi) => { const span = hi - lo || 1; return [lo - span * 0.09, hi + span * 0.09]; };
     const [xMin, xMax] = pad(Math.min(...points.map((p) => p.x), xStd.value * xAxis.flip),
                              Math.max(...points.map((p) => p.x), xStd.value * xAxis.flip));
