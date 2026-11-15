@@ -33,8 +33,8 @@
   function list(payload) {
     const rows = payload.types.slice().sort((a, b) => b.n - a.n);
     root.innerHTML = `${explainer}
-      <div class="mh-table-wrap"><table class="mh-table mc-list">
-        <thead><tr><th>Kind of project</th><th class="num">Projects</th><th class="num">Typical (median)</th><th class="num">Middle half</th><th class="num">Cheapest – priciest</th><th class="num">Per block</th><th>Median over time</th></tr></thead>
+      <div class="mh-table-wrap mh-swipe"><table class="mh-table mc-list">
+        <thead><tr><th>Kind of project</th><th class="num">Projects</th><th class="num">Typical (median)</th><th class="num">Middle half</th><th class="num">Cheapest – priciest</th><th class="num">Per block</th><th class="mh-opt">Median over time</th></tr></thead>
         <tbody>${rows.map((t) => {
           const l = t.latest || {};
           return `<tr>
@@ -44,7 +44,7 @@
             <td class="num">${l.p25 != null ? `${M.money(l.p25)}–${M.money(l.p75)}` : "—"}</td>
             <td class="num">${l.min != null ? `${M.money(l.min)} – ${M.money(l.max)}` : "—"}</td>
             <td class="num">${l.block_median != null ? M.money(l.block_median) : "—"}</td>
-            <td>${sparkline(t.median_series)}</td>
+            <td class="mh-opt">${sparkline(t.median_series)}</td>
           </tr>`;
         }).join("")}</tbody>
       </table></div>

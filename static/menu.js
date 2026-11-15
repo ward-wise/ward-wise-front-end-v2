@@ -247,7 +247,7 @@
     return `
       <section class="report-card menu-wards">
         <div class="ww-mainhead">All fifty wards, ${state.year}<span>share of each ward's menu spending by category · click a column to sort, a ward to open it</span></div>
-        <div class="menu-table-wrap"><table class="menu-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>
+        <div class="menu-table-wrap mh-swipe"><table class="menu-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>
       </section>`;
   }
 
