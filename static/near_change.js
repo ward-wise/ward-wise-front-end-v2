@@ -48,7 +48,7 @@
   });
   presetsEl.appendChild(decade);
 
-  const map = L.map("chg-map", { scrollWheelZoom: true, preferCanvas: true })
+  const map = L.map("chg-map", { dragging: !window.matchMedia("(pointer: coarse)").matches, scrollWheelZoom: true, preferCanvas: true })
     .setView([41.84, -87.68], 11);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_2jye_1_91a0198a0781fa7a84176b2a", {
     attribution: "&copy; OpenStreetMap contributors &copy; CARTO", maxZoom: 19,

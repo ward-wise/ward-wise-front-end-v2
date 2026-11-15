@@ -328,6 +328,7 @@
 
   function initMap() {
     map = L.map("k3-map", {
+      dragging: !window.matchMedia("(pointer: coarse)").matches, // phones: one finger scrolls the page, pinch zooms the map
       zoomControl: true,
       scrollWheelZoom: false,
       attributionControl: true,
