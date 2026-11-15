@@ -5580,6 +5580,10 @@ body.fd-theme {
 .fd-row-name { display: grid; gap: 2px; min-width: 0; }
 .fd-row-name a { color: var(--ink) !important; font-weight: 600; }
 .fd-row-name small { color: var(--ink-3); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Phones: show the whole source line (it used to end in "..." and hide where the number comes from). */
+@media (max-width: 640px) {
+  .fd-row-name small { overflow: visible; text-overflow: clip; white-space: normal; }
+}
 .fd-row-value { white-space: nowrap; font-size: 20px; font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: -0.02em; }
 .fd-row-rank { display: grid; gap: 2px; font-size: 15px; font-variant-numeric: tabular-nums; }
 .fd-row-rank small { color: var(--ink-3); font-size: 13px; }
