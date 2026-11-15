@@ -1334,6 +1334,15 @@ select {
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
 }
+/* Phones: the formula strip scrolls sideways, so fade its right edge to show there is more
+   (it used to end mid-word with no hint). */
+@media (max-width: 640px) {
+  .eq-chips {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+    padding-right: 1.5rem;
+  }
+}
 .eq-chip {
   align-items: center;
   background: var(--hue-soft);
@@ -6847,6 +6856,11 @@ html.is-dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightnes
 body:not(.fd-theme) { background: var(--fill); }
 html.is-dark body:not(.fd-theme) { background: var(--bg); }
 body:not(.fd-theme) .explorer-layout { gap: 16px; padding: 16px; }
+/* Phones: the fixed picker bar (about 110px) sits over the page bottom, so leave room under the
+   ward report or its last buttons stay hidden behind the bar. */
+@media (max-width: 640px) {
+  body:not(.fd-theme) .explorer-layout { padding-bottom: 9rem; }
+}
 
 /* Panels */
 body:not(.fd-theme) .map-card,
