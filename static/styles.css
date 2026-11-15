@@ -5745,7 +5745,9 @@ body.fd-theme {
   .fd-review div { gap: 2px; grid-template-columns: minmax(0, 1fr); }
   .fd-footer-cols { grid-template-columns: minmax(0, 1fr); }
   .fd-picker { display: grid; width: 100%; }
-  .fd-picker select { width: 100%; }
+  .fd-picker select { width: 100%; min-width: 0; }
+  /* the ward picker sits in a flex row; let its box shrink so a 320px phone does not scroll sideways */
+  .fd-report-head > * { min-width: 0; }
 }
 
 @media print {
