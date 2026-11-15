@@ -3683,6 +3683,10 @@ select {
 .apikey-reveal-actions { display: flex; gap: 0.5rem; }
 .alder-good-quadrant { fill: rgb(22 101 52 / 6%); }
 .alder-quad-label { fill: #166534; font-size: 11px; font-style: italic; opacity: 0.75; }
+@media (max-width: 640px) {
+  /* Phone: the chart is drawn about screen-sized (see report_alder.js), so 15 units reads as roughly 9-12px. */
+  .alder-quad, .alder-axis, .alder-quad-label { font-size: 15px; }
+}
 .alder-why { display: grid; gap: 0.35rem; margin: 0.6rem 0 0.2rem; font-size: 0.82rem; }
 .alder-why p { margin: 0; }
 .alder-why span { color: var(--muted-text); }
@@ -4032,6 +4036,20 @@ select {
   /* Must follow the 960px rule: the earlier phone override lost to it, so the row kept three
      columns for two visible cells (badge and note are hidden). */
   .yearsgrid-row { grid-template-columns: minmax(0, 1fr) auto; }
+}
+
+@media (max-width: 640px) {
+  /* Phone: the measure name sits on its own line above its year squares (it used to be squeezed to
+     one letter), the squares shrink to fit the card so the page never scrolls sideways, and the three
+     dropdowns wrap onto their own full-width lines. */
+  .yearsgrid-row { grid-template-columns: minmax(0, 1fr); gap: 0.15rem; padding: 4px 0; }
+  .yearsgrid-label { white-space: normal; }
+  .yearsgrid-cells { min-width: 0; }
+  .yearsgrid-cells .yearsgrid-cell, .yearsgrid-cells .yearsgrid-year { flex: 1 1 0; min-width: 0; width: auto; }
+  .yearsgrid-legend { flex-wrap: wrap; gap: 0.3rem 0.9rem; }
+  .yearsgrid-controls { flex-wrap: wrap; gap: 0.6rem 1rem; }
+  .yearsgrid-controls label { display: flex; flex: 1 1 100%; align-items: center; justify-content: space-between; }
+  .yearsgrid-controls select { flex: 1 1 auto; margin-left: 0.6rem; min-width: 0; max-width: 70%; }
 }
 
 /* Cross-reference between metrics that measure the same thing from different sources. */
@@ -7270,6 +7288,13 @@ body:not(.fd-theme) .comparison-row.is-selected .comparison-row-community-areas 
   .wwc-lg-row { display: grid; gap: 8px; grid-auto-columns: minmax(118px, 1fr); grid-auto-flow: column; margin-bottom: 10px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x mandatory; }
   .wwc-lg-row .wwc-lg-cell { grid-row: 2; scroll-snap-align: start; }
   .wwc-lg-tag { grid-column: span 5; grid-row: 1; text-align: left; transform: none; writing-mode: horizontal-tb; }
+}
+@media (max-width: 640px) {
+  /* Phone: show the small panels two to a row, stacked, instead of a hidden sideways swipe that cut
+     the third panel in half with no hint. */
+  .wwc-lg-row { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-columns: auto; overflow-x: visible; scroll-snap-type: none; }
+  .wwc-lg-row .wwc-lg-cell { grid-row: auto; }
+  .wwc-lg-tag { grid-column: 1 / -1; }
 }
 .wwc-lg-cell { align-content: start; background: var(--fill); border-radius: 14px; display: grid; gap: 6px; margin: 0; padding: 8px; }
 .wwc-lg-cell figcaption { display: grid; font-size: 12px; gap: 2px; line-height: 1.35; }
