@@ -7508,5 +7508,8 @@ html.is-dark .gi-status.is-data { color: #f0a640; }
   .gn .gn-links a.gn-extra { display: none; }
   .gn .gn-more-phone { display: block; }
   .gn-links { overflow: visible; }
-  .gn .gn-more { box-shadow: none; position: relative; }
+  .gn .gn-more { background: transparent; box-shadow: none; position: relative; }
+}
+@media (max-width: 359px) {
+  .gn-links { gap: 0.85rem; }
 }

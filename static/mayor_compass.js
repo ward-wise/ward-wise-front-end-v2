@@ -138,6 +138,14 @@ const nameOf = p => p.id === "richard-j-daley" ? "R. J. Daley" : p.id === "richa
 
 /* ---------- chart (Signposts) ---------- */
 let uid = 0;
+/* phones: measure a name's real width (the per-letter guess runs wide once the words grow, leaving gaps
+   that make a name look like it belongs to the next dot) */
+let _mc;
+function textW(t, px, bold){
+  try { _mc = _mc || document.createElement("canvas").getContext("2d");
+    _mc.font = (bold ? "600 " : "400 ") + px + "px " + (getComputedStyle(document.getElementById("mc") || document.body).getPropertyValue("--sf").trim() || "-apple-system, BlinkMacSystemFont, sans-serif");
+    return _mc.measureText(t).width; } catch (e) { return null; }
+}
 function chart(o){
   const id = "c" + (++uid), S = o.S, M = o.M || 0, Mb = o.Mb == null ? M : o.Mb, Ml = o.Ml || 0, k = S / 20, kx = S / (2 * SPX), half = S / 2;
   const W = S + 2 * M + Ml, H = S + M + Mb, X = x => M + half + x * kx, Y = y => M + half - y * k, rr = 18;
@@ -160,13 +168,16 @@ function chart(o){
   const corner = (x, y, anc, l1, l2) => small
     ? '<text x="' + x + '" y="' + (y - 2) + '" text-anchor="' + anc + '"><tspan class="q-cap" style="font-size:' + nm + 'px">' + l1.split(", ")[0] + ',</tspan><tspan class="q-cap" style="font-size:' + nm + 'px" x="' + x + '" dy="' + (nm * 1.15) + '">' + l1.split(", ")[1] + '</tspan></text>'
     : '<text x="' + x + '" y="' + y + '" text-anchor="' + anc + '"><tspan class="q-cap" style="font-size:' + nm + 'px">' + l1 + '</tspan><tspan class="q-cap sm" x="' + x + '" dy="15">' + l2 + '</tspan></text>';
-  s += corner(M + S - pad, M + pad + 10, "end", "Conservative, tougher", "Less spending, more policing");
-  s += corner(M + pad, M + pad + 10, "start", "Progressive, tougher", "More programs, more policing");
-  s += corner(M + pad, M + S - pad - 14, "start", "Progressive, lighter touch", "More programs, less policing");
-  s += corner(M + S - pad, M + S - pad - 14, "end", "Conservative, lighter touch", "Less spending, less policing");
+  /* phones: no corner labels (Connor, Nov 15); the colored quarters and the four edge labels say the same */
+  if (!small) {
+    s += corner(M + S - pad, M + pad + 10, "end", "Conservative, tougher", "Less spending, more policing");
+    s += corner(M + pad, M + pad + 10, "start", "Progressive, tougher", "More programs, more policing");
+    s += corner(M + pad, M + S - pad - 14, "start", "Progressive, lighter touch", "More programs, less policing");
+    s += corner(M + S - pad, M + S - pad - 14, "end", "Conservative, lighter touch", "Less spending, less policing");
+  }
   /* obstacles for label placement */
   const cw = small ? nm * 7.2 : 190, ch = small ? nm * 2.5 : 32, cy0 = small ? nm * 1.3 : 26;
-  const boxes = [{x: M + S - pad - cw, y: M + pad, w: cw, h: ch}, {x: M + pad, y: M + pad, w: cw, h: ch}, {x: M + pad, y: M + S - pad - cy0, w: cw, h: ch - 2}, {x: M + S - pad - cw, y: M + S - pad - cy0, w: cw, h: ch - 2}];
+  const boxes = small ? [] : [{x: M + S - pad - cw, y: M + pad, w: cw, h: ch}, {x: M + pad, y: M + pad, w: cw, h: ch}, {x: M + pad, y: M + S - pad - cy0, w: cw, h: ch - 2}, {x: M + S - pad - cw, y: M + S - pad - cy0, w: cw, h: ch - 2}];
   const hit = b => boxes.some(q => b.x < q.x + q.w + 1.5 && b.x + b.w + 1.5 > q.x && b.y < q.y + q.h + 1.5 && b.y + b.h + 1.5 > q.y);
   const inb = b => b.x >= M + 3 && b.x + b.w <= M + S - 3 && b.y >= M + 3 && b.y + b.h <= M + S - 3;
   const shown = PEOPLE.filter(p => p.x != null && p.y != null && (p.cand || o.pre || p.year >= 1955));
@@ -197,13 +208,14 @@ function chart(o){
     const ux = X(o.you.x), uy = Y(o.you.y), tx = X(o.match.p.x), ty = Y(o.match.p.y);
     under += '<line class="mline" x1="' + ux + '" y1="' + uy + '" x2="' + tx + '" y2="' + ty + '"/>';
     over += '<circle class="mring" cx="' + tx + '" cy="' + ty + '" r="13.5"/>';
-    const txt = small ? nameOf(o.match.p) + ", " + o.match.pct + "%" : "Best match: " + o.match.p.name + ", " + o.match.pct + "%", w = (txt.length * 6.3 + 6) * f, h = 15 * f;
+    const txt = small ? "" : "Best match: " + o.match.p.name + ", " + o.match.pct + "%", w = (txt.length * 6.3 + 6) * f, h = 15 * f;
     let spot = null;
     outer: for (const t of [.5, .4, .6, .3, .7, .2, .8]) for (const oy of [-13, 13, -24, 24]) {
       const b = {x: ux + (tx - ux) * t - w / 2, y: uy + (ty - uy) * t + oy - h / 2, w, h};
       if (inb(b) && !hit(b)) { spot = b; break outer; }
     }
-    if (!spot) { const pl = place(tx, ty, 11, w, h); if (pl) spot = pl.b; }
+    if (!spot && !small) { const pl = place(tx, ty, 11, w, h); if (pl) spot = pl.b; }
+    if (small) spot = null;
     if (spot) { boxes.push(spot); labels += '<text class="lab match" x="' + (spot.x + 2) + '" y="' + (spot.y + h - 3) + '">' + esc(txt) + '</text>'; }
   }
   const rk = {}; (o.you && o.top3 || []).forEach((t, i) => rk[t.p.id] = i + 1); // 1, 2, 3 on your top matches
@@ -213,9 +225,10 @@ function chart(o){
     for (let n = 0; n < 4 && rkSpots.some(q => Math.hypot(q[0] - bx, q[1] - by) < 19 * rf); n++) bx += 20 * rf;
     rkSpots.push([bx, by]); rkAt[t.p.id] = bx; boxes.push({x: bx - 11 * rf, y: by - 11 * rf, w: 22 * rf, h: 22 * rf}); });
   /* name labels: candidates first, then mayors since 1955 */
-  [...shown].filter(p => p.cand || (small ? rk[p.id] : p.year >= 1955)).sort((a, b) => (b.cand - a.cand) || (b.n - a.n)).forEach(p => {
-    if (o.match && o.match.p.id === p.id && o.you) return;
-    const cx = X(p.x), cy = Y(p.y), r = rad(p), t = nameOf(p), w = (t.length * (p.cand ? 6.7 : 5.8) + 4) * f, h = 14 * f;
+  /* phones: before the reveal every candidate is named; after it, only your top 3 (tap any dot for the rest) */
+  [...shown].filter(p => small ? (o.you && o.top3 ? rk[p.id] : p.cand) : (p.cand || p.year >= 1955)).sort((a, b) => (b.cand - a.cand) || (b.n - a.n)).forEach(p => {
+    if (o.match && o.match.p.id === p.id && o.you && !small) return;
+    const cx = X(p.x), cy = Y(p.y), r = rad(p), t = nameOf(p), mw = small ? textW(t, (p.cand ? 12 : 11) * f, p.cand) : null, w = mw ? mw + 6 : (t.length * (p.cand ? 6.7 : 5.8) + 4) * f, h = 14 * f;
     const pl = place(cx, cy, r, w, h); if (!pl) return;
     const b = pl.b; boxes.push(b);
     if (pl.lead) {

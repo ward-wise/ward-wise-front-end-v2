@@ -658,9 +658,20 @@ body.mc-lock{overflow:hidden}
    words fit their buttons, the keyboard tip is hidden, and the candidate table drops the two line columns
    (the name and match stay; a tap still opens every position). */
 @media (max-width:760px){
-  .mc .qprog{font-size:13px;gap:8px}
-  .mc .qprog .qwhere,.mc .qprog .qright{gap:10px;white-space:nowrap}
-  .mc .qprog .qbk{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  /* the counter: the card's own Back button stays at the bottom, so the top one goes; the two halves keep
+     their words together and the right half drops under the left one when there is no room (Nov 15: a fixed
+     single line ran past the edge once "Start over" appeared) */
+  .mc .qprog{font-size:13px;gap:4px 12px;flex-wrap:wrap}
+  .mc .qprog .qwhere,.mc .qprog .qright{gap:10px;white-space:nowrap;flex-wrap:wrap}
+  .mc .qprog .qbk{display:none}
+  /* the pinned strip: words on one row, the 24 marks on their own full-width row below */
+  .mc .qpin-in{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;font-size:13px}
+  .mc .qpin-in .qbk{display:none}
+  .mc .qpin-in .mtr{grid-column:1 / -1;grid-row:2}
+  .mc .qpin-in .pinright{grid-column:2;grid-row:1}
+  /* taller tap areas for the small text buttons */
+  .mc .qfoot .linkbtn,.mc .qfoot .btn,.mc .unsurebtn{min-height:44px}
+  .mc .rsbtn,.mc .rsyes,.mc .resetwrap .linkbtn,.mc .finnow .linkbtn{min-height:40px}
   .mc .keyhint{display:none}
   .mc .qcard .answers.five{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
   .mc .qcard .answers.five .ans{grid-column:span 2;font-size:14px;padding:10px 6px;min-height:52px;hyphens:none;overflow-wrap:normal}
