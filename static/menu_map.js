@@ -132,7 +132,7 @@
 
   function init() {
     root.innerHTML = `${controls()}<div id="mm-canvas" class="mh-map-canvas" role="region" aria-label="Map of menu projects"></div><div id="mh-cite"></div>`;
-    map = L.map("mm-canvas", { scrollWheelZoom: false, preferCanvas: true }).setView([41.84, -87.68], 11);
+    map = L.map("mm-canvas", { dragging: !window.matchMedia("(pointer: coarse)").matches, scrollWheelZoom: false, preferCanvas: true }).setView([41.84, -87.68], 11);
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_2jye_1_91a0198a0781fa7a84176b2a", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
       maxZoom: 19,

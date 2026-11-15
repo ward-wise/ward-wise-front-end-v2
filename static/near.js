@@ -127,7 +127,7 @@
   }
 
   // Picker map: choosing a spot is its whole job.
-  const map = L.map("near-map", { scrollWheelZoom: false }).setView(CHICAGO_CENTER, 12);
+  const map = L.map("near-map", { dragging: !window.matchMedia("(pointer: coarse)").matches, scrollWheelZoom: false }).setView(CHICAGO_CENTER, 12);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_2jye_1_91a0198a0781fa7a84176b2a", {
     attribution: "&copy; OpenStreetMap contributors &copy; CARTO", maxZoom: 19,
   }).addTo(map);
@@ -647,7 +647,7 @@
     const active = terms.find((t) => t.term === detailTerm) || terms[0];
     if (!active) return;
     if (!detailMap) {
-      detailMap = L.map(container, { scrollWheelZoom: false });
+      detailMap = L.map(container, { dragging: !window.matchMedia("(pointer: coarse)").matches, scrollWheelZoom: false });
       L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_2jye_1_91a0198a0781fa7a84176b2a", {
         attribution: "&copy; OpenStreetMap contributors &copy; CARTO", maxZoom: 19,
       }).addTo(detailMap);

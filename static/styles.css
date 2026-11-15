@@ -773,6 +773,9 @@ select {
 .input-section {
   display: grid;
   gap: 0.7rem;
+  /* Phones: the lists and chips inside must wrap to the sheet's width, not stretch the sheet
+     to the width of the widest row (which cut off the search box and buttons on the right). */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .ranker-card {
@@ -1330,6 +1333,15 @@ select {
   padding: 0.1rem 0;
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
+}
+/* Phones: the formula strip scrolls sideways, so fade its right edge to show there is more
+   (it used to end mid-word with no hint). */
+@media (max-width: 640px) {
+  .eq-chips {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+    padding-right: 1.5rem;
+  }
 }
 .eq-chip {
   align-items: center;
@@ -3268,8 +3280,10 @@ select {
     grid-template-columns: 1fr;
   }
 
+  /* Expanded sheet: one domain row per line (6 columns made the rows sit side by side and run
+     far off the right edge of the phone). */
   .metric-button-grid {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .site-nav {
@@ -5584,6 +5598,10 @@ body.fd-theme {
 .fd-row-name { display: grid; gap: 2px; min-width: 0; }
 .fd-row-name a { color: var(--ink) !important; font-weight: 600; }
 .fd-row-name small { color: var(--ink-3); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Phones: show the whole source line (it used to end in "..." and hide where the number comes from). */
+@media (max-width: 640px) {
+  .fd-row-name small { overflow: visible; text-overflow: clip; white-space: normal; }
+}
 .fd-row-value { white-space: nowrap; font-size: 20px; font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: -0.02em; }
 .fd-row-rank { display: grid; gap: 2px; font-size: 15px; font-variant-numeric: tabular-nums; }
 .fd-row-rank small { color: var(--ink-3); font-size: 13px; }
@@ -6860,6 +6878,11 @@ html.is-dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightnes
 body:not(.fd-theme) { background: var(--fill); }
 html.is-dark body:not(.fd-theme) { background: var(--bg); }
 body:not(.fd-theme) .explorer-layout { gap: 16px; padding: 16px; }
+/* Phones: the fixed picker bar (about 110px) sits over the page bottom, so leave room under the
+   ward report or its last buttons stay hidden behind the bar. */
+@media (max-width: 640px) {
+  body:not(.fd-theme) .explorer-layout { padding-bottom: 9rem; }
+}
 
 /* Panels */
 body:not(.fd-theme) .map-card,
