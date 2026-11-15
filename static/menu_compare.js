@@ -74,18 +74,18 @@
       const values = state.wards.map((w) => value(w, cat));
       const hi = Math.max(...values);
       return `<tr class="${cat === state.category ? "is-active" : ""}">
-        <th><button type="button" class="mh-rowbtn" data-category="${esc(cat)}"><span class="mh-chip tone-${M.tone(cat)}">${esc(M.shortName(cat))}</span> ${esc(cat)}</button></th>
+        <th><button type="button" class="mh-rowbtn" data-category="${esc(cat)}">${M.shortName(cat) !== cat ? `<span class="mh-chip tone-${M.tone(cat)}">${esc(M.shortName(cat))}</span> ` : ""}${esc(cat)}</button></th>
         ${values.map((v) => `<td class="num${v === hi && hi > 0 && values.length > 1 ? " mh-hi" : ""}"><span class="mh-cellbar tone-${M.tone(cat)}" style="--w:${state.metric === "share" ? v : (100 * v) / Math.max(1, ...categories.flatMap((c) => state.wards.map((w) => value(w, c))))}%"></span>${fmt(v)}</td>`).join("")}
         ${state.metric === "share" ? `<td class="num mh-avg">${M.pct(average[cat])}</td>` : ""}
       </tr>`;
     }).join("");
 
     root.innerHTML = `${controls}
-      <div class="mh-table-wrap"><table class="mh-table mh-compare-table"><thead>${head}</thead><tbody>${totals}${body}</tbody></table></div>
+      <div class="mh-table-wrap mh-swipe"><table class="mh-table mh-compare-table"><thead>${head}</thead><tbody>${totals}${body}</tbody></table></div>
       <section class="mh-strip-section" aria-label="Every ward">
         <p class="ed-section-label">Every ward, ${esc(state.category || "")} ${state.metric === "share" ? "share" : "dollars"}, ${span}</p>
         ${strip()}
-        <p class="mh-note">Click a category row above to change this strip. Highlighted bars are the wards you picked.</p>
+        <p class="mh-note">Tap a category row above to change this strip. Highlighted bars are the wards you picked.</p>
       </section>
       <div id="mh-cite"></div>`;
     bind();
@@ -98,10 +98,14 @@
     rows.sort((a, b) => b.v - a.v);
     const max = Math.max(1e-9, ...rows.map((r) => r.v));
     const picked = new Set(state.wards);
+    // Picked bars sit close together, so stagger their labels on up to three levels (phone CSS) instead of printing them on top of each other.
+    let lastRank = -9, level = 0;
+    const levels = new Map();
+    rows.forEach((r, i) => { if (!picked.has(r.ward)) return; level = i - lastRank < 8 ? (level + 1) % 3 : 0; lastRank = i; levels.set(r.ward, level); });
     return `<ol class="mh-strip tone-${M.tone(state.category)}">${rows.map((r, i) => `
       <li class="${picked.has(r.ward) ? "is-picked" : ""}" title="Ward ${r.ward}: ${fmt(r.v)} (#${i + 1} of 50)">
         <span class="mh-strip-bar" style="height:${Math.max(1, (100 * r.v) / max)}%"></span>
-        ${picked.has(r.ward) ? `<span class="mh-strip-label">${r.ward}<br>${fmt(r.v)}</span>` : ""}
+        ${picked.has(r.ward) ? `<span class="mh-strip-label mh-lv${levels.get(r.ward)}">${r.ward}<br>${fmt(r.v)}</span>` : ""}
       </li>`).join("")}</ol>`;
   }
 

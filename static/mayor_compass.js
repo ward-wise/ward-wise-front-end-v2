@@ -17,6 +17,11 @@
 //   mayor_quiz_rules_opened  {}                       "Compare on housing and building rules" opened
 //   mayor_quiz_link          {link, person, where}    a link out: link = campaign_site, where_to_vote or register;
 //                                                     person on campaign_site; where = result, drawer or table
+//   mayor_quiz_context_opened {statement, number}     "Why this matters" opened on a phone statement card
+//   mayor_quiz_map_opened    {number, answered}       "See the map" opened on a phone before finishing
+// Nov 15 (Connor): started, answer and finished also carry layout ("stacked", the card he picked for phones
+// and computers) and screen ("phone" or "computer"); each answer carries seconds, the time on that statement
+// before answering (capped at 600).
 // quiz_ward is the ward typed into the quiz; track() already sets "ward" to the visitor's own saved ward.
 (function () {
 "use strict";
@@ -56,17 +61,25 @@ function profileProps(pr, skipped){
   o.skipped = skipped;
   return o;
 }
-let started = false, earlyFinish = false;
+let started = false, earlyFinish = false, shownAt = 0;
+// phones get the stacked card (version A, Connor Nov 15); computers keep the grid of answer buttons
+const phoneQ = () => !!(window.matchMedia && matchMedia("(max-width:760px)").matches);
+const layoutWord = () => "stacked";
+const screenWord = () => phoneQ() ? "phone" : "computer";
+const nowMs = () => (window.performance && performance.now) ? performance.now() : Date.now();
 function noteAnswer(qid, word){
-  if (!started) { started = true; track("mayor_quiz_started", {}); }
-  track("mayor_quiz_answer", {statement: qid, answer: word, number: ORDER.indexOf(qid) + 1, matters: !!stars[qid]});
+  if (!started) { started = true; track("mayor_quiz_started", {layout: layoutWord(), screen: screenWord()}); }
+  const seconds = shownAt ? Math.min(600, Math.round((nowMs() - shownAt) / 100) / 10) : null;
+  const o = {statement: qid, answer: word, number: ORDER.indexOf(qid) + 1, matters: !!stars[qid], layout: layoutWord(), screen: screenWord()};
+  if (seconds != null) o.seconds = seconds;
+  track("mayor_quiz_answer", o);
 }
 function trackFinished(){
   if (DEMO || !window.WardWiseAnalytics) return;
   const me = you(), ans = {};
   ORDER.forEach(q => { if (answers[q] != null) ans[q] = WORDS[answers[q]]; else if (unsure[q]) ans[q] = "not_sure"; else if (q in answers) ans[q] = "skipped"; });
   const ranked = rankOf(PEOPLE.filter(p => p.cand));
-  const o = {match_method: "map", answers: ans, matters: ORDER.filter(q => stars[q]), issues: top3.slice(), answered: answered(), finished_early: earlyFinish,
+  const o = {match_method: "map", layout: layoutWord(), screen: screenWord(), answers: ans, matters: ORDER.filter(q => stars[q]), issues: top3.slice(), answered: answered(), finished_early: earlyFinish,
     top3: ranked.slice(0, 3).map(c => ({id: c.p.id, pct: c.m.pct})), x: Math.round(me.x * 100) / 100, y: Math.round(me.y * 100) / 100, lines: me.px && me.py ? "both" : me.px ? "economy" : me.py ? "enforcement" : "none"};
   if (profile && profile.ward) o.quiz_ward = profile.ward;
   if (profile && profile.age) o.age_band = profile.age;
@@ -138,10 +151,20 @@ const nameOf = p => p.id === "richard-j-daley" ? "R. J. Daley" : p.id === "richa
 
 /* ---------- chart (Signposts) ---------- */
 let uid = 0;
+/* phones: measure a name's real width (the per-letter guess runs wide once the words grow, leaving gaps
+   that make a name look like it belongs to the next dot) */
+let _mc;
+function textW(t, px, bold){
+  try { _mc = _mc || document.createElement("canvas").getContext("2d");
+    _mc.font = (bold ? "600 " : "400 ") + px + "px " + (getComputedStyle(document.getElementById("mc") || document.body).getPropertyValue("--sf").trim() || "-apple-system, BlinkMacSystemFont, sans-serif");
+    return _mc.measureText(t).width; } catch (e) { return null; }
+}
 function chart(o){
   const id = "c" + (++uid), S = o.S, M = o.M || 0, Mb = o.Mb == null ? M : o.Mb, Ml = o.Ml || 0, k = S / 20, kx = S / (2 * SPX), half = S / 2;
   const W = S + 2 * M + Ml, H = S + M + Mb, X = x => M + half + x * kx, Y = y => M + half - y * k, rr = 18;
-  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Chart of candidates: progressive to conservative, and tougher enforcement to a lighter touch"><g transform="translate(' + Ml + ' 0)"><defs><clipPath id="' + id + '"><rect x="' + M + '" y="' + M + '" width="' + S + '" height="' + S + '" rx="' + rr + '"/></clipPath></defs>';
+  /* phones: the map is drawn smaller than its own size, so its words grow by f to stay readable (f = 1 on a computer) */
+  const f = o.f || 1, small = f > 1.25;
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '"' + (f > 1 ? ' style="--f:' + f.toFixed(2) + '"' : '') + ' class="' + (small ? 'small' : '') + '" role="img" aria-label="Chart of candidates: progressive to conservative, and tougher enforcement to a lighter touch"><g transform="translate(' + Ml + ' 0)"><defs><clipPath id="' + id + '"><rect x="' + M + '" y="' + M + '" width="' + S + '" height="' + S + '" rx="' + rr + '"/></clipPath></defs>';
   s += '<g clip-path="url(#' + id + ')"><rect x="' + M + '" y="' + M + '" width="' + S + '" height="' + S + '" fill="var(--card)"/>';
   s += '<rect x="' + (M + half) + '" y="' + M + '" width="' + half + '" height="' + half + '" fill="var(--q1)"/><rect x="' + M + '" y="' + M + '" width="' + half + '" height="' + half + '" fill="var(--q2)"/>';
   s += '<rect x="' + M + '" y="' + (M + half) + '" width="' + half + '" height="' + half + '" fill="var(--q3)"/><rect x="' + (M + half) + '" y="' + (M + half) + '" width="' + half + '" height="' + half + '" fill="var(--q4)"/></g>';
@@ -153,14 +176,21 @@ function chart(o){
   s += '<line class="axis" x1="' + a0 + '" y1="' + Y(0) + '" x2="' + a1 + '" y2="' + Y(0) + '"/><line class="axis" x1="' + X(0) + '" y1="' + a0 + '" x2="' + X(0) + '" y2="' + a1 + '"/>';
   const ah = (x, y, rot) => '<path class="axhead" transform="translate(' + x + ' ' + y + ') rotate(' + rot + ')" d="M0 0L-9 -5V5Z"/>';
   s += ah(a1 + 3, Y(0), 0) + ah(a0 - 3, Y(0), 180) + ah(X(0), a0 - 3, -90) + ah(X(0), a1 + 3, 90);
-  const pad = 14, nm = o.cap || 13.5;
-  const corner = (x, y, anc, l1, l2) => '<text x="' + x + '" y="' + y + '" text-anchor="' + anc + '"><tspan class="q-cap" style="font-size:' + nm + 'px">' + l1 + '</tspan><tspan class="q-cap sm" x="' + x + '" dy="15">' + l2 + '</tspan></text>';
-  s += corner(M + S - pad, M + pad + 10, "end", "Conservative, tougher", "Less spending, more policing");
-  s += corner(M + pad, M + pad + 10, "start", "Progressive, tougher", "More programs, more policing");
-  s += corner(M + pad, M + S - pad - 14, "start", "Progressive, lighter touch", "More programs, less policing");
-  s += corner(M + S - pad, M + S - pad - 14, "end", "Conservative, lighter touch", "Less spending, less policing");
+  const pad = 14, nm = (o.cap || 13.5) * (small ? Math.min(f, 1.55) : 1);
+  /* phones: each corner shows its name on two short lines ("Conservative," / "tougher") and drops the small second line */
+  const corner = (x, y, anc, l1, l2) => small
+    ? '<text x="' + x + '" y="' + (y - 2) + '" text-anchor="' + anc + '"><tspan class="q-cap" style="font-size:' + nm + 'px">' + l1.split(", ")[0] + ',</tspan><tspan class="q-cap" style="font-size:' + nm + 'px" x="' + x + '" dy="' + (nm * 1.15) + '">' + l1.split(", ")[1] + '</tspan></text>'
+    : '<text x="' + x + '" y="' + y + '" text-anchor="' + anc + '"><tspan class="q-cap" style="font-size:' + nm + 'px">' + l1 + '</tspan><tspan class="q-cap sm" x="' + x + '" dy="15">' + l2 + '</tspan></text>';
+  /* phones: no corner labels (Connor, Nov 15); the colored quarters and the four edge labels say the same */
+  if (!small) {
+    s += corner(M + S - pad, M + pad + 10, "end", "Conservative, tougher", "Less spending, more policing");
+    s += corner(M + pad, M + pad + 10, "start", "Progressive, tougher", "More programs, more policing");
+    s += corner(M + pad, M + S - pad - 14, "start", "Progressive, lighter touch", "More programs, less policing");
+    s += corner(M + S - pad, M + S - pad - 14, "end", "Conservative, lighter touch", "Less spending, less policing");
+  }
   /* obstacles for label placement */
-  const boxes = [{x: M + S - pad - 190, y: M + pad, w: 190, h: 32}, {x: M + pad, y: M + pad, w: 190, h: 32}, {x: M + pad, y: M + S - pad - 26, w: 190, h: 30}, {x: M + S - pad - 190, y: M + S - pad - 26, w: 190, h: 30}];
+  const cw = small ? nm * 7.2 : 190, ch = small ? nm * 2.5 : 32, cy0 = small ? nm * 1.3 : 26;
+  const boxes = small ? [] : [{x: M + S - pad - cw, y: M + pad, w: cw, h: ch}, {x: M + pad, y: M + pad, w: cw, h: ch}, {x: M + pad, y: M + S - pad - cy0, w: cw, h: ch - 2}, {x: M + S - pad - cw, y: M + S - pad - cy0, w: cw, h: ch - 2}];
   const hit = b => boxes.some(q => b.x < q.x + q.w + 1.5 && b.x + b.w + 1.5 > q.x && b.y < q.y + q.h + 1.5 && b.y + b.h + 1.5 > q.y);
   const inb = b => b.x >= M + 3 && b.x + b.w <= M + S - 3 && b.y >= M + 3 && b.y + b.h <= M + S - 3;
   const shown = PEOPLE.filter(p => p.x != null && p.y != null && (p.cand || o.pre || p.year >= 1955));
@@ -170,8 +200,8 @@ function chart(o){
   let youLab = "";
   if (o.you) {
     const cx = X(o.you.x), cy = Y(o.you.y); boxes.push({x: cx - 18, y: cy - 18, w: 36, h: 36});
-    const left = cx - 22 - 28 > M + 4; const bx = left ? cx - 22 - 28 : cx + 22;
-    boxes.push({x: bx, y: cy - 10, w: 28, h: 15});
+    const yw = 28 * f, left = cx - 22 - yw > M + 4; const bx = left ? cx - 22 - yw : cx + 22;
+    boxes.push({x: bx, y: cy - 10 * f, w: yw, h: 15 * f});
     youLab = '<text class="lab you" x="' + (left ? cx - 22 : cx + 22) + '" y="' + (cy + 5) + '" text-anchor="' + (left ? "end" : "start") + '">You</text>';
   }
   function place(cx, cy, r, w, h){
@@ -191,25 +221,27 @@ function chart(o){
     const ux = X(o.you.x), uy = Y(o.you.y), tx = X(o.match.p.x), ty = Y(o.match.p.y);
     under += '<line class="mline" x1="' + ux + '" y1="' + uy + '" x2="' + tx + '" y2="' + ty + '"/>';
     over += '<circle class="mring" cx="' + tx + '" cy="' + ty + '" r="13.5"/>';
-    const txt = "Best match: " + o.match.p.name + ", " + o.match.pct + "%", w = txt.length * 6.3 + 6, h = 15;
+    const txt = small ? "" : "Best match: " + o.match.p.name + ", " + o.match.pct + "%", w = (txt.length * 6.3 + 6) * f, h = 15 * f;
     let spot = null;
     outer: for (const t of [.5, .4, .6, .3, .7, .2, .8]) for (const oy of [-13, 13, -24, 24]) {
       const b = {x: ux + (tx - ux) * t - w / 2, y: uy + (ty - uy) * t + oy - h / 2, w, h};
       if (inb(b) && !hit(b)) { spot = b; break outer; }
     }
-    if (!spot) { const pl = place(tx, ty, 11, w, h); if (pl) spot = pl.b; }
+    if (!spot && !small) { const pl = place(tx, ty, 11, w, h); if (pl) spot = pl.b; }
+    if (small) spot = null;
     if (spot) { boxes.push(spot); labels += '<text class="lab match" x="' + (spot.x + 2) + '" y="' + (spot.y + h - 3) + '">' + esc(txt) + '</text>'; }
   }
   const rk = {}; (o.you && o.top3 || []).forEach((t, i) => rk[t.p.id] = i + 1); // 1, 2, 3 on your top matches
   // badges that would cover each other sit side by side, so 1, 2 and 3 all stay readable
-  const rkAt = {}, rkSpots = [];
+  const rkAt = {}, rkSpots = [], rf = Math.min(f, 1.5);
   (o.you && o.top3 || []).forEach(t => { if (t.p.x == null || t.p.y == null) return; let bx = X(t.p.x); const by = Y(t.p.y);
-    for (let n = 0; n < 4 && rkSpots.some(q => Math.hypot(q[0] - bx, q[1] - by) < 19); n++) bx += 20;
-    rkSpots.push([bx, by]); rkAt[t.p.id] = bx; boxes.push({x: bx - 11, y: by - 11, w: 22, h: 22}); });
+    for (let n = 0; n < 4 && rkSpots.some(q => Math.hypot(q[0] - bx, q[1] - by) < 19 * rf); n++) bx += 20 * rf;
+    rkSpots.push([bx, by]); rkAt[t.p.id] = bx; boxes.push({x: bx - 11 * rf, y: by - 11 * rf, w: 22 * rf, h: 22 * rf}); });
   /* name labels: candidates first, then mayors since 1955 */
-  [...shown].filter(p => p.cand || p.year >= 1955).sort((a, b) => (b.cand - a.cand) || (b.n - a.n)).forEach(p => {
-    if (o.match && o.match.p.id === p.id && o.you) return;
-    const cx = X(p.x), cy = Y(p.y), r = rad(p), t = nameOf(p), w = t.length * (p.cand ? 6.7 : 5.8) + 4, h = 14;
+  /* phones: before the reveal every candidate is named; after it, only your top 3 (tap any dot for the rest) */
+  [...shown].filter(p => small ? (o.you && o.top3 ? rk[p.id] : p.cand) : (p.cand || p.year >= 1955)).sort((a, b) => (b.cand - a.cand) || (b.n - a.n)).forEach(p => {
+    if (o.match && o.match.p.id === p.id && o.you && !small) return;
+    const cx = X(p.x), cy = Y(p.y), r = rad(p), t = nameOf(p), mw = small ? textW(t, (p.cand ? 12 : 11) * f, p.cand) : null, w = mw ? mw + 6 : (t.length * (p.cand ? 6.7 : 5.8) + 4) * f, h = 14 * f;
     const pl = place(cx, cy, r, w, h); if (!pl) return;
     const b = pl.b; boxes.push(b);
     if (pl.lead) {
@@ -222,16 +254,16 @@ function chart(o){
 
   order.forEach(p => {
     const cx = X(p.x), cy = Y(p.y), pre = !p.cand && p.year < 1955, cls = p.cand ? "cand" : (pre ? "pre" : "mayor"), r = rad(p), lean = !!p.by_lean, thin = thinP(p);
-        s += '<g data-id="' + p.id + '" class="pt" tabindex="0" role="button" aria-label="' + esc(p.name) + (lean ? ", placed by leaning" : "") + '"><circle class="hring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 7) + '"/><circle class="dot ' + cls + (lean ? " lean" : thin ? " thin" : "") + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>'  + (thin ? '<circle class="thinring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 3) + '"/>' : '') + (rk[p.id] ? '<circle class="rk" cx="' + rkAt[p.id] + '" cy="' + cy + '" r="9.5"/><text class="rkn" x="' + rkAt[p.id] + '" y="' + (cy + 4) + '" text-anchor="middle">' + rk[p.id] + '</text>' : '') + '</g>';
+        s += '<g data-id="' + p.id + '" class="pt" tabindex="0" role="button" aria-label="' + esc(p.name) + (lean ? ", placed by leaning" : "") + '"><circle class="hring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 7) + '"/><circle class="dot ' + cls + (lean ? " lean" : thin ? " thin" : "") + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>'  + (thin ? '<circle class="thinring" cx="' + cx + '" cy="' + cy + '" r="' + (r + 3) + '"/>' : '') + (rk[p.id] ? '<circle class="rk" cx="' + rkAt[p.id] + '" cy="' + cy + '" r="' + (9.5 * rf) + '"/><text class="rkn" x="' + rkAt[p.id] + '" y="' + (cy + 4 * rf) + '" text-anchor="middle">' + rk[p.id] + '</text>' : '') + '</g>';
   });
   s += over + labels;
   if (o.you) { const cx = X(o.you.x), cy = Y(o.you.y); s += '<g class="youg"><circle class="you-halo" cx="' + cx + '" cy="' + cy + '" r="17"/><circle class="you-dot" cx="' + cx + '" cy="' + cy + '" r="8"/>' + youLab + '</g>'; }
   if (o.sideLabels) {
-    const f = 'font-size="11.5" fill="var(--ink-2)" font-weight="600"';
-    s += '<text x="' + (M + half) + '" y="' + (M - 9) + '" text-anchor="middle" ' + f + '>&#8593; Tougher enforcement</text>';
-    s += '<text x="' + (M + half) + '" y="' + (H - M + 20) + '" text-anchor="middle" ' + f + '>&#8595; Lighter touch</text>';
-    s += '<text transform="translate(' + (M - 9) + ' ' + (M + half) + ') rotate(-90)" text-anchor="middle" ' + f + '>&#8592; Progressive</text>';
-    s += '<text transform="translate(' + (M + S + 9) + ' ' + (M + half) + ') rotate(90)" text-anchor="middle" ' + f + '>Conservative &#8594;</text>';
+    const sf = 'font-size="' + (11.5 * Math.min(f, 1.5)).toFixed(1) + '" fill="var(--ink-2)" font-weight="600"';
+    s += '<text x="' + (M + half) + '" y="' + (M - 9) + '" text-anchor="middle" ' + sf + '>&#8593; Tougher enforcement</text>';
+    s += '<text x="' + (M + half) + '" y="' + (H - M + 20) + '" text-anchor="middle" ' + sf + '>&#8595; Lighter touch</text>';
+    s += '<text transform="translate(' + (M - 9) + ' ' + (M + half) + ') rotate(-90)" text-anchor="middle" ' + sf + '>&#8592; Progressive</text>';
+    s += '<text transform="translate(' + (M + S + 9) + ' ' + (M + half) + ') rotate(90)" text-anchor="middle" ' + sf + '>Conservative &#8594;</text>';
   }
   if (o.strip) {
     const y0 = M + S + 12, seg = [[-10, -5, "strongly"], [-5, -1.5, "somewhat"], [-1.5, 1.5, "near the middle"], [1.5, 5, "somewhat"], [5, 10, "strongly"]];
@@ -278,11 +310,15 @@ document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === 
 const clean = t => t.replace(/\.$/, "");
 const tbHTML = you => '<div class="legend">' + (you ? '<span><i class="y"></i>You</span>' : '') + '<span><i class="c"></i>Candidate</span>' + (you ? '<span><i class="r">1</i>Your top 3</span>' : '') + '<span><i class="m"></i>Mayor since 1955</span><span><i class="l"></i>Placed by leaning</span><span><span class="ring"></span>Thin record</span></div>';
 $("fieldtb").innerHTML = tbHTML(false);
+/* how much the map's words must grow: the map is drawn 516 units wide; on a phone it shows near 300px, so words grow up to 1.8 times */
+function mapF(){ const w = ($("hero-chart") || {}).clientWidth || (phoneQ() ? Math.max(260, innerWidth - 100) : 516); return Math.round(Math.max(1, Math.min(1.8, 516 / w * .95)) * 20) / 20; }
+let lastF = 0;
 function drawMaps(){
+  lastF = mapF();
   const mm = finished && window._me && window._me.ok;
   $("herotb").innerHTML = tbHTML(mm);
   const mn = $("mapnote"); if (mn) { mn.innerHTML = mm ? (window._note || "") : ""; mn.hidden = !(mm && window._note); }
-  $("hero-chart").innerHTML = '<div class="plot">' + chart({S: 448, M: 34, sideLabels: true, cap: 11.5, pre, you: mm ? window._me : null, match: mm ? window._top : null, top3: mm ? window._top3 : null}) + '</div>';
+  $("hero-chart").innerHTML = '<div class="plot">' + chart({S: 448, M: 34, sideLabels: true, cap: 11.5, f: mapF(), pre, you: mm ? window._me : null, match: mm ? window._top : null, top3: mm ? window._top3 : null}) + '</div>';
   $("field-chart").innerHTML = "";
   if (mm && animYou) { // the You dot drops into place once, right after the reveal (about 600ms); reduced motion places it at once
     animYou = false;
@@ -446,15 +482,18 @@ function renderQ(still){
   // statement (the star), or the new statement text when the statement changed.
   const qe = $("quiz"), ae = document.activeElement, sameQ = qe.dataset.qid === qid;
   const had = ae && ae !== qe && qe.contains(ae) ? (ae.id ? "#" + ae.id : ae.dataset.v != null ? `.ans[data-v="${ae.dataset.v}"]` : "x") : focusInCard() ? "x" : null;
+  if (!sameQ) shownAt = nowMs();
+  const peek = $("app").classList.contains("peek");
   $("quiz").innerHTML = `${headHTML()}
     <div class="qbody">
     <p class="qtext" id="qtext">${esc(q.text)}</p>
     <p class="qctx">${q.context ? esc(q.context) : ""}</p>
-    <div class="answers five" role="group" aria-labelledby="qtext">${[-2,-1,0,1,2].map(v => `<button type="button" class="ans" data-v="${v}" aria-pressed="${a === v}">${LABELS[v]}</button>`).join("")}</div>
+    ${q.context ? '<button type="button" class="linkbtn qwhy" id="qwhy" aria-expanded="false">Why this matters</button>' : ""}
+    <div class="answers five" role="group" aria-labelledby="qtext">${[-2,-1,0,1,2].map(v => `<button type="button" class="ans" data-v="${v}" data-k="${v + 3}" aria-pressed="${a === v}">${LABELS[v]}</button>`).join("")}</div>
     <div class="unsurerow"><button type="button" class="unsurebtn" id="qunsure" aria-pressed="${!!unsure[qid]}">Not sure</button></div>
     </div>
-    <p class="keyhint">Press 1 to 5, or 6 for Not sure. Once you click or tab into this card, the arrow keys work too. Backspace goes back.</p>
-    <div class="qfoot">
+    <p class="keyhint">Press 1 to 5 to answer, 6 for Not sure, Backspace to go back.</p>
+    <div class="qfoot" data-answered="${a != null}">
       <button type="button" class="star" id="star" aria-pressed="${!!stars[qid]}">${stars[qid] ? "★ Matters to me" : "☆ Matters to me"}</button>
       <div class="actions" style="gap:16px">
         <button type="button" class="linkbtn" id="qback" ${qi === 0 ? "disabled" : ""}>Back</button>
@@ -462,10 +501,13 @@ function renderQ(still){
         <button type="button" class="btn" id="qnext">${qi === ORDER.length - 1 ? "Finish" : "Next"}</button>
       </div>
     </div>
+    <button type="button" class="linkbtn qmap" id="qmap" aria-expanded="${peek}">${peek ? "Hide the map" : "See the map"}</button>
     ${answered() >= 10 ? '<div class="finnow"><button type="button" class="linkbtn" id="qfin">Finish now</button><span class="small">Your result is less reliable with fewer answers.</span></div>' : ""}`;
   if ($("qfin")) $("qfin").onclick = () => { earlyFinish = true; finish(); };
   $("quiz").querySelectorAll(".ans").forEach(b => b.onclick = () => setAns(+b.dataset.v));
   $("qunsure").onclick = setUnsure;
+  if ($("qwhy")) $("qwhy").onclick = () => { const c = $("quiz").querySelector(".qctx"), open = !c.classList.contains("open"); c.classList.toggle("open", open); $("qwhy").setAttribute("aria-expanded", open); $("qwhy").textContent = open ? "Hide" : "Why this matters"; if (open) track("mayor_quiz_context_opened", {statement: qid, number: qi + 1}); };
+  $("qmap").onclick = () => { const open = !$("app").classList.contains("peek"); $("app").classList.toggle("peek", open); $("qmap").setAttribute("aria-expanded", open); $("qmap").textContent = open ? "Hide the map" : "See the map"; if (open) { drawMaps(); track("mayor_quiz_map_opened", {number: qi + 1, answered: answered()}); const c = document.querySelector("#resview .ccol"); if (c) c.scrollIntoView({behavior: reduced() ? "auto" : "smooth", block: "start"}); } };
   $("star").onclick = () => { stars[qid] = !stars[qid]; store.set("mc-stars", stars); renderQ(true); };
   $("qback").onclick = goBack;
   wireHead($("quiz"), false);
@@ -542,7 +584,7 @@ function lockBody(qe){
 }
 // Once per frame, and only a width change re-measures (lockBody compares widths).
 let rzTick = 0;
-window.addEventListener("resize", () => { if (rzTick) return; rzTick = requestAnimationFrame(() => { rzTick = 0; const qe = $("quiz"); if (qe && stage === "q" && !finished) lockBody(qe); }); });
+window.addEventListener("resize", () => { if (rzTick) return; rzTick = requestAnimationFrame(() => { rzTick = 0; if (lastF && mapF() !== lastF) drawMaps(); const qe = $("quiz"); if (qe && stage === "q" && !finished) lockBody(qe); }); });
 function render(cardOnly){
   // Map and table always show. Your dot, matches and the match sort wait until you finish.
   const fold = false;
@@ -721,7 +763,7 @@ const RULEQ = ORDER.filter(q => Q[q].axis === "rules");
 function rulesHTML(pods){
   const cell = (p, q) => { const a = p.answers.find(x => x.qid === q); return a ? '<a href="' + esc(a.source_url) + '" target="_blank" rel="noopener">' + LABELS[a.value] + '</a>' : '<span class="rnone">No record</span>'; };
   return '<div class="rules"><p class="bdsub">These five statements do not move your dot or your match. They show where you and your top matches stand, with a source for each answer.</p>' +
-    '<div class="rulescroll"><div class="rulestab" role="table" style="grid-template-columns:minmax(0,2.2fr) repeat(' + (pods.length + 1) + ',minmax(0,1fr))"><span class="rh" role="columnheader">Statement</span><span class="rh" role="columnheader">You</span>' + pods.map(c => '<span class="rh" role="columnheader">' + esc(c.p.short) + '</span>').join("") +
+    '<div class="rulescroll"><div class="rulestab" role="table" style="--n:' + (pods.length + 1) + ';grid-template-columns:minmax(0,2.2fr) repeat(' + (pods.length + 1) + ',minmax(0,1fr))"><span class="rh" role="columnheader">Statement</span><span class="rh" role="columnheader">You</span>' + pods.map(c => '<span class="rh" role="columnheader">' + esc(c.p.short) + '</span>').join("") +
     RULEQ.filter(q => answers[q] != null).map(q => '<span class="rq" role="cell">' + esc(Q[q].text) + '</span><span class="rc you" role="cell">' + LABELS[answers[q]] + '</span>' + pods.map(c => '<span class="rc" role="cell">' + cell(c.p, q) + '</span>').join("")).join("") + '</div></div></div>';
 }
 const REDO = '<div class="actions"><button type="button" class="btn btn-ghost" id="qredo">Change my answers</button><span class="resetwrap">' + RESET_BTN + '</span></div>';
@@ -769,7 +811,7 @@ function renderCands(){
       <span class="cfund" role="cell">${fundsCell(p.funds)}</span>
       <span aria-hidden="true"></span>
     </div>`).join("") + '</div>' +
-    '<p class="small ctab-note"><b>How to read the lines:</b> the dot shows where each person sits, the tick is the middle, a hollow dot on these lines means a mixed record with clear views on both sides, a faded dot means a thin record, and a dashed line means no public record. Hover a line for the words.</p><p class="small ctab-note" style="margin-top:6px">Money comes from each candidate\'s campaign committee filings with the Illinois State Board of Elections, from July 2023 (after the last mayor race) through Sep 30, 2026. Raised counts gifts from people and groups, plus money moved in from other political committees. Loans are shown apart. Cash on hand is what the committee had at the end of the latest report. Click a row for positions and sources.</p>';
+    '<p class="small ctab-note ctab-lines"><b>How to read the lines:</b> the dot shows where each person sits, the tick is the middle, a hollow dot on these lines means a mixed record with clear views on both sides, a faded dot means a thin record, and a dashed line means no public record. Hover a line for the words.</p><p class="small ctab-note" style="margin-top:6px">Money comes from each candidate\'s campaign committee filings with the Illinois State Board of Elections, from July 2023 (after the last mayor race) through Sep 30, 2026. Raised counts gifts from people and groups, plus money moved in from other political committees. Loans are shown apart. Cash on hand is what the committee had at the end of the latest report. Tap or click a row for positions and sources.</p>';
   document.querySelectorAll("#cand-grid .cmpbox").forEach(b => b.onchange = () => toggleCmp(b.dataset.cid));
   moveNotes(); renderCmpBar();
 }
@@ -780,6 +822,7 @@ function toggleCmp(id){
 }
 function renderCmpBar(){
   const el = $("cmpbar"), live = finished && you().ok;
+  el.classList.toggle("two", cmp.length === 2);
   if (cmp.length === 2) el.innerHTML = `<p class="small">Comparing <b>${esc(BY[cmp[0]].name)}</b> and <b>${esc(BY[cmp[1]].name)}</b>.</p><span class="actions" style="gap:14px"><button type="button" class="linkbtn" id="cmpclr">Clear</button><button type="button" class="btn sm" id="cmpgo">Compare these two</button></span>`;
   else el.innerHTML = `<p class="small">${live ? "Sorted by how close each candidate's dot is to yours on the map. " : ""}Compare 2: tick two rows, candidates or past mayors, to see their answers side by side, with sources.${cmp.length === 1 ? " Pick one more." : ""}</p>`;
   if (cmp.length === 2) { $("cmpgo").onclick = openCmp; $("cmpclr").onclick = () => { cmp = []; renderCands(); renderMayors(); }; }
@@ -792,12 +835,12 @@ function openCmp(){
   const ma = mapOf(A), mb = mapOf(B);
   const qs = ORDER.filter(q => ma[q] || mb[q]);
   const both = qs.filter(q => ma[q] && mb[q]), same = both.filter(q => Math.sign(ma[q].value) === Math.sign(mb[q].value));
-  const cell = a => a ? `<div><span class="chip blue">${LABELS[a.value]}</span> <span class="chip">${basisWord(a)}</span>${factYear(a) ? ` <span class="chip">${factYear(a)}</span>` : ""}${thenLine(a)}${noteLine(a)}<p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>` : '<div class="none">No public position found.</div>';
+  const cell = (a, p) => a ? `<div><b class="cmpwho">${esc(p.short)}</b><span class="chip blue">${LABELS[a.value]}</span> <span class="chip">${basisWord(a)}</span>${factYear(a) ? ` <span class="chip">${factYear(a)}</span>` : ""}${thenLine(a)}${noteLine(a)}<p>${esc(a.evidence)}</p><p class="src"><a href="${esc(a.source_url)}" target="_blank" rel="noopener">${esc(a.source_name || "Source")}</a> · ${esc(a.source_date || "")}</p></div>` : `<div class="none"><b class="cmpwho">${esc(p.short)}</b>No public position found.</div>`;
   const head = p => `<div><h3>${esc(p.name)}</h3><p class="small">${sayP(p, "x", true)}. ${sayP(p, "y", true)}.</p><p class="small">${p.n} sourced facts</p></div>`;
   $("cmp-dlg").innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2 id="cmp-t" class="h3" style="font-size:15px;color:var(--ink-2);font-weight:600">Side by side, statement by statement</h2><button type="button" class="iconbtn" id="cmp-x" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>
     <p class="cmpsum">${both.length ? `They take the same side on <b>${same.length} of ${both.length}</b> statements where both have a sourced position.` : "They share no statement where both have a sourced position."}</p>
     <div class="cmphead"><div class="small" style="padding-top:4px">Statement</div>${head(A)}${head(B)}</div>
-    ${qs.map(q => `<div class="cmprow"><div class="st">${esc(Q[q].text)}</div>${cell(ma[q])}${cell(mb[q])}</div>`).join("") || '<p class="small">Neither has a sourced answer to the quiz statements yet.</p>'}`;
+    ${qs.map(q => `<div class="cmprow"><div class="st">${esc(Q[q].text)}</div>${cell(ma[q], A)}${cell(mb[q], B)}</div>`).join("") || '<p class="small">Neither has a sourced answer to the quiz statements yet.</p>'}`;
   lastFocus = document.activeElement; $("cmp-ov").hidden = false; lockOn(true); $("cmp-dlg").scrollTop = 0; $("cmp-dlg").focus();
   $("cmp-x").onclick = closeCmp;
 }
@@ -959,11 +1002,12 @@ function openPerson(id){
     ${p.issues.length ? `<h4>Positions on 2027 issues</h4>` + p.issues.map(i => `<div class="fact"><div class="st">${esc(i.issue)}</div><p>${esc(i.position)}</p>${i.quote ? `<p style="color:var(--ink-2)">"${esc(i.quote)}"</p>` : ""}<p class="src"><a href="${esc(i.source_url)}" target="_blank" rel="noopener">Source</a> · ${esc(i.source_date || "")}</p></div>`).join("") : ""}
     ${missing.length && p.answers.length ? `<h4>No public position found</h4><ul class="missing">${missing.map(q => `<li>${esc(Q[q].text)}</li>`).join("")}</ul>` : ""}
     <p class="small fixline" style="margin-top:16px">See a mistake in this record? <a href="mailto:connor@wardwise.org?subject=${encodeURIComponent("Mayor quiz correction: " + p.name)}">Email connor@wardwise.org</a>.</p>`;
-  $("drawer").hidden = false; $("scrim").hidden = false; $("drawer").scrollTop = 0;
+  $("drawer").hidden = false; $("scrim").hidden = false; $("drawer").scrollTop = 0; lockOn(true);
   $("dr-close").onclick = closePerson; $("dr-close").focus();
 }
 function closePerson(){
   $("drawer").hidden = true; $("scrim").hidden = true; openId = null;
+  if ($("cmp-ov").hidden && $("card-ov").hidden) lockOn(false);
   // Back to the row or dot that opened it. A re-render may have replaced that element, so find it again.
   const f = drawerFrom; drawerFrom = null;
   if (f && f.isConnected) f.focus(); else if (f && f.dataset && f.dataset.id) { const n = document.querySelector(`[data-id="${f.dataset.id}"]`); if (n) n.focus(); }

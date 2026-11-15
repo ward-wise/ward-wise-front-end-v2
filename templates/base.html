@@ -111,7 +111,7 @@
         </a>
         <nav class="gn-links" aria-label="Main navigation">
           {% for endpoint, label in nav %}
-            <a href="{{ url_for(endpoint) }}"{% if request.endpoint == endpoint %} class="is-active" aria-current="page"{% endif %}>{{ label }}{% if endpoint == 'ui.mayor_page' %} <span class="gn-badge">New</span>{% endif %}</a>
+            <a href="{{ url_for(endpoint) }}" class="{% if loop.index > 3 %}gn-extra{% endif %}{% if request.endpoint == endpoint %} is-active{% endif %}"{% if request.endpoint == endpoint %} aria-current="page"{% endif %}>{{ label }}{% if endpoint == 'ui.mayor_page' %} <span class="gn-badge">New</span>{% endif %}</a>
           {% endfor %}
           {# Every other view (reports, comparisons, data years…) from the registry (views.json),
              grouped, behind one "More" menu so the bar keeps five words. #}
@@ -122,6 +122,13 @@
             <button type="button" class="gn-more-toggle{% if request.endpoint in view_endpoints and request.endpoint not in top_endpoints %} is-active{% endif %}"
                     id="gn-more-toggle" aria-expanded="false" aria-haspopup="true" aria-controls="gn-more-menu">More<svg class="gn-more-chev" viewBox="0 0 12 8" aria-hidden="true"><path d="m1 1.5 5 5 5-5"/></svg></button>
             <div class="gn-more-menu" id="gn-more-menu" hidden>
+              {# Phones show only the first three links in the bar; the rest sit here (shown on phones only). #}
+              <div class="gn-more-group gn-more-phone">
+                <p class="gn-more-heading">Pages</p>
+                {% for endpoint, label in nav %}{% if loop.index > 3 %}
+                  <a href="{{ url_for(endpoint) }}"{% if request.endpoint == endpoint %} aria-current="page"{% endif %}>{{ label }}</a>
+                {% endif %}{% endfor %}
+              </div>
               {% for group, views in nav_groups %}
                 {% set listed = views | rejectattr("path", "in", top_paths) | list %}
                 {% if listed %}
