@@ -3683,6 +3683,10 @@ select {
 .apikey-reveal-actions { display: flex; gap: 0.5rem; }
 .alder-good-quadrant { fill: rgb(22 101 52 / 6%); }
 .alder-quad-label { fill: #166534; font-size: 11px; font-style: italic; opacity: 0.75; }
+@media (max-width: 640px) {
+  /* Phone: the chart is drawn about screen-sized (see report_alder.js), so 15 units reads as roughly 9-12px. */
+  .alder-quad, .alder-axis, .alder-quad-label { font-size: 15px; }
+}
 .alder-why { display: grid; gap: 0.35rem; margin: 0.6rem 0 0.2rem; font-size: 0.82rem; }
 .alder-why p { margin: 0; }
 .alder-why span { color: var(--muted-text); }
