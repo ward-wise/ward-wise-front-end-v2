@@ -773,6 +773,9 @@ select {
 .input-section {
   display: grid;
   gap: 0.7rem;
+  /* Phones: the lists and chips inside must wrap to the sheet's width, not stretch the sheet
+     to the width of the widest row (which cut off the search box and buttons on the right). */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .ranker-card {
@@ -3268,8 +3271,10 @@ select {
     grid-template-columns: 1fr;
   }
 
+  /* Expanded sheet: one domain row per line (6 columns made the rows sit side by side and run
+     far off the right edge of the phone). */
   .metric-button-grid {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .site-nav {
