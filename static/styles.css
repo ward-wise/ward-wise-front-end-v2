@@ -4034,6 +4034,20 @@ select {
   .yearsgrid-row { grid-template-columns: minmax(0, 1fr) auto; }
 }
 
+@media (max-width: 640px) {
+  /* Phone: the measure name sits on its own line above its year squares (it used to be squeezed to
+     one letter), the squares shrink to fit the card so the page never scrolls sideways, and the three
+     dropdowns wrap onto their own full-width lines. */
+  .yearsgrid-row { grid-template-columns: minmax(0, 1fr); gap: 0.15rem; padding: 4px 0; }
+  .yearsgrid-label { white-space: normal; }
+  .yearsgrid-cells { min-width: 0; }
+  .yearsgrid-cells .yearsgrid-cell, .yearsgrid-cells .yearsgrid-year { flex: 1 1 0; min-width: 0; width: auto; }
+  .yearsgrid-legend { flex-wrap: wrap; gap: 0.3rem 0.9rem; }
+  .yearsgrid-controls { flex-wrap: wrap; gap: 0.6rem 1rem; }
+  .yearsgrid-controls label { display: flex; flex: 1 1 100%; align-items: center; justify-content: space-between; }
+  .yearsgrid-controls select { flex: 1 1 auto; margin-left: 0.6rem; min-width: 0; max-width: 70%; }
+}
+
 /* Cross-reference between metrics that measure the same thing from different sources. */
 .metric-family-note {
   background: var(--surface-muted);
