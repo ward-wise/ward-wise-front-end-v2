@@ -19,8 +19,9 @@
 //                                                     person on campaign_site; where = result, drawer or table
 //   mayor_quiz_context_opened {statement, number}     "Why this matters" opened on a phone statement card
 //   mayor_quiz_map_opened    {number, answered}       "See the map" opened on a phone before finishing
-// Nov 15 (Connor): started, answer and finished also carry layout ("stacked" = phone card, "grid" = computer
-// card); each answer carries seconds, the time on that statement before answering (capped at 600).
+// Nov 15 (Connor): started, answer and finished also carry layout ("stacked", the card he picked for phones
+// and computers) and screen ("phone" or "computer"); each answer carries seconds, the time on that statement
+// before answering (capped at 600).
 // quiz_ward is the ward typed into the quiz; track() already sets "ward" to the visitor's own saved ward.
 (function () {
 "use strict";
@@ -63,12 +64,13 @@ function profileProps(pr, skipped){
 let started = false, earlyFinish = false, shownAt = 0;
 // phones get the stacked card (version A, Connor Nov 15); computers keep the grid of answer buttons
 const phoneQ = () => !!(window.matchMedia && matchMedia("(max-width:760px)").matches);
-const layoutWord = () => phoneQ() ? "stacked" : "grid";
+const layoutWord = () => "stacked";
+const screenWord = () => phoneQ() ? "phone" : "computer";
 const nowMs = () => (window.performance && performance.now) ? performance.now() : Date.now();
 function noteAnswer(qid, word){
-  if (!started) { started = true; track("mayor_quiz_started", {layout: layoutWord()}); }
+  if (!started) { started = true; track("mayor_quiz_started", {layout: layoutWord(), screen: screenWord()}); }
   const seconds = shownAt ? Math.min(600, Math.round((nowMs() - shownAt) / 100) / 10) : null;
-  const o = {statement: qid, answer: word, number: ORDER.indexOf(qid) + 1, matters: !!stars[qid], layout: layoutWord()};
+  const o = {statement: qid, answer: word, number: ORDER.indexOf(qid) + 1, matters: !!stars[qid], layout: layoutWord(), screen: screenWord()};
   if (seconds != null) o.seconds = seconds;
   track("mayor_quiz_answer", o);
 }
@@ -77,7 +79,7 @@ function trackFinished(){
   const me = you(), ans = {};
   ORDER.forEach(q => { if (answers[q] != null) ans[q] = WORDS[answers[q]]; else if (unsure[q]) ans[q] = "not_sure"; else if (q in answers) ans[q] = "skipped"; });
   const ranked = rankOf(PEOPLE.filter(p => p.cand));
-  const o = {match_method: "map", layout: layoutWord(), answers: ans, matters: ORDER.filter(q => stars[q]), issues: top3.slice(), answered: answered(), finished_early: earlyFinish,
+  const o = {match_method: "map", layout: layoutWord(), screen: screenWord(), answers: ans, matters: ORDER.filter(q => stars[q]), issues: top3.slice(), answered: answered(), finished_early: earlyFinish,
     top3: ranked.slice(0, 3).map(c => ({id: c.p.id, pct: c.m.pct})), x: Math.round(me.x * 100) / 100, y: Math.round(me.y * 100) / 100, lines: me.px && me.py ? "both" : me.px ? "economy" : me.py ? "enforcement" : "none"};
   if (profile && profile.ward) o.quiz_ward = profile.ward;
   if (profile && profile.age) o.age_band = profile.age;
@@ -487,10 +489,10 @@ function renderQ(still){
     <p class="qtext" id="qtext">${esc(q.text)}</p>
     <p class="qctx">${q.context ? esc(q.context) : ""}</p>
     ${q.context ? '<button type="button" class="linkbtn qwhy" id="qwhy" aria-expanded="false">Why this matters</button>' : ""}
-    <div class="answers five" role="group" aria-labelledby="qtext">${[-2,-1,0,1,2].map(v => `<button type="button" class="ans" data-v="${v}" aria-pressed="${a === v}">${LABELS[v]}</button>`).join("")}</div>
+    <div class="answers five" role="group" aria-labelledby="qtext">${[-2,-1,0,1,2].map(v => `<button type="button" class="ans" data-v="${v}" data-k="${v + 3}" aria-pressed="${a === v}">${LABELS[v]}</button>`).join("")}</div>
     <div class="unsurerow"><button type="button" class="unsurebtn" id="qunsure" aria-pressed="${!!unsure[qid]}">Not sure</button></div>
     </div>
-    <p class="keyhint">Press 1 to 5, or 6 for Not sure. Once you click or tab into this card, the arrow keys work too. Backspace goes back.</p>
+    <p class="keyhint">Press 1 to 5 to answer, 6 for Not sure, Backspace to go back.</p>
     <div class="qfoot" data-answered="${a != null}">
       <button type="button" class="star" id="star" aria-pressed="${!!stars[qid]}">${stars[qid] ? "★ Matters to me" : "☆ Matters to me"}</button>
       <div class="actions" style="gap:16px">
