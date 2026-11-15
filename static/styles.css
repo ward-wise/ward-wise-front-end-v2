@@ -7289,6 +7289,13 @@ body:not(.fd-theme) .comparison-row.is-selected .comparison-row-community-areas 
   .wwc-lg-row .wwc-lg-cell { grid-row: 2; scroll-snap-align: start; }
   .wwc-lg-tag { grid-column: span 5; grid-row: 1; text-align: left; transform: none; writing-mode: horizontal-tb; }
 }
+@media (max-width: 640px) {
+  /* Phone: show the small panels two to a row, stacked, instead of a hidden sideways swipe that cut
+     the third panel in half with no hint. */
+  .wwc-lg-row { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-columns: auto; overflow-x: visible; scroll-snap-type: none; }
+  .wwc-lg-row .wwc-lg-cell { grid-row: auto; }
+  .wwc-lg-tag { grid-column: 1 / -1; }
+}
 .wwc-lg-cell { align-content: start; background: var(--fill); border-radius: 14px; display: grid; gap: 6px; margin: 0; padding: 8px; }
 .wwc-lg-cell figcaption { display: grid; font-size: 12px; gap: 2px; line-height: 1.35; }
 .wwc-lg-cell figcaption span { color: var(--ink-2); }
