@@ -24,6 +24,8 @@
   .mh-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .mh-tabs::-webkit-scrollbar { display: none; }
   .mh-tabs a { flex: none; }
+  /* Fade the right edge so a half-cut tab reads as "more this way". */
+  .mh-tabs { -webkit-mask-image: linear-gradient(to right, #000 88%, transparent); mask-image: linear-gradient(to right, #000 88%, transparent); padding-right: 1.5rem; }
 }
 .mh-tabs a.is-active { border-bottom-color: var(--hue, currentColor); color: var(--text); }
 
@@ -91,6 +93,21 @@
 .mh-compare-table td.num { position: relative; }
 .mh-cellbar { background: color-mix(in srgb, var(--tone) 22%, transparent); bottom: 0.25rem; left: 0; position: absolute; top: 0.25rem; width: var(--w); max-width: 100%; z-index: -1; }
 .mh-compare-table tbody { isolation: isolate; }
+/* Phone: tables that still scroll sideways say so in words; the label column is kept narrow so the first numbers show without swiping. */
+@media (max-width: 640px) {
+  .mh-swipe::before { color: var(--muted-text); content: "Swipe sideways to see more columns \2192"; display: block; font-size: 0.78rem; padding: 0 0 0.3rem; position: sticky; left: 0; }
+  .mh-table .mh-opt { display: none; }          /* project list and costs: drop low-value columns so Cost is fully visible */
+  .mh-items td, .mh-items th { overflow-wrap: anywhere; }
+  .mh-items { font-size: 0.82rem; }
+  .mh-items td:first-child { width: 5.5rem; }
+  .mc-list tr > :first-child { max-width: 6.5rem; }
+  .mc-list .mp-meta { display: none; }
+  .mh-compare-table tr > :first-child { max-width: 7.5rem; min-width: 5.5rem; }
+  .mh-compare-table .mh-chip { display: none; }  /* the tag repeated the category name */
+  .menu-table .menu-col-top, .menu-table .menu-col-ward { min-width: 0; }
+  .menu-table th.menu-col-top, .menu-table td.menu-col-top { display: none; }  /* the 8 category shares matter more than "top category" */
+  .menu-table .menu-col-ward { min-width: 5.5rem; }
+}
 
 /* compare controls */
 .mh-ward-chips { align-items: center; display: flex; flex-wrap: wrap; gap: 0.4rem; margin-right: auto; }
@@ -107,12 +124,14 @@
 .mh-strip li { align-items: flex-end; display: flex; height: 100%; position: relative; }
 .mh-strip-bar { background: color-mix(in srgb, var(--tone) 35%, transparent); border-radius: 2px 2px 0 0; display: block; width: 100%; }
 .mh-strip li.is-picked .mh-strip-bar { background: var(--tone); }
+.mh-strip-label.mh-lv1 { top: calc(100% + 2.4em); }
+.mh-strip-label.mh-lv2 { top: calc(100% + 4.8em); }
 .mh-strip-label { font-size: 0.68rem; font-weight: 700; left: 50%; line-height: 1.15; position: absolute; text-align: center; top: 100%; transform: translateX(-50%); white-space: nowrap; }
 
 /* cite */
 .mh-cite { border-top: 1px solid var(--border, #e3e5ea); margin-top: 1.5rem; padding-top: 0.6rem; }
 .mh-cite summary { cursor: pointer; font-size: 0.88rem; font-weight: 600; }
-.mh-cite-text { background: var(--surface-muted, rgb(0 0 0 / 4%)); border-radius: var(--radius-md, 0.5rem); font-family: var(--serif); font-size: 0.92rem; line-height: 1.45; padding: 0.7rem 0.9rem; }
+.mh-cite-text { overflow-wrap: anywhere; background: var(--surface-muted, rgb(0 0 0 / 4%)); border-radius: var(--radius-md, 0.5rem); font-family: var(--serif); font-size: 0.92rem; line-height: 1.45; padding: 0.7rem 0.9rem; }
 .mh-cite-actions { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; font-size: 0.86rem; }
 
 /* map */
@@ -151,7 +170,7 @@
 @media (max-width: 640px) {
   .mh-bar > button, .mh-bar > div { grid-template-columns: 1fr auto; }
   .mh-bar-track { grid-column: 1 / -1; grid-row: 2; }
-  .mh-strip { height: 6rem; }
+  .mh-strip { height: 6rem; margin-bottom: 6rem; }
   .mp-legend dl { grid-template-columns: 1fr; }
 }
 
