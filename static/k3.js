@@ -330,6 +330,7 @@
     map = L.map("k3-map", {
       dragging: !window.matchMedia("(pointer: coarse)").matches, // phones: one finger scrolls the page, pinch zooms the map
       zoomControl: true,
+      zoomSnap: 0.25, // lets the first view fill the box with the 50 wards (whole zoom steps left them small, so ward numbers piled up)
       scrollWheelZoom: false,
       attributionControl: true,
     });
