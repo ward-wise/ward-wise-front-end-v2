@@ -123,6 +123,7 @@ def test_full_run_sends_the_whole_story_once(page, mayor_site):
         prof = named(pairs, "mayor_quiz_profile")
         assert len(prof) == 1 and prof[0]["quiz_ward"] == "5" and not prof[0].get("skipped"), prof
         assert fin["finished_early"] is False, fin
+        assert fin["layout"] == "grid", fin
     assert page.errors == []
 
 
@@ -675,6 +676,7 @@ def test_phone_text_fits_and_map_words_are_readable(browser, mayor_site):
     page.set_default_timeout(10_000)
     page.goto(f"{mayor_site}/mayor", wait_until="load")
     page.wait_for_selector("#quiz .qprog")
+    page.tap("#qmap")  # the map waits until the end on phones; See the map opens it
     smallest_map_word = """() => { const s = document.querySelector('#hero-chart svg'), k = s.getBoundingClientRect().width / s.viewBox.baseVal.width;
         return Math.min(...[...s.querySelectorAll('text:not(:has(tspan)), tspan')].filter(t => t.textContent.trim() && t.getComputedTextLength()).map(t => parseFloat(getComputedStyle(t).fontSize) * k)); }"""
     q = page.evaluate("""() => ({
@@ -711,3 +713,48 @@ def test_phone_text_fits_and_map_words_are_readable(browser, mayor_site):
     assert not any(c.startswith("ln") or "money" in c for c in r["cells"] if c not in ("cname", "mcell", "cmp")), r
     assert page.evaluate(smallest_map_word) >= 10, page.evaluate(smallest_map_word)
     context.close()
+
+
+def test_phone_card_sends_layout_time_why_and_map_counts(browser, mayor_site):
+    """Version A on phones (Connor, Nov 15): stacked answers with Strongly agree on top, the map hidden until
+    the end, and PostHog (and GA) get the layout, the seconds per statement, "Why this matters" taps and
+    "See the map" taps. Computers send layout "grid"."""
+    context = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+    context.route("**/*googletagmanager.com/**", lambda route: route.abort())
+    context.route("**/*posthog.com/**", lambda route: route.abort())
+    page = context.new_page()
+    page.set_default_timeout(10_000)
+    page.goto(f"{mayor_site}/mayor", wait_until="load")
+    page.wait_for_selector("#quiz .ans")
+    order = page.evaluate("[...document.querySelectorAll('#quiz .ans')].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top).map(b => b.textContent)")
+    assert order == ["Strongly agree", "Agree", "Neutral", "Disagree", "Strongly disagree"], order
+    assert not page.locator("#hero-chart").is_visible(), "the map shows during the quiz on a phone"
+    assert not page.locator("#quiz .qctx").is_visible()
+    page.tap("#qwhy")
+    assert page.locator("#quiz .qctx").is_visible()
+    page.wait_for_timeout(300)
+    page.locator("#quiz .ans", has_text="Strongly agree").tap()
+    page.wait_for_function("document.querySelector('#quiz .qprog')?.textContent.includes('Statement 2 of 24')")
+    page.tap("#qmap")
+    assert page.locator("#hero-chart").is_visible()
+    ga, ph = sent(page)
+    for pairs in (ga, ph):
+        assert [e["layout"] for e in named(pairs, "mayor_quiz_started")] == ["stacked"]
+        ans = named(pairs, "mayor_quiz_answer")[0]
+        assert ans["answer"] == "strongly_agree" and ans["layout"] == "stacked", ans
+        assert isinstance(ans["seconds"], (int, float)) and 0 < ans["seconds"] < 60, ans
+        why = named(pairs, "mayor_quiz_context_opened")
+        assert len(why) == 1 and why[0]["statement"] == "E5" and why[0]["number"] == 1, why
+        mp = named(pairs, "mayor_quiz_map_opened")
+        assert len(mp) == 1 and mp[0]["number"] == 2 and mp[0]["answered"] == 1, mp
+    context.close()
+
+
+def test_computer_answers_send_layout_grid(page, mayor_site):
+    page.goto(f"{mayor_site}/mayor", wait_until="load")
+    answer(page, KEYS[:2])
+    ga, ph = sent(page)
+    for pairs in (ga, ph):
+        assert {a["layout"] for a in named(pairs, "mayor_quiz_answer")} == {"grid"}
+        assert named(pairs, "mayor_quiz_started")[0]["layout"] == "grid"
+    assert not page.locator("#qwhy").is_visible() and page.locator("#hero-chart").is_visible()

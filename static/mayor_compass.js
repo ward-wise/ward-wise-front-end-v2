@@ -17,6 +17,10 @@
 //   mayor_quiz_rules_opened  {}                       "Compare on housing and building rules" opened
 //   mayor_quiz_link          {link, person, where}    a link out: link = campaign_site, where_to_vote or register;
 //                                                     person on campaign_site; where = result, drawer or table
+//   mayor_quiz_context_opened {statement, number}     "Why this matters" opened on a phone statement card
+//   mayor_quiz_map_opened    {number, answered}       "See the map" opened on a phone before finishing
+// Nov 15 (Connor): started, answer and finished also carry layout ("stacked" = phone card, "grid" = computer
+// card); each answer carries seconds, the time on that statement before answering (capped at 600).
 // quiz_ward is the ward typed into the quiz; track() already sets "ward" to the visitor's own saved ward.
 (function () {
 "use strict";
@@ -56,17 +60,24 @@ function profileProps(pr, skipped){
   o.skipped = skipped;
   return o;
 }
-let started = false, earlyFinish = false;
+let started = false, earlyFinish = false, shownAt = 0;
+// phones get the stacked card (version A, Connor Nov 15); computers keep the grid of answer buttons
+const phoneQ = () => !!(window.matchMedia && matchMedia("(max-width:760px)").matches);
+const layoutWord = () => phoneQ() ? "stacked" : "grid";
+const nowMs = () => (window.performance && performance.now) ? performance.now() : Date.now();
 function noteAnswer(qid, word){
-  if (!started) { started = true; track("mayor_quiz_started", {}); }
-  track("mayor_quiz_answer", {statement: qid, answer: word, number: ORDER.indexOf(qid) + 1, matters: !!stars[qid]});
+  if (!started) { started = true; track("mayor_quiz_started", {layout: layoutWord()}); }
+  const seconds = shownAt ? Math.min(600, Math.round((nowMs() - shownAt) / 100) / 10) : null;
+  const o = {statement: qid, answer: word, number: ORDER.indexOf(qid) + 1, matters: !!stars[qid], layout: layoutWord()};
+  if (seconds != null) o.seconds = seconds;
+  track("mayor_quiz_answer", o);
 }
 function trackFinished(){
   if (DEMO || !window.WardWiseAnalytics) return;
   const me = you(), ans = {};
   ORDER.forEach(q => { if (answers[q] != null) ans[q] = WORDS[answers[q]]; else if (unsure[q]) ans[q] = "not_sure"; else if (q in answers) ans[q] = "skipped"; });
   const ranked = rankOf(PEOPLE.filter(p => p.cand));
-  const o = {match_method: "map", answers: ans, matters: ORDER.filter(q => stars[q]), issues: top3.slice(), answered: answered(), finished_early: earlyFinish,
+  const o = {match_method: "map", layout: layoutWord(), answers: ans, matters: ORDER.filter(q => stars[q]), issues: top3.slice(), answered: answered(), finished_early: earlyFinish,
     top3: ranked.slice(0, 3).map(c => ({id: c.p.id, pct: c.m.pct})), x: Math.round(me.x * 100) / 100, y: Math.round(me.y * 100) / 100, lines: me.px && me.py ? "both" : me.px ? "economy" : me.py ? "enforcement" : "none"};
   if (profile && profile.ward) o.quiz_ward = profile.ward;
   if (profile && profile.age) o.age_band = profile.age;
@@ -298,7 +309,7 @@ const clean = t => t.replace(/\.$/, "");
 const tbHTML = you => '<div class="legend">' + (you ? '<span><i class="y"></i>You</span>' : '') + '<span><i class="c"></i>Candidate</span>' + (you ? '<span><i class="r">1</i>Your top 3</span>' : '') + '<span><i class="m"></i>Mayor since 1955</span><span><i class="l"></i>Placed by leaning</span><span><span class="ring"></span>Thin record</span></div>';
 $("fieldtb").innerHTML = tbHTML(false);
 /* how much the map's words must grow: the map is drawn 516 units wide; on a phone it shows near 300px, so words grow up to 1.8 times */
-function mapF(){ const w = ($("hero-chart") || {}).clientWidth || 516; return Math.round(Math.max(1, Math.min(1.8, 516 / w * .95)) * 20) / 20; }
+function mapF(){ const w = ($("hero-chart") || {}).clientWidth || (phoneQ() ? Math.max(260, innerWidth - 100) : 516); return Math.round(Math.max(1, Math.min(1.8, 516 / w * .95)) * 20) / 20; }
 let lastF = 0;
 function drawMaps(){
   lastF = mapF();
@@ -469,15 +480,18 @@ function renderQ(still){
   // statement (the star), or the new statement text when the statement changed.
   const qe = $("quiz"), ae = document.activeElement, sameQ = qe.dataset.qid === qid;
   const had = ae && ae !== qe && qe.contains(ae) ? (ae.id ? "#" + ae.id : ae.dataset.v != null ? `.ans[data-v="${ae.dataset.v}"]` : "x") : focusInCard() ? "x" : null;
+  if (!sameQ) shownAt = nowMs();
+  const peek = $("app").classList.contains("peek");
   $("quiz").innerHTML = `${headHTML()}
     <div class="qbody">
     <p class="qtext" id="qtext">${esc(q.text)}</p>
     <p class="qctx">${q.context ? esc(q.context) : ""}</p>
+    ${q.context ? '<button type="button" class="linkbtn qwhy" id="qwhy" aria-expanded="false">Why this matters</button>' : ""}
     <div class="answers five" role="group" aria-labelledby="qtext">${[-2,-1,0,1,2].map(v => `<button type="button" class="ans" data-v="${v}" aria-pressed="${a === v}">${LABELS[v]}</button>`).join("")}</div>
     <div class="unsurerow"><button type="button" class="unsurebtn" id="qunsure" aria-pressed="${!!unsure[qid]}">Not sure</button></div>
     </div>
     <p class="keyhint">Press 1 to 5, or 6 for Not sure. Once you click or tab into this card, the arrow keys work too. Backspace goes back.</p>
-    <div class="qfoot">
+    <div class="qfoot" data-answered="${a != null}">
       <button type="button" class="star" id="star" aria-pressed="${!!stars[qid]}">${stars[qid] ? "★ Matters to me" : "☆ Matters to me"}</button>
       <div class="actions" style="gap:16px">
         <button type="button" class="linkbtn" id="qback" ${qi === 0 ? "disabled" : ""}>Back</button>
@@ -485,10 +499,13 @@ function renderQ(still){
         <button type="button" class="btn" id="qnext">${qi === ORDER.length - 1 ? "Finish" : "Next"}</button>
       </div>
     </div>
+    <button type="button" class="linkbtn qmap" id="qmap" aria-expanded="${peek}">${peek ? "Hide the map" : "See the map"}</button>
     ${answered() >= 10 ? '<div class="finnow"><button type="button" class="linkbtn" id="qfin">Finish now</button><span class="small">Your result is less reliable with fewer answers.</span></div>' : ""}`;
   if ($("qfin")) $("qfin").onclick = () => { earlyFinish = true; finish(); };
   $("quiz").querySelectorAll(".ans").forEach(b => b.onclick = () => setAns(+b.dataset.v));
   $("qunsure").onclick = setUnsure;
+  if ($("qwhy")) $("qwhy").onclick = () => { const c = $("quiz").querySelector(".qctx"), open = !c.classList.contains("open"); c.classList.toggle("open", open); $("qwhy").setAttribute("aria-expanded", open); $("qwhy").textContent = open ? "Hide" : "Why this matters"; if (open) track("mayor_quiz_context_opened", {statement: qid, number: qi + 1}); };
+  $("qmap").onclick = () => { const open = !$("app").classList.contains("peek"); $("app").classList.toggle("peek", open); $("qmap").setAttribute("aria-expanded", open); $("qmap").textContent = open ? "Hide the map" : "See the map"; if (open) { drawMaps(); track("mayor_quiz_map_opened", {number: qi + 1, answered: answered()}); const c = document.querySelector("#resview .ccol"); if (c) c.scrollIntoView({behavior: reduced() ? "auto" : "smooth", block: "start"}); } };
   $("star").onclick = () => { stars[qid] = !stars[qid]; store.set("mc-stars", stars); renderQ(true); };
   $("qback").onclick = goBack;
   wireHead($("quiz"), false);
