@@ -1,7 +1,20 @@
+node_modules
+.DS_Store
+dist
+dist-ssr
+*.local
+.nitro
+.tanstack
+.wrangler
+.output
+.vinxi
+__unconfig*
+todos.json
+
+# env files (can opt-in for committing if needed)
+.env*
+
 .venv/
 __pycache__/
 *.pyc
-.DS_Store
-.env
 .claude/
-dist/
