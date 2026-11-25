@@ -1,0 +1,37 @@
+.themeToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xxs);
+  border: none;
+  border-radius: var(--radius-circle);
+  background: transparent;
+  color: var(--color-on-surface);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.themeToggle:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--color-state-layer-hover) 10%,
+    transparent
+  );
+}
+
+.themeToggle:focus-visible {
+  outline: var(--outline-size) solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+.moonShape,
+.sunShape {
+  fill: var(--color-on-surface);
+}
+
+.sunLines {
+  stroke: var(--color-on-surface);
+  stroke-linecap: round;
+}

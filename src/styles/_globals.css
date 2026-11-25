@@ -1,0 +1,111 @@
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html {
+  font-size: 118.75%;
+  --unit: 16px;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  position: relative;
+  color: var(--color-on-surface);
+  background: var(--color-surface);
+  font-family: var(--font-body);
+  transition: all 0.3s ease;
+}
+
+.root {
+  isolation: isolate;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-outfit);
+  font-weight: var(--font-weight-heading);
+  color: var(--color-text-header);
+}
+
+h1 {
+  font-size: var(--font-size-xl);
+}
+
+h2 {
+  font-size: var(--font-size-l);
+}
+
+h3 {
+  font-size: var(--font-size-m);
+}
+
+h4,
+h5,
+h6 {
+  font-size: var(--font-size);
+}
+
+pre {
+  font-family: var(--font-monospace);
+  overflow-x: auto;
+}
+
+code {
+  font-family: var(--font-monospace);
+  font-size: inherit;
+}
+
+a {
+  color: var(--color-link);
+}
+
+/* ===== global classes */
+.monospace {
+  font-family: var(--font-monospace);
+}
+
+.italic {
+  font-style: italic;
+}
+
+.noWrap {
+  white-space: nowrap;
+}
+
+.bold {
+  font-weight: var(--font-weight-bold);
+}
+
+.textContent {
+  > h1,
+  > h2,
+  > h3,
+  > h4,
+  > h5,
+  > h6 {
+    margin-bottom: var(--space);
+  }
+
+  > p {
+    margin-top: var(--space);
+  }
+}
+
+.centeredContainer {
+  width: var(--max-width-percent);
+  max-width: var(--max-width-pixel);
+  margin-left: auto;
+  margin-right: auto;
+}
