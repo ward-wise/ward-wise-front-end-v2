@@ -17,7 +17,7 @@ src
 
 The colors file includes tokens for colors. They should not be used directly in your components' CSS, they should only be used in the variables file.
 
-Your components should use tokens from the variables file. This keeps our components looking consistent.
+Your components should use tokens from the variables file. This keeps our components looking consistent. This loosely follows the Material 3 guidelines for colors if you want a better visual of how they should be used: https://m3.material.io/styles/color/roles
 
 Styling for pages should go in the `src/styles` directory. Component styles should be along side their source.
 
